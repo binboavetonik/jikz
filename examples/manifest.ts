@@ -22,6 +22,7 @@ export type DemoCategory =
   | 'diagram-layout'
   | 'nodes-edges'
   | 'paths-decorations'
+  | 'custom-extension'
   | 'app-prototypes'
 
 export interface DemoMeta {
@@ -452,6 +453,30 @@ const meta: DemoMeta[] = [
     category: "graphs-networks",
     title: "Bayesian network — plate diagram",
     description: "The graphical-model staple: latent and observed variables (the observed one shaded), a dashed dependency, and the repetition plate as a rectFit around the subset with the count in the corner — TikZ's \node[fit=(z)(x), label=below right:N]. No hand-computed box coordinates.",
+  },
+  {
+    id: "custom-shape-house",
+    category: "custom-extension",
+    title: "Custom shape — 'house' via registerShape",
+    description: "The full TikZ-library workflow: extend AnchoredPolygon, declare five vertices, and anchors/bounds/contains/SVG come free. A custom 'apex' anchor via customAnchor; edges clip at the roofline automatically. This is the same seam ext/circuits is built on.",
+  },
+  {
+    id: "custom-pattern",
+    category: "custom-extension",
+    title: "Custom fill pattern — herringbone",
+    description: "registerPattern() takes an SVG tile fragment and compiles it to a <defs> pattern — so it works in Node string output too. Shown plain, scaled+rotated, and next to built-in 'bricks' for comparison.",
+  },
+  {
+    id: "clipping",
+    category: "custom-extension",
+    title: "Clip path — gradient burst in a star",
+    description: "A radial-gradient circle clipped to a star silhouette next to its unclipped twin. The clip spec is plain style data compiled to <clipPath> — identical in SSR string output and the browser.",
+  },
+  {
+    id: "styled-badges",
+    category: "custom-extension",
+    title: "Styled nodes — the badge row",
+    description: "Rounded corners (the 'rounded rectangle' shape's cornerRadius — style borderRadius applies to bare rect() geometry), innerSep breathing room, outerSep label gaps, drop shadow, and TikZ's double border, as a row of UI-badge chips.",
   },
   {
     id: "chess-transposition-dag",

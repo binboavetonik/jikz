@@ -37,6 +37,8 @@ const CATEGORY_ORDER: [DemoCategory, string, string][] = [
     'Feature tours of the node/anchor/label and edge-routing systems.'],
   ['paths-decorations', 'Paths, decorations & styles',
     'Feature tours of pen statements, path surgery, decorations, and the style vocabulary.'],
+  ['custom-extension', 'Custom extensions',
+    'registerShape, registerPattern, clip paths — TikZ-library-style extension on public seams.'],
   ['app-prototypes', 'Application prototypes',
     'Real app sketches (chess study tools) — diagrams derived from data, not coordinates.'],
 ]

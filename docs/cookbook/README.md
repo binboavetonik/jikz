@@ -608,6 +608,42 @@ Path surgery: offsetPath parallels a curve on either side, doublePath renders Ti
 
 **Source:** [`examples/path-operations.ts`](../../examples/path-operations.ts)
 
+## Custom extensions
+
+registerShape, registerPattern, clip paths — TikZ-library-style extension on public seams.
+
+### Custom shape — 'house' via registerShape
+
+![Custom shape — 'house' via registerShape](img/custom-shape-house.svg)
+
+The full TikZ-library workflow: extend AnchoredPolygon, declare five vertices, and anchors/bounds/contains/SVG come free. A custom 'apex' anchor via customAnchor; edges clip at the roofline automatically. This is the same seam ext/circuits is built on.
+
+**Source:** [`examples/custom-shape-house.ts`](../../examples/custom-shape-house.ts)
+
+### Custom fill pattern — herringbone
+
+![Custom fill pattern — herringbone](img/custom-pattern.svg)
+
+registerPattern() takes an SVG tile fragment and compiles it to a <defs> pattern — so it works in Node string output too. Shown plain, scaled+rotated, and next to built-in 'bricks' for comparison.
+
+**Source:** [`examples/custom-pattern.ts`](../../examples/custom-pattern.ts)
+
+### Clip path — gradient burst in a star
+
+![Clip path — gradient burst in a star](img/clipping.svg)
+
+A radial-gradient circle clipped to a star silhouette next to its unclipped twin. The clip spec is plain style data compiled to <clipPath> — identical in SSR string output and the browser.
+
+**Source:** [`examples/clipping.ts`](../../examples/clipping.ts)
+
+### Styled nodes — the badge row
+
+![Styled nodes — the badge row](img/styled-badges.svg)
+
+Rounded corners (the 'rounded rectangle' shape's cornerRadius — style borderRadius applies to bare rect() geometry), innerSep breathing room, outerSep label gaps, drop shadow, and TikZ's double border, as a row of UI-badge chips.
+
+**Source:** [`examples/styled-badges.ts`](../../examples/styled-badges.ts)
+
 ## Application prototypes
 
 Real app sketches (chess study tools) — diagrams derived from data, not coordinates.
