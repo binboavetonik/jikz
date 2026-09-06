@@ -16,6 +16,7 @@ export default defineConfig({
       { text: 'Tutorials', link: '/tutorials/01-first-picture' },
       { text: 'Reference', link: '/reference/picture' },
       { text: 'Cookbook', link: '/cookbook/' },
+      { text: '▶ Live demos', link: 'http://localhost:5173/demo/index.html' },
     ],
     sidebar: [
       {

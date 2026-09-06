@@ -133,12 +133,58 @@
       font-size: 12.5px;
       white-space: pre-wrap;
     }
+    /* Category tab bar */
+    .catbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 24px;
+    }
+    .catbar .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .cattab {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 5px 14px;
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .cattab:hover { color: var(--text); border-color: #cbd5e1; }
+    .cattab.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      font-weight: 600;
+    }
+    .cattab .n { opacity: 0.7; font-size: 11px; margin-left: 4px; }
+    .cathead {
+      max-width: 1200px;
+      margin: 26px auto 4px;
+      padding: 0 24px;
+    }
+    .cathead h2 { margin: 0 0 2px; font-size: 19px; }
+    .cathead p { margin: 0; color: var(--muted); font-size: 13px; }
+    .docs-link {
+      float: right;
+      font-size: 13px;
+    }
   </style>
 </head>
 <body>
   <header>
     <div class="wrap">
-      <h1>jikz — live demos</h1>
+      <h1>jikz — live demos <a class="docs-link" href="http://localhost:5174/">📖 docs →</a></h1>
       <p>
         Every preview below is rendered by the code shown in its
         <strong>Code</strong> tab — not by a hidden harness. Each card is a
@@ -153,6 +199,8 @@
       </p>
     </div>
   </header>
+
+  <nav class="catbar"><div class="wrap" id="catbar"></div></nav>
 
   <main>
     <div class="preamble">
@@ -172,7 +220,7 @@
     // Every demo is a real module in ../examples/ — type-checked by tsc
     // and snapshot-tested by vitest. The Code tab shows the module's raw
     // source, so what you read is exactly what ran.
-    import { demos } from '../examples/manifest.ts'
+    import { demos, CATEGORY_INFO } from '../examples/manifest.ts'
 
     function escapeHtml(s) {
       return s
@@ -217,17 +265,71 @@
     }
 
     const grid = document.getElementById('grid')
+    const catbar = document.getElementById('catbar')
 
-    for (const demo of demos) {
-      const card = createCard(demo)
-      grid.appendChild(card)
-      const container = card.querySelector('[data-container]')
-      try {
-        demo.render(container)
-      } catch (err) {
-        const panel = card.querySelector('.panel[data-panel="preview"]')
-        panel.innerHTML = `<pre class="error">${escapeHtml(String(err && err.stack || err))}</pre>`
+    // ── Category tab bar + grouped sections ──────────────────────────
+    // Sections are rendered in CATEGORY_INFO order; tabs filter them.
+    const sections = new Map() // category → { section, grid }
+
+    function sectionFor(key, title, blurb) {
+      const section = document.createElement('section')
+      section.dataset.category = key
+      section.innerHTML = `
+        <div class="cathead">
+          <h2>${escapeHtml(title)}</h2>
+          <p>${escapeHtml(blurb)}</p>
+        </div>
+        <div class="grid"></div>
+      `
+      grid.parentElement.appendChild(section)
+      const entry = { section, grid: section.querySelector('.grid') }
+      sections.set(key, entry)
+      return entry
+    }
+
+    grid.remove() // replaced by per-category grids
+
+    const groups = new Map()
+    for (const d of demos) {
+      if (!groups.has(d.category)) groups.set(d.category, [])
+      groups.get(d.category).push(d)
+    }
+
+    for (const [key, title, blurb] of CATEGORY_INFO) {
+      const group = groups.get(key)
+      if (!group || group.length === 0) continue
+      const { grid: g } = sectionFor(key, title, blurb)
+      for (const demo of group) {
+        const card = createCard(demo)
+        g.appendChild(card)
+        const container = card.querySelector('[data-container]')
+        try {
+          demo.render(container)
+        } catch (err) {
+          const panel = card.querySelector('.panel[data-panel="preview"]')
+          panel.innerHTML = `<pre class="error">${escapeHtml(String(err && err.stack || err))}</pre>`
+        }
       }
+    }
+
+    // Tabs: All + one per non-empty category, with counts
+    const tabs = [['all', `All`, demos.length]]
+    for (const [key, title] of CATEGORY_INFO) {
+      const n = (groups.get(key) || []).length
+      if (n > 0) tabs.push([key, title, n])
+    }
+
+    for (const [key, title, n] of tabs) {
+      const b = document.createElement('button')
+      b.className = 'cattab' + (key === 'all' ? ' active' : '')
+      b.innerHTML = `${escapeHtml(title)} <span class="n">${n}</span>`
+      b.addEventListener('click', () => {
+        catbar.querySelectorAll('.cattab').forEach((x) => x.classList.toggle('active', x === b))
+        sections.forEach(({ section }, cat) => {
+          section.style.display = key === 'all' || cat === key ? '' : 'none'
+        })
+      })
+      catbar.appendChild(b)
     }
   </script>
 </body>

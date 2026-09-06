@@ -14,34 +14,13 @@ import { writeFileSync, mkdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { JSDOM } from 'jsdom'
-import { demos, type DemoCategory } from '../examples/manifest'
+import { demos, CATEGORY_INFO } from '../examples/manifest'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const OUT_DIR = join(ROOT, 'docs/cookbook')
 const IMG_DIR = join(OUT_DIR, 'img')
 
-const CATEGORY_ORDER: [DemoCategory, string, string][] = [
-  ['geometry-math', 'Geometry & math',
-    'Constructions, theorems, conics, plots, and fractals — the texample.net/science heartland.'],
-  ['physics-engineering', 'Physics & engineering',
-    'Optics and circuit schematics — ports, typed symbols, and wires instead of coordinates.'],
-  ['graphs-networks', 'Graphs & networks',
-    'Complete graphs, state machines, graphical models — named nodes and boundary-aware edges.'],
-  ['statistics-data', 'Statistics & data',
-    'Charts and distributions built from raw arrays — data in, diagram out, no chart library between.'],
-  ['cs-automata', 'Computer science & automata',
-    'State machines, trees, nets, and branch graphs — the diagrams CS textbooks run on.'],
-  ['diagram-layout', 'Diagram layout',
-    'Chains, matrices, trees, and fit-boxes: declare structure, get coordinates.'],
-  ['nodes-edges', 'Nodes & edges',
-    'Feature tours of the node/anchor/label and edge-routing systems.'],
-  ['paths-decorations', 'Paths, decorations & styles',
-    'Feature tours of pen statements, path surgery, decorations, and the style vocabulary.'],
-  ['custom-extension', 'Custom extensions',
-    'registerShape, registerPattern, clip paths — TikZ-library-style extension on public seams.'],
-  ['app-prototypes', 'Application prototypes',
-    'Real app sketches (chess study tools) — diagrams derived from data, not coordinates.'],
-]
+const CATEGORY_ORDER = CATEGORY_INFO
 
 // ── Render thumbnails through the string pipeline ───────────────────────────
 

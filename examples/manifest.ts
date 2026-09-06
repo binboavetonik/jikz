@@ -32,6 +32,33 @@ export interface DemoMeta {
   description: string
 }
 
+/**
+ * Category display order + copy, shared by the demo page (tab bar)
+ * and the cookbook generator.
+ */
+export const CATEGORY_INFO: [DemoCategory, string, string][] = [
+  ['geometry-math', 'Geometry & math',
+    'Constructions, theorems, conics, plots, and fractals — the texample.net/science heartland.'],
+  ['physics-engineering', 'Physics & engineering',
+    'Optics and circuit schematics — ports, typed symbols, and wires instead of coordinates.'],
+  ['graphs-networks', 'Graphs & networks',
+    'Complete graphs, state machines, graphical models — named nodes and boundary-aware edges.'],
+  ['statistics-data', 'Statistics & data',
+    'Charts and distributions built from raw arrays — data in, diagram out, no chart library between.'],
+  ['cs-automata', 'Computer science & automata',
+    'State machines, trees, nets, and branch graphs — the diagrams CS textbooks run on.'],
+  ['diagram-layout', 'Diagram layout',
+    'Chains, matrices, trees, and fit-boxes: declare structure, get coordinates.'],
+  ['nodes-edges', 'Nodes & edges',
+    'Feature tours of the node/anchor/label and edge-routing systems.'],
+  ['paths-decorations', 'Paths, decorations & styles',
+    'Feature tours of pen statements, path surgery, decorations, and the style vocabulary.'],
+  ['custom-extension', 'Custom extensions',
+    'registerShape, registerPattern, clip paths — TikZ-library-style extension on public seams.'],
+  ['app-prototypes', 'Application prototypes',
+    'Real app sketches (chess study tools) — diagrams derived from data, not coordinates.'],
+]
+
 export interface Demo extends DemoMeta {
   /** The example's full source, as displayed in the Code tab. */
   source: string
