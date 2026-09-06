@@ -18,6 +18,7 @@ export type DemoCategory =
   | 'physics-engineering'
   | 'graphs-networks'
   | 'statistics-data'
+  | 'cs-automata'
   | 'diagram-layout'
   | 'nodes-edges'
   | 'paths-decorations'
@@ -283,6 +284,36 @@ const meta: DemoMeta[] = [
     category: "graphs-networks",
     title: "Probability tree",
     description: "Statistics classic: two coin flips as a right-growing tree. The tree builder computes positions; edges carry the branch probabilities as labels — TikZ's edge from parent node [above] {1/2}.",
+  },
+  {
+    id: "dfa-acceptor",
+    category: "cs-automata",
+    title: "DFA acceptor",
+    description: "The automata-textbook DFA for strings ending in \"01\": double-circle acceptor (node + concentric ring), symbol-labeled bend transitions, self-loops, and a start arrow from a bare point — all three endpoint kinds in one card.",
+  },
+  {
+    id: "binary-search-tree",
+    category: "cs-automata",
+    title: "Binary search tree with search path",
+    description: "A real BST built by insertion in code, laid out by the tree builder; the search path for key 7 is highlighted by name-addressed edges — layout and styling as separate passes.",
+  },
+  {
+    id: "petri-net",
+    category: "cs-automata",
+    title: "Petri net with marking",
+    description: "Places, transitions (bars), and token dots: a marked net where t1 is enabled, its in/out edges highlighted. The networking-theory classic as pure node+edge work.",
+  },
+  {
+    id: "neural-network",
+    category: "cs-automata",
+    title: "Neural network diagram",
+    description: "The ML-slide staple: layered nodes from arrays, 24 dense inter-layer edges clipped at node rims for free, and one highlighted forward-pass path picked out by name.",
+  },
+  {
+    id: "git-branch-graph",
+    category: "cs-automata",
+    title: "Git branch graph",
+    description: "main + feature branch with a merge: commit dots are Anchorable circles, fork and merge edges use out/in headings so the branch joins like railway tracks.",
   },
   {
     id: "venn",

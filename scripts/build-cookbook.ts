@@ -29,6 +29,8 @@ const CATEGORY_ORDER: [DemoCategory, string, string][] = [
     'Complete graphs, state machines, graphical models — named nodes and boundary-aware edges.'],
   ['statistics-data', 'Statistics & data',
     'Charts and distributions built from raw arrays — data in, diagram out, no chart library between.'],
+  ['cs-automata', 'Computer science & automata',
+    'State machines, trees, nets, and branch graphs — the diagrams CS textbooks run on.'],
   ['diagram-layout', 'Diagram layout',
     'Chains, matrices, trees, and fit-boxes: declare structure, get coordinates.'],
   ['nodes-edges', 'Nodes & edges',

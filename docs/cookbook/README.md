@@ -288,6 +288,50 @@ Quartiles computed in code; whiskers as one multi-subpath pen statement, boxes a
 
 **Source:** [`examples/box-plot.ts`](../../examples/box-plot.ts)
 
+## Computer science & automata
+
+State machines, trees, nets, and branch graphs — the diagrams CS textbooks run on.
+
+### DFA acceptor
+
+![DFA acceptor](img/dfa-acceptor.svg)
+
+The automata-textbook DFA for strings ending in "01": double-circle acceptor (node + concentric ring), symbol-labeled bend transitions, self-loops, and a start arrow from a bare point — all three endpoint kinds in one card.
+
+**Source:** [`examples/dfa-acceptor.ts`](../../examples/dfa-acceptor.ts)
+
+### Binary search tree with search path
+
+![Binary search tree with search path](img/binary-search-tree.svg)
+
+A real BST built by insertion in code, laid out by the tree builder; the search path for key 7 is highlighted by name-addressed edges — layout and styling as separate passes.
+
+**Source:** [`examples/binary-search-tree.ts`](../../examples/binary-search-tree.ts)
+
+### Petri net with marking
+
+![Petri net with marking](img/petri-net.svg)
+
+Places, transitions (bars), and token dots: a marked net where t1 is enabled, its in/out edges highlighted. The networking-theory classic as pure node+edge work.
+
+**Source:** [`examples/petri-net.ts`](../../examples/petri-net.ts)
+
+### Neural network diagram
+
+![Neural network diagram](img/neural-network.svg)
+
+The ML-slide staple: layered nodes from arrays, 24 dense inter-layer edges clipped at node rims for free, and one highlighted forward-pass path picked out by name.
+
+**Source:** [`examples/neural-network.ts`](../../examples/neural-network.ts)
+
+### Git branch graph
+
+![Git branch graph](img/git-branch-graph.svg)
+
+main + feature branch with a merge: commit dots are Anchorable circles, fork and merge edges use out/in headings so the branch joins like railway tracks.
+
+**Source:** [`examples/git-branch-graph.ts`](../../examples/git-branch-graph.ts)
+
 ## Diagram layout
 
 Chains, matrices, trees, and fit-boxes: declare structure, get coordinates.
