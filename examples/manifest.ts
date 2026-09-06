@@ -268,6 +268,36 @@ const meta: DemoMeta[] = [
     description: "LIVE: drag the slider to change the incidence angle — the whole card (slider + redraw) is the code below, re-rendering on every input. n1 sin(θ1) = n2 sin(θ2) computed in code; angle arcs and KaTeX \\theta labels derive from the actual ray directions via angleTo.",
   },
   {
+    id: "free-body",
+    category: "physics-engineering",
+    title: "Free-body diagram on an incline",
+    description: "The mechanics staple: mg, N, and friction as stealth-arrow vectors from the block's center. Every vector is angle+length from one point — change the incline angle and only the vector angles follow.",
+  },
+  {
+    id: "pendulum",
+    category: "physics-engineering",
+    title: "Pendulum with angle arc",
+    description: "Pivot, rod, bob, dashed vertical reference, and the θ arc between them — everything derives from pivot + θ via polar() and arc(), the angles-library idiom.",
+  },
+  {
+    id: "circuit-rlc",
+    category: "physics-engineering",
+    title: "Series RLC tank — ext/circuits",
+    description: "AC source driving R–L–C around a loop with ground return. Same port discipline as the RC filter: every connection is a name.port spec, symbols rotate for vertical branches, grounds placed by their 'in' terminal.",
+  },
+  {
+    id: "wave-superposition",
+    category: "physics-engineering",
+    title: "Wave superposition",
+    description: "Two traveling waves (dashed) and their pointwise sum (solid) on shared axes — the result can't disagree with the components because it IS the sum, computed in code.",
+  },
+  {
+    id: "lens-rays",
+    category: "physics-engineering",
+    title: "Thin-lens ray diagram",
+    description: "Principal rays from the arrow tip: parallel-then-focus, through-center-straight — and the image tip is their ACTUAL intersection via intersectLineLine, not a hand-placed point.",
+  },
+  {
     id: "complete-graph",
     category: "graphs-networks",
     title: "Complete graph K5 — nodeCircle",

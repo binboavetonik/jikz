@@ -199,6 +199,46 @@ LIVE: drag the slider to change the incidence angle — the whole card (slider +
 
 **Source:** [`examples/snell.ts`](../../examples/snell.ts)
 
+### Free-body diagram on an incline
+
+![Free-body diagram on an incline](img/free-body.svg)
+
+The mechanics staple: mg, N, and friction as stealth-arrow vectors from the block's center. Every vector is angle+length from one point — change the incline angle and only the vector angles follow.
+
+**Source:** [`examples/free-body.ts`](../../examples/free-body.ts)
+
+### Pendulum with angle arc
+
+![Pendulum with angle arc](img/pendulum.svg)
+
+Pivot, rod, bob, dashed vertical reference, and the θ arc between them — everything derives from pivot + θ via polar() and arc(), the angles-library idiom.
+
+**Source:** [`examples/pendulum.ts`](../../examples/pendulum.ts)
+
+### Series RLC tank — ext/circuits
+
+![Series RLC tank — ext/circuits](img/circuit-rlc.svg)
+
+AC source driving R–L–C around a loop with ground return. Same port discipline as the RC filter: every connection is a name.port spec, symbols rotate for vertical branches, grounds placed by their 'in' terminal.
+
+**Source:** [`examples/circuit-rlc.ts`](../../examples/circuit-rlc.ts)
+
+### Wave superposition
+
+![Wave superposition](img/wave-superposition.svg)
+
+Two traveling waves (dashed) and their pointwise sum (solid) on shared axes — the result can't disagree with the components because it IS the sum, computed in code.
+
+**Source:** [`examples/wave-superposition.ts`](../../examples/wave-superposition.ts)
+
+### Thin-lens ray diagram
+
+![Thin-lens ray diagram](img/lens-rays.svg)
+
+Principal rays from the arrow tip: parallel-then-focus, through-center-straight — and the image tip is their ACTUAL intersection via intersectLineLine, not a hand-placed point.
+
+**Source:** [`examples/lens-rays.ts`](../../examples/lens-rays.ts)
+
 ### Circuit symbol gallery — ext/circuits
 
 ![Circuit symbol gallery — ext/circuits](img/circuit-symbols.svg)
