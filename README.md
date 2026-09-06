@@ -21,6 +21,21 @@ npm install @ozan.e/jikz
 npm install katex
 ```
 
+## Documentation
+
+Full docs live in [`docs/`](docs/README.md):
+
+- **[TikZ → jikz mapping](docs/concepts/tikz-mapping.md)** — if you know
+  TikZ, start here: the idiom-by-idiom translation table.
+- **[Coordinate system](docs/concepts/coordinate-system.md)** — SVG
+  screen space, clockwise angles, and porting rules.
+- **[Two API levels](docs/concepts/two-api-levels.md)** — `picture()`
+  vs `SVGRenderer`.
+- **[ViewBox, sizing & fit](docs/concepts/viewbox-and-fit.md)** and
+  **[Node, SSR & browser](docs/concepts/node-ssr-browser.md)**.
+- **[Examples](examples/)** — 50 type-checked, snapshot-tested
+  modules; browse them live with `npm run dev`.
+
 ## Quick start
 
 ```ts
