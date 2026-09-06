@@ -456,6 +456,14 @@ TikZ's \node[fit=(api)(cache)] : rectFit computes the tight rectangle around a s
 
 **Source:** [`examples/fit-library.ts`](../../examples/fit-library.ts)
 
+### Positioning library — right=of, nodeRow
+
+![Positioning library — right=of, nodeRow](img/positioning-tour.svg)
+
+TikZ's positioning library: nodes placed relative to nodes (rightOf/below are border-to-border, TikZ node distance), a whole weekday row from nodeRow's label list — and edges still wire by name, because the placed nodes register under it.
+
+**Source:** [`examples/positioning-tour.ts`](../../examples/positioning-tour.ts)
+
 ## Nodes & edges
 
 Feature tours of the node/anchor/label and edge-routing systems.
@@ -607,6 +615,30 @@ Any $...$ text renders through KaTeX (loaded from CDN on this page) inside a for
 Path surgery: offsetPath parallels a curve on either side, doublePath renders TikZ's double line as two real paths, smoothPath turns a polyline into a spline, subPath highlights the middle 30–70% of it.
 
 **Source:** [`examples/path-operations.ts`](../../examples/path-operations.ts)
+
+### Bézier playground — quadratic vs cubic
+
+![Bézier playground — quadratic vs cubic](img/bezier-playground.svg)
+
+Same endpoints, two curve kinds: quadraticTo's single control point pulls the whole curve; curveTo's two aim the ends independently. Control handles drawn dashed — the TikZ controls idiom made visible.
+
+**Source:** [`examples/bezier-playground.ts`](../../examples/bezier-playground.ts)
+
+### Path splice — joinPaths
+
+![Path splice — joinPaths](img/path-splice.svg)
+
+Two open curves become one closed outline: a leaf from a top and bottom arc via joinPaths(…, true). No segment drawn twice; the seams are shared endpoints.
+
+**Source:** [`examples/path-splice.ts`](../../examples/path-splice.ts)
+
+### hvTo stairs — step-function outline
+
+![hvTo stairs — step-function outline](img/hvto-stairs.svg)
+
+A histogram silhouette as ONE filldraw pen statement: hvTo is TikZ's -| (horizontal, then vertical), so steps alternate hvTo calls with zero corner coordinates computed.
+
+**Source:** [`examples/hvto-stairs.ts`](../../examples/hvto-stairs.ts)
 
 ## Custom extensions
 

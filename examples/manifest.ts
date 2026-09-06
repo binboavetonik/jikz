@@ -479,6 +479,30 @@ const meta: DemoMeta[] = [
     description: "Rounded corners (the 'rounded rectangle' shape's cornerRadius — style borderRadius applies to bare rect() geometry), innerSep breathing room, outerSep label gaps, drop shadow, and TikZ's double border, as a row of UI-badge chips.",
   },
   {
+    id: "positioning-tour",
+    category: "diagram-layout",
+    title: "Positioning library — right=of, nodeRow",
+    description: "TikZ's positioning library: nodes placed relative to nodes (rightOf/below are border-to-border, TikZ node distance), a whole weekday row from nodeRow's label list — and edges still wire by name, because the placed nodes register under it.",
+  },
+  {
+    id: "bezier-playground",
+    category: "paths-decorations",
+    title: "Bézier playground — quadratic vs cubic",
+    description: "Same endpoints, two curve kinds: quadraticTo's single control point pulls the whole curve; curveTo's two aim the ends independently. Control handles drawn dashed — the TikZ controls idiom made visible.",
+  },
+  {
+    id: "path-splice",
+    category: "paths-decorations",
+    title: "Path splice — joinPaths",
+    description: "Two open curves become one closed outline: a leaf from a top and bottom arc via joinPaths(…, true). No segment drawn twice; the seams are shared endpoints.",
+  },
+  {
+    id: "hvto-stairs",
+    category: "paths-decorations",
+    title: "hvTo stairs — step-function outline",
+    description: "A histogram silhouette as ONE filldraw pen statement: hvTo is TikZ's -| (horizontal, then vertical), so steps alternate hvTo calls with zero corner coordinates computed.",
+  },
+  {
     id: "chess-transposition-dag",
     category: "app-prototypes",
     title: "Chess prototype — transposition DAG",
