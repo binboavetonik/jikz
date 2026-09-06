@@ -62,7 +62,10 @@ generated API (`npm run docs:api` → `docs/api/`):
 - [text & math](reference/text.md) — measurement, KaTeX
 - [ext/circuits](reference/ext-circuits.md) — the circuits extension
 
-## Coming next
+## Cookbook
 
-- **Cookbook** — the gallery re-organized by task: math, physics,
-  graphs, CS, decorations (Phase 4).
+**[docs/cookbook/](cookbook/)** — all 52 examples organized by task
+(texample-style): geometry & math, physics & engineering, graphs &
+networks, diagram layout, feature tours, app prototypes. Each card has
+a rendered thumbnail, a what-to-notice paragraph, and a link to its
+tested source. Generated from the example registry — never stale.

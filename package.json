@@ -23,6 +23,7 @@
     "test:watch": "vitest",
     "preview": "vite preview",
     "docs:api": "typedoc",
+    "docs:cookbook": "vite-node scripts/build-cookbook.ts",
     "prepublishOnly": "npm run test && npm run build"
   },
   "peerDependencies": {
