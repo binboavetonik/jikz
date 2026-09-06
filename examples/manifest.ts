@@ -515,6 +515,18 @@ const meta: DemoMeta[] = [
     description: "The textbook pawn-skeleton diagram (French Advance structure), auto-derived from square coordinates: the board grid is ONE multi-subpath pen statement, chains are thick translucent pen runs painted under the pawns, levers (\\u2026c5, \\u2026f6) are dashed stealth-arrow edges with TikZ edge labels, and the chain base is annotated with directional text. In the app, sq() maps FEN squares to points — the diagram derives itself from any position.",
   },
   {
+    id: "chess-rating-chart",
+    category: "app-prototypes",
+    title: "Chess prototype — rating history chart",
+    description: "Rapid rating over 12 months as a line chart with a dashed 1500 goal line: gridlines, ticks, and series all derive from one data array — the chess-theme radar's cartesian sibling.",
+  },
+  {
+    id: "chess-heatmap",
+    category: "app-prototypes",
+    title: "Chess prototype — puzzle-miss heatmap",
+    description: "An 8×8 board heatmap of where tactics puzzles go wrong: one rect per square, fill-opacity from miss frequency, file/rank labels around the rim. The whole board is a data loop.",
+  },
+  {
     id: "chess-theme-radar",
     category: "app-prototypes",
     title: "Chess prototype — tactics theme radar",

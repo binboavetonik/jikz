@@ -696,6 +696,22 @@ The textbook pawn-skeleton diagram (French Advance structure), auto-derived from
 
 **Source:** [`examples/chess-pawn-skeleton.ts`](../../examples/chess-pawn-skeleton.ts)
 
+### Chess prototype — rating history chart
+
+![Chess prototype — rating history chart](img/chess-rating-chart.svg)
+
+Rapid rating over 12 months as a line chart with a dashed 1500 goal line: gridlines, ticks, and series all derive from one data array — the chess-theme radar's cartesian sibling.
+
+**Source:** [`examples/chess-rating-chart.ts`](../../examples/chess-rating-chart.ts)
+
+### Chess prototype — puzzle-miss heatmap
+
+![Chess prototype — puzzle-miss heatmap](img/chess-heatmap.svg)
+
+An 8×8 board heatmap of where tactics puzzles go wrong: one rect per square, fill-opacity from miss frequency, file/rank labels around the rim. The whole board is a data loop.
+
+**Source:** [`examples/chess-heatmap.ts`](../../examples/chess-heatmap.ts)
+
 ### Chess prototype — tactics theme radar
 
 ![Chess prototype — tactics theme radar](img/chess-theme-radar.svg)
