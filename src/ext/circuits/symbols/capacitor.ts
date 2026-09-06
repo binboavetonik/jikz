@@ -5,12 +5,15 @@ import { TwoTerminalSymbol, symbolSize } from '../ports'
 /** Capacitor drawing style: two straight plates, or one curved (polarized). */
 export type CapacitorVariant = 'normal' | 'polarized'
 
+/** Capacitor symbol options. */
 export interface CapacitorOptions extends ShapeOptions {
   /** Default: 'normal'. */
   variant?: CapacitorVariant
 }
 
+/** Intrinsic symbol width (including lead stubs) when no width is given. */
 export const CAPACITOR_DEFAULT_WIDTH = 60
+/** Intrinsic symbol height when no height is given. */
 export const CAPACITOR_DEFAULT_HEIGHT = 20
 
 /** Gap between the plates, px. */

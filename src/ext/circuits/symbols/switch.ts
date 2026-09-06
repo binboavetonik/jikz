@@ -5,12 +5,15 @@ import { TwoTerminalSymbol, symbolSize } from '../ports'
 /** Switch state: normally open (angled blade) or closed (straight). */
 export type SwitchVariant = 'open' | 'closed'
 
+/** Switch symbol options. */
 export interface SwitchOptions extends ShapeOptions {
   /** Default: 'open'. */
   variant?: SwitchVariant
 }
 
+/** Intrinsic symbol width (including lead stubs) when no width is given. */
 export const SWITCH_DEFAULT_WIDTH = 60
+/** Intrinsic symbol height when no height is given. */
 export const SWITCH_DEFAULT_HEIGHT = 20
 
 /** Contact dots sit this far in from the lead tips. */

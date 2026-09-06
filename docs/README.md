@@ -47,9 +47,22 @@ The [example gallery](../examples/) is 50 self-contained,
 type-checked, snapshot-tested modules — browse them on the demo page
 (`npm run dev` → `/demo/index.html`) or read the source directly.
 
+## Reference
+
+Per-module pages — intros with the key tables, linking into the
+generated API (`npm run docs:api` → `docs/api/`):
+
+- [picture](reference/picture.md) — the main registry API
+- [core](reference/core.md) — Point, Transform, anchors
+- [geometry](reference/geometry.md) — shapes, conics, intersections, plotting
+- [node](reference/node.md) — NodeOptions, labels, anchors
+- [path](reference/path.md) — builder, operations, decorations
+- [render](reference/render.md) — complete style-key table, presets, layers
+- [layout](reference/layout.md) — chain, matrix, tree
+- [text & math](reference/text.md) — measurement, KaTeX
+- [ext/circuits](reference/ext-circuits.md) — the circuits extension
+
 ## Coming next
 
-- **Reference** — per-module API pages, generated where possible
-  (Phase 3).
 - **Cookbook** — the gallery re-organized by task: math, physics,
   graphs, CS, decorations (Phase 4).

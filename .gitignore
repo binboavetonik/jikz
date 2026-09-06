@@ -5,4 +5,5 @@ dist/
 .vscode/
 .idea/
 implementation-plans/
+docs/api/
 etc/

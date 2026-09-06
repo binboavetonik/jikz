@@ -2,9 +2,12 @@ import type { PointLike } from '../../../core/types'
 import type { ShapeOptions } from '../../../geometry/Shape'
 import { TwoTerminalSymbol, symbolSize } from '../ports'
 
+/** Inductor symbol options. */
 export type InductorOptions = ShapeOptions
 
+/** Intrinsic symbol width (including lead stubs) when no width is given. */
 export const INDUCTOR_DEFAULT_WIDTH = 60
+/** Intrinsic symbol height when no height is given. */
 export const INDUCTOR_DEFAULT_HEIGHT = 20
 
 /** Coil body occupies this fraction of the width; the rest is leads. */

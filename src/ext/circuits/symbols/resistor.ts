@@ -6,12 +6,15 @@ import { TwoTerminalSymbol, symbolSize } from '../ports'
 /** Resistor drawing style: ANSI zigzag (US) or IEC rectangle (EU). */
 export type ResistorVariant = 'ansi' | 'iec'
 
+/** Resistor symbol options. */
 export interface ResistorOptions extends ShapeOptions {
   /** Drawing style. Default: 'ansi'. */
   variant?: ResistorVariant
 }
 
+/** Intrinsic symbol width (including lead stubs) when no width is given. */
 export const RESISTOR_DEFAULT_WIDTH = 60
+/** Intrinsic symbol height when no height is given. */
 export const RESISTOR_DEFAULT_HEIGHT = 20
 
 /** Zigzag/rect body occupies this fraction of the width; the rest is leads. */

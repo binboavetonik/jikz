@@ -83,6 +83,12 @@ interface PenRun {
   builder: Path
 }
 
+/**
+ * The fluent pen behind `pic.pen()` — TikZ's threaded `\draw`
+ * statement as a chainable object. Accumulates segments (per-run
+ * options split by `push()`), mid-statement labels, and named
+ * coordinates; compiles to paths on the host picture at flush time.
+ */
 export class Pen {
   private readonly host?: PenHost
   private runs: PenRun[]

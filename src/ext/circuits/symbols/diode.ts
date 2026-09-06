@@ -6,12 +6,15 @@ import { TwoTerminalSymbol, symbolSize } from '../ports'
 /** Diode family: standard, Zener (hooked cathode bar), LED (light arrows). */
 export type DiodeVariant = 'standard' | 'zener' | 'led'
 
+/** Diode symbol options. */
 export interface DiodeOptions extends ShapeOptions {
   /** Default: 'standard'. */
   variant?: DiodeVariant
 }
 
+/** Intrinsic symbol width (including lead stubs) when no width is given. */
 export const DIODE_DEFAULT_WIDTH = 60
+/** Intrinsic symbol height when no height is given. */
 export const DIODE_DEFAULT_HEIGHT = 20
 
 /** Triangle body occupies this fraction of the width. */

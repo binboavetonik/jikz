@@ -35,6 +35,11 @@ function build(
   return shapeOptions ? { ...base, shape, shapeOptions } : { ...base, shape }
 }
 
+/**
+ * Typed node-option builders, one per circuit symbol. Each returns
+ * ordinary {@link NodeOptions} — compile-checked names and variants
+ * that mix freely with the string-spec path.
+ */
 export const circuit = {
   /** Resistor node options. `variant`: ANSI zigzag (default) or IEC box. */
   resistor(options: BaseOptions & { variant?: ResistorVariant } = {}): NodeOptions {
@@ -86,4 +91,5 @@ export const circuit = {
   },
 } as const
 
+/** The type of {@link circuit} — the typed builder namespace. */
 export type CircuitBuilder = typeof circuit

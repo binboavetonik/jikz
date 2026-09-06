@@ -3,9 +3,12 @@ import type { PointLike } from '../../../core/types'
 import type { ShapeOptions } from '../../../geometry/Shape'
 import { CircuitSymbol, symbolSize } from '../ports'
 
+/** Op-amp symbol options. */
 export type OpAmpOptions = ShapeOptions
 
+/** Intrinsic symbol width when no width is given. */
 export const OPAMP_DEFAULT_WIDTH = 60
+/** Intrinsic symbol height when no height is given. */
 export const OPAMP_DEFAULT_HEIGHT = 50
 
 /** Triangle body occupies this fraction of the width. */

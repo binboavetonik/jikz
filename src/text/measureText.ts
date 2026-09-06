@@ -24,6 +24,10 @@ export interface TextMeasureOptions {
   fontWeight?: string
 }
 
+/**
+ * Measured text extents: `width` is the advance width of the widest
+ * line, `height` is `lines × fontSize × {@link LINE_HEIGHT}`.
+ */
 export interface TextMetrics {
   width: number
   height: number

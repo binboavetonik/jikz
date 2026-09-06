@@ -2,9 +2,12 @@ import type { PointLike } from '../../../core/types'
 import type { ShapeOptions } from '../../../geometry/Shape'
 import { TwoTerminalSymbol, symbolSize } from '../ports'
 
+/** Voltage/current source symbol options. */
 export type SourceOptions = ShapeOptions
 
+/** Intrinsic symbol width when no width is given. */
 export const SOURCE_DEFAULT_WIDTH = 60
+/** Intrinsic symbol height when no height is given. */
 export const SOURCE_DEFAULT_HEIGHT = 36
 
 /** Tiny circle outline as two half-arcs (matches Circle.toSVGPath style). */

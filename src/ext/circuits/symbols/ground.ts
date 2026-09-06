@@ -3,9 +3,12 @@ import type { PointLike } from '../../../core/types'
 import type { ShapeOptions } from '../../../geometry/Shape'
 import { CircuitSymbol, symbolSize } from '../ports'
 
+/** Ground symbol options (no variant — earth ground only). */
 export type GroundOptions = ShapeOptions
 
+/** Intrinsic symbol width when no width is given. */
 export const GROUND_DEFAULT_WIDTH = 24
+/** Intrinsic symbol height when no height is given. */
 export const GROUND_DEFAULT_HEIGHT = 18
 
 const STUB = 7

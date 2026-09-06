@@ -812,22 +812,27 @@ export class Node implements Anchorable {
 // Factory Functions
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Create a node from full options (shape defaults to rectangle). */
 export function node(options: NodeOptions = {}): Node {
   return new Node(options)
 }
 
+/** Create a rectangle node. */
 export function rectNode(options: Omit<NodeOptions, 'shape'> = {}): Node {
   return new Node({ ...options, shape: 'rectangle' })
 }
 
+/** Create a circle node. */
 export function circleNode(options: Omit<NodeOptions, 'shape'> = {}): Node {
   return new Node({ ...options, shape: 'circle' })
 }
 
+/** Create an ellipse node. */
 export function ellipseNode(options: Omit<NodeOptions, 'shape'> = {}): Node {
   return new Node({ ...options, shape: 'ellipse' })
 }
 
+/** Create a diamond node. */
 export function diamondNode(options: Omit<NodeOptions, 'shape'> = {}): Node {
   return new Node({ ...options, shape: 'diamond' })
 }
