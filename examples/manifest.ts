@@ -382,6 +382,42 @@ const meta: DemoMeta[] = [
     description: "The texample fractal classic, at recursion depth 4. The whole construction is point arithmetic: toward() splits each segment in thirds, polar() at (direction − 60°) places the equilateral bump. One pen statement paints the 768-segment outline as a single filldraw path.",
   },
   {
+    id: "euler-line",
+    category: "geometry-math",
+    title: "Euler line",
+    description: "Centroid, circumcenter, and orthocenter of any triangle are collinear — all three are computed properties of Triangle, and the dashed line through them is derived from their own positions. The figure proves itself.",
+  },
+  {
+    id: "incircle",
+    category: "geometry-math",
+    title: "Incircle & angle bisectors",
+    description: "The circle tangent to all three sides: center = tri.incenter, radius = its projected distance to a side (computed, not looked up), bisector rays drawn through the incenter from each vertex.",
+  },
+  {
+    id: "honeycomb",
+    category: "geometry-math",
+    title: "Hexagon tessellation",
+    description: "A honeycomb tiled with zero hand-placed cells: jikz hexagons are pointy-top (first vertex at -90°), so columns pitch √3·R, rows 1.5·R, odd columns shift half a cell — the grid derives from the hexagon's own geometry.",
+  },
+  {
+    id: "golden-spiral",
+    category: "geometry-math",
+    title: "Golden spiral in Fibonacci squares",
+    description: "Quarter-circle arcTo() arcs with Fibonacci radii, constructed by walking the arc centers (each 90° right of travel); every square is just its arc's bounding box. No corner is hand-placed.",
+  },
+  {
+    id: "pythagoras-tree",
+    category: "geometry-math",
+    title: "Pythagoras tree fractal",
+    description: "Each square sprouts two children on the legs of a 30-60-90 triangle built on its top edge — the same squareOn() outward-normal construction as the Pythagorean-theorem card, recursed to depth 8 with a trunk-to-leaf color ramp.",
+  },
+  {
+    id: "unit-circle-tan-sec",
+    category: "geometry-math",
+    title: "Unit circle — tan & sec as lengths",
+    description: "Companion to the derivative-of-sine card: tan θ as the segment where the ray meets the tangent line x=1, sec θ as its hypotenuse — both derived from the ray angle via polar(), with the θ arc drawn by arc(0:−θ) exactly like the Beamer port.",
+  },
+  {
     id: "plate-diagram",
     category: "graphs-networks",
     title: "Bayesian network — plate diagram",

@@ -139,6 +139,54 @@ The texample fractal classic, at recursion depth 4. The whole construction is po
 
 **Source:** [`examples/koch-snowflake.ts`](../../examples/koch-snowflake.ts)
 
+### Euler line
+
+![Euler line](img/euler-line.svg)
+
+Centroid, circumcenter, and orthocenter of any triangle are collinear — all three are computed properties of Triangle, and the dashed line through them is derived from their own positions. The figure proves itself.
+
+**Source:** [`examples/euler-line.ts`](../../examples/euler-line.ts)
+
+### Incircle & angle bisectors
+
+![Incircle & angle bisectors](img/incircle.svg)
+
+The circle tangent to all three sides: center = tri.incenter, radius = its projected distance to a side (computed, not looked up), bisector rays drawn through the incenter from each vertex.
+
+**Source:** [`examples/incircle.ts`](../../examples/incircle.ts)
+
+### Hexagon tessellation
+
+![Hexagon tessellation](img/honeycomb.svg)
+
+A honeycomb tiled with zero hand-placed cells: jikz hexagons are pointy-top (first vertex at -90°), so columns pitch √3·R, rows 1.5·R, odd columns shift half a cell — the grid derives from the hexagon's own geometry.
+
+**Source:** [`examples/honeycomb.ts`](../../examples/honeycomb.ts)
+
+### Golden spiral in Fibonacci squares
+
+![Golden spiral in Fibonacci squares](img/golden-spiral.svg)
+
+Quarter-circle arcTo() arcs with Fibonacci radii, constructed by walking the arc centers (each 90° right of travel); every square is just its arc's bounding box. No corner is hand-placed.
+
+**Source:** [`examples/golden-spiral.ts`](../../examples/golden-spiral.ts)
+
+### Pythagoras tree fractal
+
+![Pythagoras tree fractal](img/pythagoras-tree.svg)
+
+Each square sprouts two children on the legs of a 30-60-90 triangle built on its top edge — the same squareOn() outward-normal construction as the Pythagorean-theorem card, recursed to depth 8 with a trunk-to-leaf color ramp.
+
+**Source:** [`examples/pythagoras-tree.ts`](../../examples/pythagoras-tree.ts)
+
+### Unit circle — tan & sec as lengths
+
+![Unit circle — tan & sec as lengths](img/unit-circle-tan-sec.svg)
+
+Companion to the derivative-of-sine card: tan θ as the segment where the ray meets the tangent line x=1, sec θ as its hypotenuse — both derived from the ray angle via polar(), with the θ arc drawn by arc(0:−θ) exactly like the Beamer port.
+
+**Source:** [`examples/unit-circle-tan-sec.ts`](../../examples/unit-circle-tan-sec.ts)
+
 ## Physics & engineering
 
 Optics and circuit schematics — ports, typed symbols, and wires instead of coordinates.
