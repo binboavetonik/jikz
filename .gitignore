@@ -6,4 +6,6 @@ dist/
 .idea/
 implementation-plans/
 docs/api/
+docs/.vitepress/cache/
+docs/.vitepress/dist/
 etc/

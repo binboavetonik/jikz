@@ -656,7 +656,7 @@ The full TikZ-library workflow: extend AnchoredPolygon, declare five vertices, a
 
 ![Custom fill pattern — herringbone](img/custom-pattern.svg)
 
-registerPattern() takes an SVG tile fragment and compiles it to a <defs> pattern — so it works in Node string output too. Shown plain, scaled+rotated, and next to built-in 'bricks' for comparison.
+registerPattern() takes an SVG tile fragment and compiles it to a `<defs>` pattern — so it works in Node string output too. Shown plain, scaled+rotated, and next to built-in 'bricks' for comparison.
 
 **Source:** [`examples/custom-pattern.ts`](../../examples/custom-pattern.ts)
 
@@ -664,7 +664,7 @@ registerPattern() takes an SVG tile fragment and compiles it to a <defs> pattern
 
 ![Clip path — gradient burst in a star](img/clipping.svg)
 
-A radial-gradient circle clipped to a star silhouette next to its unclipped twin. The clip spec is plain style data compiled to <clipPath> — identical in SSR string output and the browser.
+A radial-gradient circle clipped to a star silhouette next to its unclipped twin. The clip spec is plain style data compiled to `<clipPath>` — identical in SSR string output and the browser.
 
 **Source:** [`examples/clipping.ts`](../../examples/clipping.ts)
 

@@ -464,13 +464,13 @@ const meta: DemoMeta[] = [
     id: "custom-pattern",
     category: "custom-extension",
     title: "Custom fill pattern — herringbone",
-    description: "registerPattern() takes an SVG tile fragment and compiles it to a <defs> pattern — so it works in Node string output too. Shown plain, scaled+rotated, and next to built-in 'bricks' for comparison.",
+    description: "registerPattern() takes an SVG tile fragment and compiles it to a `<defs>` pattern — so it works in Node string output too. Shown plain, scaled+rotated, and next to built-in 'bricks' for comparison.",
   },
   {
     id: "clipping",
     category: "custom-extension",
     title: "Clip path — gradient burst in a star",
-    description: "A radial-gradient circle clipped to a star silhouette next to its unclipped twin. The clip spec is plain style data compiled to <clipPath> — identical in SSR string output and the browser.",
+    description: "A radial-gradient circle clipped to a star silhouette next to its unclipped twin. The clip spec is plain style data compiled to `<clipPath>` — identical in SSR string output and the browser.",
   },
   {
     id: "styled-badges",
