@@ -1,0 +1,1962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>jikz — live demos</title>
+  <!-- KaTeX for the math-label demo (optional peer of the library) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <style>
+    :root {
+      --bg: #f7f7f8;
+      --card-bg: #ffffff;
+      --border: #e5e7eb;
+      --muted: #6b7280;
+      --text: #111827;
+      --code-bg: #0f172a;
+      --code-fg: #e2e8f0;
+      --accent: #2563eb;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+      line-height: 1.5;
+    }
+    header {
+      padding: 32px 24px 16px;
+      border-bottom: 1px solid var(--border);
+      background: #fff;
+    }
+    header .wrap { max-width: 1200px; margin: 0 auto; }
+    header h1 { margin: 0 0 4px; font-size: 24px; letter-spacing: -0.01em; }
+    header p { margin: 0; color: var(--muted); font-size: 14px; }
+    header a { color: var(--accent); text-decoration: none; }
+    header a:hover { text-decoration: underline; }
+    .preamble {
+      max-width: 1200px;
+      margin: 24px auto;
+      padding: 16px 20px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    .preamble code {
+      background: #f3f4f6;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-family: 'SF Mono', Consolas, Menlo, monospace;
+      font-size: 13px;
+    }
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px 40px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .card header {
+      padding: 14px 18px 10px;
+      background: transparent;
+      border-bottom: 1px solid var(--border);
+    }
+    .card h3 { margin: 0 0 2px; font-size: 16px; }
+    .card .desc { color: var(--muted); font-size: 13px; margin: 0; }
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: #fafafa;
+    }
+    .tab {
+      appearance: none;
+      background: transparent;
+      border: 0;
+      padding: 10px 16px;
+      font: inherit;
+      font-size: 13px;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active {
+      color: var(--text);
+      border-bottom-color: var(--accent);
+      font-weight: 600;
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .preview {
+      padding: 16px;
+      background:
+        linear-gradient(45deg, #f3f4f6 25%, transparent 25%),
+        linear-gradient(-45deg, #f3f4f6 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #f3f4f6 75%),
+        linear-gradient(-45deg, transparent 75%, #f3f4f6 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+    }
+    .preview > svg { display: block; background: #fff; margin: 0 auto; border-radius: 4px; }
+    .code {
+      margin: 0;
+      padding: 14px 16px;
+      background: var(--code-bg);
+      color: var(--code-fg);
+      font-family: 'SF Mono', Consolas, Menlo, monospace;
+      font-size: 12.5px;
+      line-height: 1.55;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .error {
+      margin: 0;
+      padding: 16px;
+      background: #fee2e2;
+      color: #991b1b;
+      font-family: 'SF Mono', Consolas, Menlo, monospace;
+      font-size: 12.5px;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>jikz — live demos</h1>
+      <p>
+        Every preview below is rendered by the code shown in its
+        <strong>Code</strong> tab — not by a hidden harness. Paste the code
+        into your app (with <code>npm&nbsp;install&nbsp;jikz</code>) and it
+        works verbatim.
+        <strong>Serving this page:</strong> it needs an HTTP server (ES
+        modules can't load from <code>file://</code>). Run
+        <code>npm&nbsp;run&nbsp;dev</code> and open the Vite URL — demos then use
+        the live source. Or run <code>npm&nbsp;run&nbsp;build</code> and serve
+        this folder with any static server — demos then use the built
+        <code>dist/jikz.js</code>, the exact artifact npm users get.
+      </p>
+    </div>
+  </header>
+
+  <main>
+    <div class="preamble">
+      <strong>To reuse any example:</strong>
+      <ol style="margin: 6px 0 0 18px; padding: 0;">
+        <li><code>npm install jikz</code></li>
+        <li>Copy the code from a <em>Code</em> tab into a file (e.g.
+          <code>diagram.js</code>).</li>
+        <li>Call the exported <code>render(container)</code> with any DOM
+          element: <code>import render from './diagram.js'; render(document.getElementById('out'))</code>.</li>
+      </ol>
+    </div>
+    <div class="grid" id="grid"></div>
+  </main>
+
+  <script type="module">
+    // Each demo is self-contained ES-module source that imports from
+    // 'jikz' and default-exports a `render(container)` function. The page
+    // dynamically imports each one (rewriting 'jikz' → the local source
+    // path for the dev server) and displays the unmodified code in the
+    // Code tab — so what you read is exactly what ran.
+
+    const demos = [
+      {
+        id: 'geometry',
+        title: 'Bare geometry — draw / filldraw',
+        description:
+          "TikZ-style path verbs on raw geometry. `filldraw` strokes and fills; `draw` strokes only. No renderer methods in sight — the picture is its own compile target.",
+        code:
+`import { picture, circle, line, rect, point } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+
+  const ball = circle(point(60, 90), 40)
+  const box  = rect(130, 50, 80, 80)
+  const diag = line(point(230, 30), point(290, 150))
+
+  pic.filldraw(ball, { style: { stroke: '#2563eb', strokeWidth: 2, fill: '#dbeafe' } })
+  pic.filldraw(box,  { style: { stroke: '#16a34a', strokeWidth: 2, fill: '#dcfce7' } })
+  pic.draw(diag,     { style: { stroke: '#dc2626', strokeWidth: 2 } })
+
+  pic.mount(container, { width: 300, height: 180 })
+}`,
+      },
+
+      {
+        id: 'points-tikz',
+        title: 'Points & TikZ operators',
+        description:
+          "`toward` is TikZ's (A)!t!(B) interpolation; `horAt`/`verAt` are the |- and -| orthogonal-completion operators.",
+        code:
+`import { picture, line, point } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+  const A = point(40, 130)
+  const B = point(260, 40)
+
+  // (A)!0.5!(B) — the midpoint
+  const mid = A.toward(B, 0.5)
+  // (A |- B) — horizontal from A, vertical from B
+  const corner = A.horAt(B)
+
+  pic.draw(line(A, B), { style: { stroke: '#94a3b8', dash: 'dashed' } })
+  pic.draw(line(A, corner), { style: { stroke: '#2563eb' } })
+  pic.draw(line(corner, B), { style: { stroke: '#2563eb' } })
+  for (const { p, name } of [
+    { p: A, name: 'A' }, { p: B, name: 'B' }, { p: mid, name: 'mid' }, { p: corner, name: 'corner' },
+  ]) {
+    pic.draw(p, { style: { stroke: '#111827', strokeWidth: 2 } })
+    pic.text(point(p.x, p.y + 14), name, { fontSize: 10 })
+  }
+
+  pic.mount(container, { width: 300, height: 160 })
+}`,
+      },
+
+      {
+        id: 'intersections',
+        title: 'Intersections',
+        description:
+          "Exact line-circle and circle-circle intersections, marked on the drawing.",
+        code:
+`import { picture, circle, line, point, intersectLineCircle, intersectCircleCircle } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+  const c1 = circle(point(90, 70), 50)
+  const c2 = circle(point(160, 70), 40)
+  const l = line(point(20, 130), point(240, 20))
+
+  pic.draw(c1, { style: { stroke: '#2563eb' } })
+  pic.draw(c2, { style: { stroke: '#16a34a' } })
+  pic.draw(l,  { style: { stroke: '#475569' } })
+
+  const hits = [
+    ...intersectLineCircle(l, c1).points,
+    ...intersectCircleCircle(c1, c2).points,
+  ]
+  for (const p of hits) {
+    pic.draw(p, { style: { stroke: '#dc2626', strokeWidth: 2.5 } })
+  }
+
+  pic.mount(container, { width: 280, height: 150 })
+}`,
+      },
+
+      {
+        id: 'triangle-centers',
+        title: 'Triangle centers & circumcircle',
+        description:
+          "Centroid, circumcenter, and the circumscribed circle through all three vertices.",
+        code:
+`import { picture, triangle, circle, point } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+  const tri = triangle(point(50, 120), point(250, 110), point(140, 20))
+
+  pic.draw(tri, { style: { stroke: '#334155', strokeWidth: 2 } })
+
+  // Circumcircle: centered at the circumcenter, through the vertices
+  const cc = tri.circumcenter
+  const r = cc.distanceTo(point(50, 120))
+  pic.draw(circle(cc, r), { style: { stroke: '#c4b5fd', dash: 'dashed' } })
+
+  pic.draw(tri.centroid, { style: { stroke: '#dc2626', strokeWidth: 2.5 } })
+  pic.text(point(tri.centroid.x + 24, tri.centroid.y), 'centroid', { fontSize: 10 })
+  pic.draw(cc, { style: { stroke: '#7c3aed', strokeWidth: 2.5 } })
+  pic.text(point(cc.x + 34, cc.y), 'circumcenter', { fontSize: 10 })
+
+  pic.mount(container, { width: 300, height: 160 })
+}`,
+      },
+
+      {
+        id: 'conics',
+        title: 'Conic sections',
+        description:
+          "Ellipse, parabola, and hyperbola as first-class geometry.",
+        code:
+`import { picture, ellipse, parabola, hyperbola, point } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+
+  pic.draw(ellipse(point(80, 75), 55, 35),   { style: { stroke: '#2563eb', strokeWidth: 2 } })
+  pic.draw(parabola(point(210, 110), 12),    { style: { stroke: '#16a34a', strokeWidth: 2 } })
+  pic.draw(hyperbola(point(360, 75), 20, 14), { style: { stroke: '#dc2626', strokeWidth: 2 } })
+
+  pic.text(point(80, 140), 'ellipse',    { fontSize: 11 })
+  pic.text(point(210, 140), 'parabola',  { fontSize: 11 })
+  pic.text(point(360, 140), 'hyperbola', { fontSize: 11 })
+
+  pic.mount(container, { width: 440, height: 160 })
+}`,
+      },
+
+      {
+        id: 'plotting',
+        title: 'Function plotting — cartesian & polar',
+        description:
+          "Built-in plotting: sampled cartesian functions and polar curves.",
+        code:
+`import { picture, plotSin, plotCos, plotRose, point } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+
+  pic.draw(plotSin({ domain: [0, 2 * Math.PI], xScale: 40, yScale: 30, xOffset: 20, yOffset: 80 }),
+    { style: { stroke: '#2563eb', strokeWidth: 2 } })
+  pic.draw(plotCos({ domain: [0, 2 * Math.PI], xScale: 40, yScale: 30, xOffset: 20, yOffset: 80 }),
+    { style: { stroke: '#dc2626', strokeWidth: 1.5, dash: 'dashed' } })
+
+  // 4-petal rose in the right panel
+  pic.draw(plotRose(2, 55, { x: 340, y: 80 }), { style: { stroke: '#7c3aed', strokeWidth: 2 } })
+
+  pic.mount(container, { width: 460, height: 160 })
+}`,
+      },
+
+      {
+        id: 'node-auto-size',
+        title: 'Auto-sized node',
+        description:
+          "No width/height given — the node measures its own text (canvas in the browser) and sizes the shape to fit.",
+        code:
+`import { picture, point } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+
+  pic.node('hello', { at: point(150, 50), shape: 'rectangle', text: 'auto sized' },
+    { style: { stroke: '#334155', fill: '#f1f5f9', strokeWidth: 2 } })
+  pic.node('pill', { at: point(150, 120), shape: 'circle', text: 'and circles too' },
+    { style: { stroke: '#7c3aed', fill: '#ede9fe', strokeWidth: 2 } })
+
+  pic.mount(container, { width: 300, height: 170 })
+}`,
+      },
+
+      {
+        id: 'anchors',
+        title: 'Compass & angle anchors',
+        description:
+          "Every shape exposes named anchors (north … south west), aliases ('ne'), and numeric angles. Screen convention: 0° east, 270° = north.",
+        code:
+`import { picture, point } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+  pic.node('N', { at: point(150, 85), shape: 'rectangle', width: 140, height: 90, text: 'N' },
+    { style: { stroke: '#334155', fill: '#f1f5f9', strokeWidth: 2 } })
+
+  const n = pic.getNode('N')
+  const specs = ['north', 'north east', 'east', 'south east', 'south', 'south west', 'west', 'north west', 45]
+  for (const spec of specs) {
+    const p = n.anchor(spec)
+    pic.draw(p, { style: { stroke: '#dc2626', strokeWidth: 2 } })
+    pic.text(p.towardByDistance(n.center, -15), String(spec), { fontSize: 9 })
+  }
+
+  pic.mount(container, { width: 300, height: 170 })
+}`,
+      },
+
+      {
+        id: 'node-labels',
+        title: 'Node labels (TikZ label=)',
+        description:
+          "`labels` on a node are TikZ's `label=<angle>:<text>`: placed on the boundary (outer sep included), pushed out by `distance` — a border-to-border gap, so font size is accounted for. Accepts named anchors, aliases, and numeric angles (screen convention: 270° = north). `$...$` goes through KaTeX.",
+        code:
+`import { picture, point } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+
+  pic.node('A', {
+    at: point(90, 90), shape: 'circle', width: 60, height: 60, text: 'A',
+    labels: [
+      { text: '$\\\\alpha$', at: 'north' },
+      { text: 'rim', at: 'south east', options: { fontSize: 9 } },
+    ],
+  }, { style: { stroke: '#2563eb', fill: '#dbeafe', strokeWidth: 2 } })
+
+  pic.node('B', {
+    at: point(255, 90), shape: 'rectangle', width: 110, height: 60, text: 'B',
+    labelDistance: 8, // TikZ: label distance=8 — default for all labels
+    labels: [
+      { text: 'nw alias', at: 'nw', options: { fontSize: 9 } },
+      { text: '270° = north', at: 270, options: { fontSize: 9, style: { stroke: '#dc2626' } } },
+      { text: 'distance: 18', at: 'east', distance: 18, options: { fontSize: 9 } },
+    ],
+  }, { style: { stroke: '#16a34a', fill: '#dcfce7', strokeWidth: 2 } })
+
+  pic.mount(container, { width: 430, height: 180 })
+}`,
+      },
+
+      {
+        id: 'node-to-node-edge',
+        title: 'Named-node edge (boundary-anchored)',
+        description:
+          "Reference nodes by name in `edge(...)`. A bare name resolves to the boundary point closest to the other endpoint — no manual padding. Swap to `'A.north'` / `'B.west'` to pin a specific anchor.",
+        code:
+`import { picture, point } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+
+  pic.node('A', { at: point(70, 75),  shape: 'circle',    width: 60,  height: 60, text: 'A' },
+    { style: { stroke: '#2563eb', fill: '#dbeafe', strokeWidth: 2 } })
+  pic.node('B', { at: point(330, 75), shape: 'rectangle', width: 120, height: 60, text: 'B' },
+    { style: { stroke: '#16a34a', fill: '#dcfce7', strokeWidth: 2 } })
+  pic.edge('A', 'B', { arrowEnd: 'stealth', label: 'connects' },
+    { style: { stroke: '#111827', strokeWidth: 1.5 } })
+
+  pic.mount(container, { width: 400, height: 150 })
+}`,
+      },
+
+      {
+        id: 'shape-gallery',
+        title: 'Shape gallery — all SHAPE_TYPES',
+        description:
+          "Every shape-type string the library exports, iterated from jikz's own SHAPE_TYPES. Labels are placed from each shape's measured bounds, so pointers and arrow heads can't collide with them.",
+        code:
+`import { picture, point, SHAPE_TYPES } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+  const cols = 5, cellW = 116, cellH = 92, margin = 20
+  const rows = Math.ceil(SHAPE_TYPES.length / cols)
+
+  SHAPE_TYPES.forEach((shape, i) => {
+    const cx = margin + (i % cols) * cellW + cellW / 2
+    const cy = margin + Math.floor(i / cols) * cellH + 32
+
+    pic.node(\`cell\${i}\`, { at: point(cx, cy), shape, width: 62, height: 44 },
+      { style: { stroke: '#334155', fill: '#e0e7ff', strokeWidth: 1.5 } })
+
+    // Label just below the shape's ACTUAL bounds (pointers/heads included)
+    const bottom = pic.getNode(\`cell\${i}\`).bounds[3]
+    pic.text(point(cx, bottom + 14), shape, { fontSize: 10, style: { stroke: '#475569' } })
+  })
+
+  pic.mount(container, {
+    width: margin * 2 + cols * cellW,
+    height: margin * 2 + rows * cellH,
+  })
+}`,
+      },
+
+      {
+        id: 'edge-routing',
+        title: 'Edge routing — bends, out/in, loops',
+        description:
+          "bendAngle curves to the LEFT of travel when positive; out/in give absolute departure and arrival angles; a self-edge with looseness makes a loop.",
+        code:
+`import { picture, point } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+
+  pic.node('A', { at: point(50, 60),  shape: 'circle', width: 36, height: 36, text: 'A' })
+  pic.node('B', { at: point(200, 60), shape: 'circle', width: 36, height: 36, text: 'B' })
+  pic.node('C', { at: point(360, 60), shape: 'circle', width: 36, height: 36, text: 'C' })
+
+  pic.edge('A', 'B', { bendAngle: 35, label: 'bend left' }, { style: { stroke: '#2563eb' } })
+  pic.edge('B', 'A', { bendAngle: 35 }, { style: { stroke: '#94a3b8', dash: 'dashed' } })
+  pic.edge('B', 'C', { out: 315, in: 225, label: 'out 315 / in 225' }, { style: { stroke: '#7c3aed' } })
+  pic.edge('C', 'C', { out: 240, in: 300, looseness: 5 }, { style: { stroke: '#dc2626' } })
+
+  pic.mount(container, { width: 420, height: 170 })
+}`,
+      },
+
+      {
+        id: 'arrow-tips',
+        title: 'Arrow tips & TikZ specs',
+        description:
+          "stealth, latex, to, bar — plus the TikZ spellings ->, <-, <->. Arrowheads always take the edge's stroke color.",
+        code:
+`import { picture, point } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+  const rows = [
+    ['stealth', '#111827'],
+    ['latex',   '#2563eb'],
+    ['to',      '#16a34a'],
+    ['->',      '#dc2626'],
+    ['<-',      '#ca8a04'],
+    ['<->',     '#7c3aed'],
+    ['|',       '#ca8a04'],
+  ]
+  rows.forEach(([tip, color], i) => {
+    const y = 25 + i * 24
+    pic.node(\`s\${i}\`, { at: point(40, y),  shape: 'circle', width: 14, height: 14 })
+    pic.node(\`e\${i}\`, { at: point(200, y), shape: 'circle', width: 14, height: 14 })
+    pic.edge(\`s\${i}\`, \`e\${i}\`, { arrowEnd: tip }, { style: { stroke: color, strokeWidth: 1.5 } })
+    pic.text(point(230, y), tip, { fontSize: 11 })
+  })
+
+  pic.mount(container, { width: 280, height: 200 })
+}`,
+      },
+
+      {
+        id: 'path-builder',
+        title: 'Path builder + filldraw',
+        description:
+          "Chainable path construction — moveTo / lineTo / curveTo / close — then handed to `.filldraw()` so both stroke and fill apply in one verb.",
+        code:
+`import { picture, path, point } from 'jikz'
+
+export default function render(container) {
+  const hill = path()
+    .moveTo(point(30, 150))
+    .curveTo(point(90, 20), point(210, 20), point(270, 150))
+    .lineTo(point(270, 160))
+    .lineTo(point(30, 160))
+    .close()
+
+  picture()
+    .filldraw(hill, { style: { stroke: '#7c3aed', strokeWidth: 2, fill: '#ede9fe' } })
+    .mount(container, { width: 300, height: 180 })
+}`,
+      },
+
+      {
+        id: 'pen-statements',
+        title: 'Fluent path statements — pen()',
+        description:
+          "TikZ threads an implicit pen through \\draw (a) -- (b) node[right]{x} -- cycle: pic.pen() is exactly that. Segments compile to ONE path; .label(text, { at }) hangs a label on the current pen position without moving it, and { pos } rides the segment just drawn (TikZ node[midway]). Expansion is lazy, so the pen can be built across statements and still paints in registration order.",
+        code:
+`import { picture } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+
+  // \\draw (A) node[below left]{A} -- (B) node[below right]{B} node[midway,below]{c}
+  //       -- (C) node[right]{C} node[midway,right]{a} -- cycle node[midway]…{b}
+  pic.pen({ style: { stroke: '#0f172a', strokeWidth: 1.6 } })
+    .moveTo(40, 170)  .label('A', { at: 'south west' })
+    .lineTo(300, 170) .label('B', { at: 'south east' })
+                      .label('c', { pos: 0.5, offset: -10 })  // below the base
+    .lineTo(300, 90)  .label('C', { at: 'north east' })
+                      .label('a', { pos: 0.5, offset: -10 })  // right of BC
+    .close()          .label('b', { pos: 0.5, offset: 10 })   // rides C→A
+
+  pic.mount(container, { fit: true, padding: 12 })
+}`,
+      },
+
+      {
+        id: 'pen-coordinates-restyle',
+        title: 'pen() — named coordinates & mid-statement restyling',
+        description:
+          "coordinate('P') names the pen position mid-statement (TikZ coordinate (P)); later statements reference names as endpoints — pen.moveTo('P').vhTo('Q') is \\draw (P) |- (Q). push(options) restyles mid-statement: subsequent segments compile to a NEW path whose options inherit and override the current run's, so one statement can mix dashed and solid legs.",
+        code:
+`import { picture } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+
+  // \\draw (30,90) coordinate (P) -- (170,40) coordinate (Q), with labels
+  pic.pen({ style: { stroke: '#0f172a', strokeWidth: 1.6 } })
+    .moveTo(30, 90) .coordinate('P').label('P', { at: 'south west' })
+    .lineTo(170, 40).coordinate('Q').label('Q', { at: 'north east' })
+
+  // \\draw[dashed] (P) |- (Q) — the label rides the corner's elbow
+  pic.pen({ style: { stroke: '#94a3b8', dash: 'dashed' } })
+    .moveTo('P')
+    .vhTo('Q')
+    .label('L', { pos: 0.5, offset: 8 })
+
+  // push() restyles mid-statement: one statement, two looks
+  pic.pen({ style: { stroke: '#2563eb' } })
+    .moveTo(30, 130).lineTo(110, 130)
+    .push({ style: { stroke: '#dc2626', strokeWidth: 2.5 } })
+    .lineTo(230, 130)
+
+  pic.mount(container, { fit: true, padding: 12 })
+}`,
+      },
+
+      {
+        id: 'path-decorations',
+        title: 'Path decorations',
+        description:
+          "TikZ decorations: transform any base path into snakes, zigzags, and coils.",
+        code:
+`import { picture, path, point, snakePath, zigzagPath, coilPath } from 'jikz'
+
+export default function render(container) {
+  const base = (y) => path().moveTo(point(20, y)).lineTo(point(320, y))
+
+  picture()
+    .draw(snakePath(base(40),  { amplitude: 6, wavelength: 18 }), { style: { stroke: '#2563eb', strokeWidth: 1.5 } })
+    .draw(zigzagPath(base(90), { amplitude: 6, wavelength: 14 }), { style: { stroke: '#16a34a', strokeWidth: 1.5 } })
+    .draw(coilPath(base(140),  { amplitude: 8 }),                 { style: { stroke: '#dc2626', strokeWidth: 1.5 } })
+    .mount(container, { width: 340, height: 170 })
+}`,
+      },
+
+      {
+        id: 'dash-patterns',
+        title: 'Dash patterns',
+        description:
+          "TikZ dash vocabulary: dashed, dotted, dashdotted, and the densely/loosely variants. Each style name is a node label on an invisible zero-size anchor node at the line's end — TikZ's `\\draw[dashed] ... node[right] {dashed}` — not absolute text coordinates.",
+        code:
+`import { picture, line, point } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+  const styles = ['dashed', 'dotted', 'dashdotted', 'densely dashed', 'loosely dashed', 'densely dotted']
+  styles.forEach((dash, i) => {
+    const y = 22 + i * 24
+    pic.draw(line(point(20, y), point(230, y)), { style: { stroke: '#334155', strokeWidth: 1.5, dash } })
+    // Invisible anchor node at the line's end; the style name rides
+    // as its east label, so the text tracks the endpoint — move the
+    // line and the label follows.
+    pic.node(\`end\${i}\`, {
+      at: point(230, y), shape: 'rectangle',
+      width: 0, height: 0, minWidth: 0, minHeight: 0,
+      labels: [{ text: dash, at: 'east', options: { fontSize: 10 } }],
+    }, { style: { stroke: 'none', fill: 'none' } })
+  })
+
+  pic.mount(container, { width: 360, height: 165 })
+}`,
+      },
+
+      {
+        id: 'braces',
+        title: 'Braces & brackets',
+        description:
+          "Annotation paths: curly braces and square brackets between two points.",
+        code:
+`import { picture, line, point, bracePath, bracketPath } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+
+  pic.draw(line(point(40, 60), point(280, 60)), { style: { stroke: '#334155', strokeWidth: 2 } })
+  pic.draw(bracePath(point(40, 45), point(280, 45), 8), { style: { stroke: '#2563eb' } })
+  pic.text(point(160, 30), 'bracePath', { fontSize: 11 })
+  pic.draw(bracketPath(point(40, 110), point(280, 110), 8), { style: { stroke: '#dc2626' } })
+  pic.text(point(160, 132), 'bracketPath', { fontSize: 11 })
+
+  pic.mount(container, { width: 320, height: 150 })
+}`,
+      },
+
+      {
+        id: 'fill-patterns',
+        title: 'Fill patterns',
+        description:
+          "The 12 TikZ patterns — hatching, grids, dots, bricks, checkerboard, stars.",
+        code:
+`import { picture, rect, point } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+  const patterns = [
+    'north east lines', 'crosshatch', 'grid',
+    'dots', 'bricks', 'checkerboard',
+  ]
+  patterns.forEach((pattern, i) => {
+    const x = 20 + (i % 3) * 150
+    const y = 20 + Math.floor(i / 3) * 100
+    pic.filldraw(rect(x, y, 120, 70), { style: { stroke: '#334155', fillPattern: pattern } })
+    pic.text(point(x + 60, y + 88), pattern, { fontSize: 10 })
+  })
+
+  pic.mount(container, { width: 480, height: 210 })
+}`,
+      },
+
+      {
+        id: 'styling',
+        title: 'Gradient, dash, shadow',
+        description:
+          "User-supplied `style` overrides the path-mode baseline. Linear gradients, dashed strokes, and drop shadows all flow through the builder's string pipeline — no DOM dependency.",
+        code:
+`import { picture, rect, circle, point } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+
+  pic.filldraw(rect(30, 40, 140, 120), {
+    style: {
+      gradient: {
+        type: 'linear',
+        angle: 45,
+        stops: [
+          { offset: 0, color: '#0ea5e9' },
+          { offset: 1, color: '#a855f7' },
+        ],
+      },
+      stroke: '#111827',
+      strokeWidth: 1,
+    },
+  })
+  pic.filldraw(circle(point(260, 100), 55), {
+    style: {
+      fill: '#fde047',
+      stroke: '#ca8a04',
+      strokeWidth: 2,
+      dash: 'dashed',
+      dropShadow: { blur: 4, offsetX: 3, offsetY: 3, color: '#000' },
+    },
+  })
+
+  pic.mount(container, { width: 360, height: 200 })
+}`,
+      },
+
+      {
+        id: 'double-layers',
+        title: 'Double lines & layers',
+        description:
+          "Double-stroked paths (TikZ `double`) and z-order control via named layers.",
+        code:
+`import { line, circle, point, SVGRenderer } from 'jikz'
+
+export default function render(container) {
+  const r = new SVGRenderer()
+  r.defineLayers(['background', 'main', 'foreground'])
+
+  r.setLayer('background')
+  r.renderCircle(circle(point(150, 80), 60), { style: { fill: '#fef3c7', stroke: 'none' } })
+
+  // main layer (default): double line through the scene
+  r.renderLine(line(point(30, 80), point(270, 80)), {
+    style: { stroke: '#334155', strokeWidth: 1.5, doubleLine: { spacing: 5 } },
+  })
+
+  r.onLayer('foreground', () => {
+    r.renderCircle(circle(point(150, 80), 8), { style: { fill: '#dc2626', stroke: 'none' } })
+  })
+
+  r.builder.mount(container, { width: 300, height: 160 })
+}`,
+      },
+
+      {
+        id: 'layout-chain',
+        title: 'Chain layout',
+        description:
+          "Chains position successive nodes and wire the edges for you.",
+        code:
+`import { chain, point, SVGRenderer } from 'jikz'
+
+export default function render(container) {
+  const { nodes, edges } = chain(point(60, 70), { spacing: 46 })
+    .node({ text: 'q0', shape: 'circle', width: 40, height: 40 })
+    .node({ text: 'q1', shape: 'circle', width: 40, height: 40 })
+    .going('below')
+    .node({ text: 'q2', shape: 'circle', width: 40, height: 40 })
+    .going('right')
+    .node({ text: 'q3', shape: 'circle', width: 40, height: 40 })
+    .build()
+
+  const r = new SVGRenderer()
+  for (const e of edges) r.renderEdge(e, { style: { stroke: '#64748b' } })
+  for (const n of nodes) r.renderNode(n, { style: { stroke: '#2563eb', fill: '#dbeafe', strokeWidth: 1.5 } })
+  r.builder.mount(container, { width: 340, height: 180 })
+}`,
+      },
+
+      {
+        id: 'layout-matrix',
+        title: 'Matrix layout',
+        description:
+          "A TikZ matrix of nodes: rows of cells with column/row separation and automatic alignment.",
+        code:
+`import { matrix, point, SVGRenderer } from 'jikz'
+
+export default function render(container) {
+  const { cells } = matrix({ at: point(50, 40), columnSep: 26, rowSep: 18 })
+    .rows([
+      ['a11', 'a12', 'a13'],
+      ['a21', 'a22', 'a23'],
+      ['a31', 'a32', 'a33'],
+    ])
+    .build()
+
+  const r = new SVGRenderer()
+  for (const row of cells) {
+    for (const n of row) {
+      if (n) r.renderNode(n, { style: { stroke: '#334155', fill: '#f1f5f9', strokeWidth: 1.5 } })
+    }
+  }
+  r.builder.mount(container, { width: 340, height: 190 })
+}`,
+      },
+
+      {
+        id: 'layout-tree',
+        title: 'Tree layout',
+        description:
+          "Hierarchical auto-layout: declare the tree, jikz positions every level.",
+        code:
+`import { tree, point, SVGRenderer } from 'jikz'
+
+export default function render(container) {
+  const { nodes, edges } = tree({ at: point(220, 35), grow: 'down' })
+    .root('CEO')
+      .child('CTO')
+        .children(['Eng', 'QA'])
+        .parent()
+      .parent()
+      .child('CFO')
+    .build()
+
+  const r = new SVGRenderer()
+  for (const e of edges) r.renderEdge(e, { style: { stroke: '#64748b' } })
+  for (const n of nodes) r.renderNode(n, { style: { stroke: '#16a34a', fill: '#dcfce7', strokeWidth: 1.5 } })
+  r.builder.mount(container, { width: 440, height: 200 })
+}`,
+      },
+
+      {
+        id: 'katex-math',
+        title: 'KaTeX math labels',
+        description:
+          "Any $...$ text renders through KaTeX (loaded from CDN on this page) inside a foreignObject — works in Node too. Without KaTeX it falls back to plain italic text.",
+        code:
+`import { picture, point } from 'jikz'
+
+export default function render(container) {
+  picture()
+    .node('E', { at: point(90, 70), shape: 'circle', width: 90, height: 60, text: '$e^{i\\\\pi}+1=0$' },
+      { style: { stroke: '#2563eb', fill: '#dbeafe', strokeWidth: 2 } })
+    .node('I', { at: point(270, 70), shape: 'rectangle', width: 130, height: 60, text: '$\\\\int_0^1 x^2\\\\,dx$' },
+      { style: { stroke: '#7c3aed', fill: '#ede9fe', strokeWidth: 2 } })
+    .edge('E', 'I', { arrowEnd: 'stealth', label: '$\\\\Rightarrow$' })
+    .mount(container, { width: 370, height: 150 })
+}`,
+      },
+
+      {
+        id: 'named-graph',
+        title: 'Named-node graph with anchored edges',
+        description:
+          "Four nodes plus four edges, referenced entirely by name. `'B.east'` / `'D.north'` pin specific anchors; bare `'A'` / `'B'` auto-resolve to the nearest boundary. No JS variables threaded through the scene.",
+        code:
+`import { picture, point } from 'jikz'
+
+export default function render(container) {
+  picture()
+    .node('A', { at: point(70, 100),  shape: 'circle',    width: 60,  height: 60, text: 'A' })
+    .node('B', { at: point(260, 50),  shape: 'rectangle', width: 100, height: 50, text: 'B' })
+    .node('C', { at: point(260, 150), shape: 'rectangle', width: 100, height: 50, text: 'C' })
+    .node('D', { at: point(450, 100), shape: 'diamond',   width: 100, height: 80, text: 'D' })
+    .edge('A', 'B', { arrowEnd: 'stealth' })
+    .edge('A', 'C', { arrowEnd: 'stealth' })
+    .edge('B.east', 'D.north', { arrowEnd: 'stealth', label: 'ok' })
+    .edge('C.east', 'D.south', { arrowEnd: 'stealth', label: 'err' })
+    .mount(container, { width: 520, height: 200 })
+}`,
+      },
+
+      {
+        id: 'flow',
+        title: 'Flow diagram',
+        description:
+          "Three nodes and two labeled arrows — and the edge style uses the typed array form: [thick, { stroke }], TikZ's option list as data.",
+        code:
+`import { picture, point, thick } from 'jikz'
+
+export default function render(container) {
+  const nodeStyle = { stroke: '#334155', fill: '#f8fafc', strokeWidth: 2 }
+  // TikZ's \\draw[thick, ...] as a typed array — later entries win
+  const edgeStyle = [thick, { stroke: '#111827' }]
+
+  picture()
+    .node('input', { at: point(70, 80), shape: 'rectangle', width: 110, height: 54, text: 'input' },
+      { style: nodeStyle })
+    .node('transform', { at: point(260, 80), shape: 'diamond', width: 140, height: 80, text: 'transform' },
+      { style: nodeStyle })
+    .node('output', { at: point(450, 80), shape: 'rectangle', width: 110, height: 54, text: 'output' },
+      { style: nodeStyle })
+    .edge('input', 'transform', { arrowEnd: 'stealth', label: 'map' },   { style: edgeStyle })
+    .edge('transform', 'output', { arrowEnd: 'stealth', label: 'emit' }, { style: edgeStyle })
+    .mount(container, { width: 520, height: 160 })
+}`,
+      },
+
+      // ── Science pack — texample.net/science-inspired domain cards ─────────
+
+      {
+        id: 'pythagoras',
+        title: 'Pythagorean theorem',
+        description:
+          "The texample classic: a 3-4-5 right triangle with outward squares computed from the side vectors — no hand-placed coordinates — and KaTeX area labels at each square's centroid. The right-angle marker is one pen corner statement (TikZ |-).",
+        code:
+`import { picture, triangle, polygon, point } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+
+  // Right triangle: legs 90 & 120, hypotenuse 150 (3-4-5 x 30)
+  const A = point(210, 140), B = point(330, 230), C = point(210, 230)
+
+  // Square built outward on segment P->Q ('side' picks the normal)
+  const squareOn = (P, Q, side) => {
+    const nx = -(Q.y - P.y) * side, ny = (Q.x - P.x) * side
+    return [P, Q, point(Q.x + nx, Q.y + ny), point(P.x + nx, P.y + ny)]
+  }
+  const center4 = (sq) => point(
+    sq.reduce((s, p) => s + p.x, 0) / 4, sq.reduce((s, p) => s + p.y, 0) / 4)
+
+  const sqA = squareOn(C, A, -1) // leg a
+  const sqB = squareOn(C, B, 1)  // leg b
+  const sqC = squareOn(A, B, -1) // hypotenuse
+
+  pic.filldraw(polygon(sqA), { style: { stroke: '#2563eb', fill: '#2563eb', 'fill-opacity': 0.15, strokeWidth: 1.5 } })
+  pic.filldraw(polygon(sqB), { style: { stroke: '#16a34a', fill: '#16a34a', 'fill-opacity': 0.15, strokeWidth: 1.5 } })
+  pic.filldraw(polygon(sqC), { style: { stroke: '#dc2626', fill: '#dc2626', 'fill-opacity': 0.12, strokeWidth: 1.5 } })
+  pic.filldraw(triangle(A, B, C), { style: { stroke: '#111827', fill: '#fbbf24', 'fill-opacity': 0.5, strokeWidth: 2 } })
+
+  // Right-angle marker at C — one corner pen statement (TikZ |-)
+  pic.pen({ style: { stroke: '#111827' } }).moveTo(198, 230).vhTo(210, 218)
+
+  pic.text(center4(sqA), '$a^2$')
+  pic.text(center4(sqB), '$b^2$')
+  pic.text(center4(sqC), '$c^2$')
+
+  pic.mount(container, { width: 440, height: 370 })
+}`,
+      },
+
+      {
+        id: 'snell',
+        title: "Snell's law — interactive refraction",
+        description:
+          "LIVE: drag the slider to change the incidence angle — the whole card (slider + redraw) is the code below, re-rendering on every input. n1 sin(θ1) = n2 sin(θ2) computed in code; angle arcs and KaTeX \\theta labels derive from the actual ray directions via angleTo.",
+        code:
+`import { picture, line, rect, arc, polar, point } from 'jikz'
+
+export default function render(container) {
+  // UI above the drawing — the card is fully self-contained
+  const slider = document.createElement('input')
+  slider.type = 'range'
+  slider.min = 5
+  slider.max = 80
+  slider.value = 50
+  slider.style.width = '100%'
+  const out = document.createElement('div')
+  container.appendChild(slider)
+  container.appendChild(out)
+
+  const draw = (deg) => {
+    out.innerHTML = ''
+    const pic = picture()
+    const O = point(210, 110) // interface hit point
+
+    // media + boundary + normal
+    pic.filldraw(rect(20, 30, 380, 80),   { style: { fill: '#dbeafe', 'fill-opacity': 0.4,  stroke: 'none' } })
+    pic.filldraw(rect(20, 110, 380, 100), { style: { fill: '#0ea5e9', 'fill-opacity': 0.18, stroke: 'none' } })
+    pic.draw(line(point(20, 110), point(400, 110)), { style: { stroke: '#334155', strokeWidth: 2 } })
+    pic.draw(line(point(210, 30), point(210, 210)), { style: { stroke: '#94a3b8', dash: 'dashed' } })
+
+    // Snell: n1 sin(t1) = n2 sin(t2)
+    const n1 = 1.0, n2 = 1.33
+    const t1 = deg * Math.PI / 180
+    const t2 = Math.asin(n1 * Math.sin(t1) / n2)
+
+    const P1 = point(O.x - 130 * Math.sin(t1), O.y - 130 * Math.cos(t1))
+    const P2 = point(O.x - 95 * Math.sin(t2),  O.y + 95 * Math.cos(t2))
+    pic.edge(P1, O, { arrowEnd: 'stealth' }, { style: { stroke: '#dc2626', strokeWidth: 2 } })
+    pic.edge(O, P2, { arrowEnd: 'stealth' }, { style: { stroke: '#7c3aed', strokeWidth: 2 } })
+
+    // Angle arcs against the normal, derived from the ray directions
+    const a1 = O.angleTo(P1)
+    const a2 = O.angleTo(P2)
+    pic.draw(arc(O, 40, a1, 270), { style: { stroke: '#dc2626' } })
+    pic.draw(arc(O, 30, 90, a2),  { style: { stroke: '#7c3aed' } })
+    pic.text(O.add(polar((a1 + 270) / 2, 56)), '$\\\\theta_1$', { fontSize: 12 })
+    pic.text(O.add(polar((90 + a2) / 2, 46)), '$\\\\theta_2$', { fontSize: 12 })
+
+    pic.text(point(368, 60), 'air',   { fontSize: 11 })
+    pic.text(point(356, 195), 'water', { fontSize: 11 })
+    pic.text(point(24, 24),
+      'incidence: ' + deg + '\u00b0  \u2192  refraction: ' + (t2 * 180 / Math.PI).toFixed(1) + '\u00b0',
+      { fontSize: 10, textAnchor: 'start', style: { stroke: '#475569' } })
+
+    pic.mount(out, { width: 420, height: 230 })
+  }
+
+  slider.addEventListener('input', () => draw(Number(slider.value)))
+  draw(Number(slider.value))
+}`,
+      },
+
+      {
+        id: 'complete-graph',
+        title: 'Complete graph K5 — nodeCircle',
+        description:
+          "Graph theory: nodeCircle lays the vertices on a ring, then every pair gets an edge referenced by name. Boundary anchoring means the chords clip at the node rims for free.",
+        code:
+`import { picture, nodeCircle, point } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+  const names = ['v1', 'v2', 'v3', 'v4', 'v5']
+
+  // Vertices evenly on a ring
+  for (const n of nodeCircle(point(160, 110), 90, names)) {
+    pic.node(n.text, { at: n.center, shape: 'circle', width: 34, height: 34, text: n.text },
+      { style: { stroke: '#2563eb', fill: '#dbeafe', strokeWidth: 1.5 } })
+  }
+
+  // K5: an edge for every pair
+  for (let i = 0; i < names.length; i++)
+    for (let j = i + 1; j < names.length; j++)
+      pic.edge(names[i], names[j], {}, { style: { stroke: '#94a3b8', strokeWidth: 1 } })
+
+  pic.mount(container, { width: 320, height: 220 })
+}`,
+      },
+
+      {
+        id: 'riemann',
+        title: 'Riemann sum',
+        description:
+          "Left-rule bars under a plotted curve. plot() maps y without flipping (screen coords), so the function is negated — the bars and the curve share one scale/offset pair. fill-opacity keeps the overlap readable.",
+        code:
+`import { picture, plot, rect, point } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+  const f = (x) => 1 + 0.22 * x * x
+  const xScale = 90, yScale = 55, xOff = 40, yBase = 240
+
+  // axes
+  pic.edge(point(20, yBase), point(400, yBase), { arrowEnd: 'stealth' }, { style: { stroke: '#334155' } })
+  pic.edge(point(xOff, 262), point(xOff, 10),   { arrowEnd: 'stealth' }, { style: { stroke: '#334155' } })
+
+  // left-rule bars
+  const n = 10, dx = 3.8 / n
+  for (let i = 0; i < n; i++) {
+    const h = f(i * dx)
+    pic.filldraw(rect(xOff + i * dx * xScale, yBase - h * yScale, dx * xScale - 3, h * yScale),
+      { style: { stroke: '#2563eb', fill: '#2563eb', 'fill-opacity': 0.15, strokeWidth: 1 } })
+  }
+
+  // the curve itself (plot() maps y without flipping — pass -f)
+  pic.draw(plot((x) => -f(x), { domain: [0, 3.8], xScale, yScale, xOffset: xOff, yOffset: yBase }),
+    { style: { stroke: '#dc2626', strokeWidth: 2 } })
+
+  // one bar gets a Δx annotation
+  const bx = xOff + 3 * dx * xScale
+  pic.edge(point(bx, 252), point(bx + dx * xScale - 3, 252),
+    { arrowStart: 'stealth', arrowEnd: 'stealth' }, { style: { stroke: '#64748b', strokeWidth: 1 } })
+  pic.text(point(bx + dx * xScale / 2, 270), '$\\\\Delta x$', { fontSize: 11 })
+  pic.text(point(388, 26), '$f(x)$', { fontSize: 12 })
+
+  pic.mount(container, { width: 430, height: 285 })
+}`,
+      },
+
+      {
+        id: 'probability-tree',
+        title: 'Probability tree',
+        description:
+          "Statistics classic: two coin flips as a right-growing tree. The tree builder computes positions; edges carry the branch probabilities as labels — TikZ's edge from parent node [above] {1/2}.",
+        code:
+`import { picture, tree, point } from 'jikz'
+
+export default function render(container) {
+  // tree() computes the layout; nodes come back named by their text
+  const t = tree({ at: point(60, 120), grow: 'right', levelDistance: 115, siblingDistance: 34 })
+    .root('start')
+      .child('H').children(['HH', 'HT']).parent()
+      .parent()
+      .child('T').children(['TH', 'TT'])
+    .build()
+
+  const pic = picture()
+  for (const n of t.nodes) {
+    pic.node(n.text, { at: n.center, shape: 'circle', minWidth: 36, minHeight: 36, text: n.text },
+      { style: { stroke: '#334155', fill: '#f1f5f9', strokeWidth: 1.5 }, textStyle: { fontSize: 11 } })
+  }
+
+  const branches = [['start', 'H'], ['start', 'T'], ['H', 'HH'], ['H', 'HT'], ['T', 'TH'], ['T', 'TT']]
+  for (const [a, b] of branches)
+    pic.edge(a, b, { label: '1/2', labelPos: 0.62 }, { style: { stroke: '#64748b', strokeWidth: 1.2 } })
+
+  pic.mount(container, { width: 340, height: 240 })
+}`,
+      },
+
+      {
+        id: 'venn',
+        title: 'Venn diagram',
+        description:
+          "Two set circles as nodes with translucent fills — their labels are node labels anchored north west / north east, so they track the circles. $A \\cap B$ sits at the centers' midpoint.",
+        code:
+`import { picture, rect, point } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+
+  // universal set
+  pic.draw(rect(20, 12, 350, 180), { style: { stroke: '#94a3b8' } })
+  pic.text(point(36, 30), 'U', { fontSize: 11 })
+
+  pic.node('A', {
+    at: point(150, 102), shape: 'circle', width: 160, height: 160,
+    labels: [{ text: '$A$', at: 'north west', distance: 6 }],
+  }, { style: { stroke: '#2563eb', fill: '#2563eb', 'fill-opacity': 0.25, strokeWidth: 2 } })
+
+  pic.node('B', {
+    at: point(240, 102), shape: 'circle', width: 160, height: 160,
+    labels: [{ text: '$B$', at: 'north east', distance: 6 }],
+  }, { style: { stroke: '#dc2626', fill: '#dc2626', 'fill-opacity': 0.25, strokeWidth: 2 } })
+
+  pic.text(point(195, 102), '$A \\\\cap B$', { fontSize: 12 })
+
+  pic.mount(container, { width: 390, height: 205 })
+}`,
+      },
+
+      {
+        id: 'fit-library',
+        title: 'rectFit — TikZ fit library',
+        description:
+          "TikZ's \\node[fit=(api)(cache)] : rectFit computes the tight rectangle around a subset of nodes' bounds; add padding, draw it dashed, and the backend grouping draws itself.",
+        code:
+`import { picture, rect, rectFit, point } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+  const box = { stroke: '#334155', fill: '#f1f5f9', strokeWidth: 1.5 }
+
+  pic.node('db',    { at: point(70, 90),   shape: 'cylinder',  width: 50, height: 44, text: 'db' },    { style: box })
+  pic.node('api',   { at: point(190, 70),  shape: 'rectangle', width: 70, height: 40, text: 'api' },   { style: box })
+  pic.node('cache', { at: point(190, 150), shape: 'rectangle', width: 70, height: 40, text: 'cache' }, { style: box })
+  pic.node('user',  { at: point(70, 190),  shape: 'circle',    width: 46, height: 46, text: 'user' },  { style: box })
+
+  pic.edge('user', 'api',   { arrowEnd: 'stealth' }, { style: { stroke: '#64748b' } })
+  pic.edge('user', 'db',    { arrowEnd: 'stealth' }, { style: { stroke: '#64748b' } })
+  pic.edge('db', 'api',     { arrowEnd: 'stealth' }, { style: { stroke: '#64748b' } })
+  pic.edge('api', 'cache',  { arrowEnd: 'stealth' }, { style: { stroke: '#64748b' } })
+
+  // \\node[fit=(api)(cache), inner sep=12] — tight bbox of the subset's bounds, plus padding
+  const corners = ['api', 'cache'].flatMap((name) => {
+    const [x0, y0, x1, y1] = pic.getNode(name).bounds
+    return [point(x0, y0), point(x1, y1)]
+  })
+  const fit = rectFit(corners)
+  const pad = 12
+  pic.draw(rect(fit.x - pad, fit.y - pad, fit.width + 2 * pad, fit.height + 2 * pad),
+    { style: { stroke: '#7c3aed', dash: 'dashed', strokeWidth: 1.5 } })
+  pic.text(point(190, fit.y - pad - 12), 'backend', { fontSize: 11, style: { stroke: '#7c3aed' } })
+
+  pic.mount(container, { width: 300, height: 250 })
+}`,
+      },
+
+      {
+        id: 'angle-marking',
+        title: 'Angle marking (angles & quotes)',
+        description:
+          "The TikZ angles library idiom: rays from one vertex via polar() — one pen statement with mid-path moves, \\draw (O) -- (A) (O) -- (B) (O) -- (C) — and each angle arc a pen statement whose KaTeX label rides the arc itself via pos/offset (TikZ's node[midway]) — everything derived from the ray angles, no hand-placed label points.",
+        code:
+`import { picture, polar, point } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+
+  // Three rays from one vertex (screen convention: negative = up)
+  const O = point(90, 170)
+  const A = O.add(polar(0, 200))
+  const B = O.add(polar(-35, 190))
+  const C = O.add(polar(-80, 130))
+
+  // \draw (O) -- (A) (O) -- (B) (O) -- (C) — one pen statement,
+  // three subpaths (mid-path moveTo lifts the pen)
+  pic.pen({ style: { stroke: '#334155', strokeWidth: 1.5 } })
+    .moveTo(O).lineTo(A)
+    .moveTo(O).lineTo(B)
+    .moveTo(O).lineTo(C)
+
+  // Mark the adjacent angles like \\pic [draw] {angle = B--O--A} —
+  // each arc is a pen statement; the label rides the arc by arc
+  // length (pos), pushed radially outward (offset = left of travel)
+  pic.pen({ style: { stroke: '#2563eb', strokeWidth: 1.5 } })
+    .moveTo(O.add(polar(-35, 46)))
+    .circularArcTo(46, false, true, O.add(polar(0, 46)))
+    .label('$\\\\alpha$', { pos: 0.5, offset: 20, options: { fontSize: 12, style: { stroke: '#2563eb' } } })
+  pic.pen({ style: { stroke: '#dc2626', strokeWidth: 1.5 } })
+    .moveTo(O.add(polar(-80, 30)))
+    .circularArcTo(30, false, true, O.add(polar(-35, 30)))
+    .label('$\\\\beta$', { pos: 0.5, offset: 20, options: { fontSize: 12, style: { stroke: '#dc2626' } } })
+
+  pic.mount(container, { width: 310, height: 200 })
+}`,
+      },
+
+      {
+        id: 'unit-circle-derivative',
+        title: 'Unit circle — porting a TikZ slide (derivative of sine)',
+        description:
+          "A line-for-line port of a Beamer TikZ slide: polar() for (θ:r) coordinates, arc() for the angle marker, a fluent pen statement for the wedge (fill mode), labels hung on the draw verbs themselves — { label: { at: 'east' } } is the node[right] inside a \\draw statement; KaTeX labels included. A canvas Transform.translation centers the origin (toSVG has no auto-fit). The one convention flip: TikZ angles run counterclockwise with y up, jikz clockwise with y down — so TikZ (θ:r) becomes polar(-θ, r) and arc(0:θ:1) becomes arc(o, r, 0, -θ, true).",
+        code:
+`import { picture, point, origin, polar, circle, line, arc } from 'jikz'
+
+export default function render(container) {
+  const THETA = 50              // \thetaVal
+  const AXIS = 130, R = 100     // \axisLen=1.3, r=1 (scale=2.7 baked into px)
+
+  // TikZ (θ:r) math-convention → jikz screen-convention point
+  const P = (deg, r) => polar(-deg, r)
+
+  const pic = picture()
+
+  // Axes with inline labels — TikZ: \draw(-1.3,0)--(1.3,0) node[right]{$\cos$}
+  pic.draw(line(point(-AXIS, 0), point(AXIS, 0)), {
+    label: { text: '$\\\\cos$', at: 'east', distance: 6, options: { fontSize: 13 } },
+  })
+  pic.draw(line(point(0, AXIS), point(0, -AXIS)), {
+    label: { text: '$\\\\sin$', at: 'north', distance: 6, options: { fontSize: 13 } },
+  })
+
+  // Unit circle, thick
+  pic.draw(circle(origin, R), { style: { strokeWidth: 2 } })
+
+  // Cardinal dots with inline labels (below right / below left / below left / above left)
+  const dots = [
+    { at: point(R, 0),  label: '1',  place: 'south east' },
+    { at: point(-R, 0), label: '-1', place: 'south west' },
+    { at: point(0, R),  label: '-1', place: 'south west' },
+    { at: point(0, -R), label: '1',  place: 'north west' },
+  ]
+  for (const { at, label, place } of dots) {
+    pic.fill(circle(at, 1.5), {
+      label: { text: label, at: place, distance: 4, options: { fontSize: 11 } },
+    })
+  }
+
+  // Radius at θ
+  pic.draw(line(origin, P(THETA, R)))
+
+  // Filled wedge as one fluent pen statement (fill mode) — the
+  // original fills the triangle chord, not a sector
+  pic.pen({ mode: 'fill', style: { fill: '#c0392b', fillOpacity: 0.85 } })
+    .moveTo(origin)
+    .lineTo(P(THETA, R))
+    .lineTo(point(R, 0))
+    .close()
+
+  // Angle arc along the unit circle: TikZ arc(0:θ:1)
+  pic.draw(arc(origin, R, 0, -THETA, true))
+
+  // 'h' at (θ/2 : 1/4)
+  pic.text(P(THETA / 2, 30), 'h', { fontSize: 13 })
+
+  // TikZ auto-sizes the picture to its content — so does fit
+  pic.mount(container, { fit: true, padding: 8 })
+}`,
+      },
+
+      {
+        id: 'perp-bisectors',
+        title: 'Perpendicular bisectors → circumcenter',
+        description:
+          "Construct the circumcenter instead of calling it: midpoints, side normals, two dashed bisectors, and intersectLineLine recovers O — which the circumscribed circle then proves. Vertex labels are pushed outward from the centroid, no hand-picked offsets.",
+        code:
+`import { picture, triangle, line, circle, point, polar, intersectLineLine } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+  const A = point(70, 190), B = point(330, 170), C = point(190, 40)
+  const tri = triangle(A, B, C)
+
+  // Perpendicular bisector of PQ: through the midpoint, along the side's normal
+  const perpBisector = (P, Q, len) => {
+    const M = P.midpoint(Q)
+    const L = Math.hypot(Q.x - P.x, Q.y - P.y)
+    const nx = -(Q.y - P.y) / L, ny = (Q.x - P.x) / L
+    return line(point(M.x - nx * len, M.y - ny * len), point(M.x + nx * len, M.y + ny * len))
+  }
+  const bisAB = perpBisector(A, B, 110)
+  const bisAC = perpBisector(A, C, 110)
+
+  pic.draw(tri, { style: { stroke: '#334155', strokeWidth: 2 } })
+  pic.draw(bisAB, { style: { stroke: '#2563eb', dash: 'dashed' } })
+  pic.draw(bisAC, { style: { stroke: '#2563eb', dash: 'dashed' } })
+  pic.draw(A.midpoint(B), { style: { stroke: '#2563eb', strokeWidth: 2.5 } })
+  pic.draw(A.midpoint(C), { style: { stroke: '#2563eb', strokeWidth: 2.5 } })
+
+  // O constructed — identical to tri.circumcenter, but derived on screen
+  const O = intersectLineLine(bisAB, bisAC).points[0]
+  pic.draw(circle(O, O.distanceTo(A)), { style: { stroke: '#dc2626', strokeWidth: 1.5 } })
+  pic.draw(O, { style: { stroke: '#dc2626', strokeWidth: 3 } })
+  pic.text(O.add(point(14, 4)), 'O', { fontSize: 11, style: { stroke: '#dc2626' } })
+
+  const G = tri.centroid
+  for (const { v, name } of [{ v: A, name: 'A' }, { v: B, name: 'B' }, { v: C, name: 'C' }]) {
+    pic.draw(v, { style: { stroke: '#111827', strokeWidth: 2.5 } })
+    pic.text(v.add(polar(G.angleTo(v), 16)), name, { fontSize: 11 })
+  }
+
+  pic.mount(container, { width: 400, height: 240 })
+}`,
+      },
+
+      {
+        id: 'path-operations',
+        title: 'Path operations — offset / double / smooth / sub',
+        description:
+          "Path surgery: offsetPath parallels a curve on either side, doublePath renders TikZ's double line as two real paths, smoothPath turns a polyline into a spline, subPath highlights the middle 30–70% of it.",
+        code:
+`import { picture, path, point, offsetPath, doublePath, smoothPath, subPath } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+
+  // offset ±14 around a bezier
+  const wave = path().moveTo(point(30, 60)).curveTo(point(90, 10), point(150, 110), point(210, 60))
+  pic.draw(wave, { style: { stroke: '#334155', strokeWidth: 1.5 } })
+  pic.draw(offsetPath(wave, 14),  { style: { stroke: '#2563eb', dash: 'dashed' } })
+  pic.draw(offsetPath(wave, -14), { style: { stroke: '#dc2626', dash: 'dashed' } })
+  pic.text(point(60, 24), 'offset ±14', { fontSize: 10 })
+
+  // TikZ's double line, as two real paths
+  const spine = path().moveTo(point(30, 165)).curveTo(point(90, 135), point(150, 195), point(210, 165))
+  const [outer, inner] = doublePath(spine, 8)
+  pic.draw(outer, { style: { stroke: '#16a34a', strokeWidth: 1.2 } })
+  pic.draw(inner, { style: { stroke: '#16a34a', strokeWidth: 1.2 } })
+  pic.text(point(60, 130), 'doublePath', { fontSize: 10 })
+
+  // polyline → spline, with the middle 30–70% highlighted
+  const raw = path().moveTo(point(260, 50)).lineTo(point(300, 90)).lineTo(point(340, 30)).lineTo(point(385, 95)).lineTo(point(415, 55))
+  pic.draw(raw, { style: { stroke: '#94a3b8', dash: 'dotted' } })
+  const smooth = smoothPath(raw, 0.5)
+  pic.draw(smooth, { style: { stroke: '#7c3aed', strokeWidth: 2 } })
+  pic.draw(subPath(smooth, 0.3, 0.7), { style: { stroke: '#f59e0b', strokeWidth: 3.5 } })
+  pic.text(point(300, 130), 'smoothPath + subPath', { fontSize: 10 })
+
+  pic.mount(container, { width: 440, height: 210 })
+}`,
+      },
+
+      {
+        id: 'tcp-states',
+        title: 'TCP state machine',
+        description:
+          "The texample classic: five states, bend edges with transition labels, and a self-loop for data transfer — edge routing (bendAngle, out/in, looseness) doing real diagram work.",
+        code:
+`import { picture, point } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+  const st = { stroke: '#334155', fill: '#f1f5f9', strokeWidth: 1.5 }
+
+  pic.node('CLOSED', { at: point(90, 110),  shape: 'circle', width: 76,  height: 76,  text: 'CLOSED' },      { style: st, textStyle: { fontSize: 11 } })
+  pic.node('SYN',    { at: point(250, 60),  shape: 'circle', width: 86,  height: 86,  text: 'SYN SENT' },    { style: st, textStyle: { fontSize: 11 } })
+  pic.node('EST',    { at: point(410, 120), shape: 'circle', width: 112, height: 112, text: 'ESTABLISHED' }, { style: st, textStyle: { fontSize: 10 } })
+  pic.node('FIN',    { at: point(250, 200), shape: 'circle', width: 86,  height: 86,  text: 'FIN WAIT' },    { style: st, textStyle: { fontSize: 11 } })
+  pic.node('LISTEN', { at: point(90, 260),  shape: 'circle', width: 72,  height: 72,  text: 'LISTEN' },      { style: st, textStyle: { fontSize: 11 } })
+
+  const es = { stroke: '#64748b', strokeWidth: 1.2 }
+  pic.edge('CLOSED', 'SYN',    { arrowEnd: 'stealth', label: 'send SYN',     bendAngle: 15 }, { style: es })
+  pic.edge('SYN', 'EST',       { arrowEnd: 'stealth', label: 'SYN+ACK, ACK', bendAngle: 15 }, { style: es })
+  pic.edge('EST', 'FIN',       { arrowEnd: 'stealth', label: 'close / FIN',  bendAngle: 15 }, { style: es })
+  pic.edge('FIN', 'CLOSED',    { arrowEnd: 'stealth', label: 'ACK / timeout', bendAngle: 15 }, { style: es })
+  pic.edge('CLOSED', 'LISTEN', { arrowEnd: 'stealth', label: 'passive open' },               { style: es })
+  pic.edge('EST', 'EST',       { out: 240, in: 300, looseness: 5, label: 'data' },           { style: { stroke: '#2563eb', strokeWidth: 1.2 } })
+
+  pic.mount(container, { width: 500, height: 320 })
+}`,
+      },
+
+      {
+        id: 'earth-orbit',
+        title: "Earth's orbit — ellipse foci",
+        description:
+          "Kepler's first law as geometry: the Sun sits at orbit.foci[1] (not the center!), Earth positions come from ellipse.pointAt(angle), and perihelion/aphelion labels ride outward from the center-to-planet ray.",
+        code:
+`import { picture, ellipse, circle, point, polar } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+  const orbit = ellipse(point(220, 115), 160, 75)
+  pic.draw(orbit, { style: { stroke: '#334155', strokeWidth: 1.5 } })
+
+  // Sun at a focus — Kepler's first law
+  const sun = orbit.foci[1]
+  pic.filldraw(circle(sun, 13), { style: { stroke: '#d97706', fill: '#fbbf24', strokeWidth: 2 } })
+  pic.text(sun.add(point(0, 30)), 'Sun', { fontSize: 11 })
+
+  // the empty second focus
+  pic.draw(orbit.foci[0], { style: { stroke: '#94a3b8', strokeWidth: 2 } })
+  pic.text(orbit.foci[0].add(point(0, 18)), 'F2', { fontSize: 10, style: { stroke: '#94a3b8' } })
+
+  // Earth at four true anomalies
+  for (const [angle, label] of [[0, 'perihelion'], [90, ''], [180, 'aphelion'], [270, '']]) {
+    const p = orbit.pointAt(angle)
+    pic.filldraw(circle(p, 7), { style: { stroke: '#2563eb', fill: '#93c5fd', strokeWidth: 1.5 } })
+    if (label) pic.text(p.add(polar(orbit.center.angleTo(p), 26)), label, { fontSize: 10 })
+  }
+
+  pic.mount(container, { width: 440, height: 230 })
+}`,
+      },
+
+      {
+        id: 'circle-through',
+        title: 'Circle through 3 points',
+        description:
+          "circleThrough recovers the unique circle (null when collinear). Chords show the defining triangle, the center is marked, and point labels are pushed outward along the center-to-point ray.",
+        code:
+`import { picture, circleThrough, line, point, polar } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+  const P1 = point(80, 150), P2 = point(260, 50), P3 = point(340, 180)
+
+  const c = circleThrough(P1, P2, P3) // null if collinear
+
+  pic.draw(c, { style: { stroke: '#2563eb', strokeWidth: 2 } })
+  pic.draw(line(P1, P2), { style: { stroke: '#cbd5e1', dash: 'dashed' } })
+  pic.draw(line(P2, P3), { style: { stroke: '#cbd5e1', dash: 'dashed' } })
+  pic.draw(line(P1, P3), { style: { stroke: '#cbd5e1', dash: 'dashed' } })
+
+  for (const { p, name } of [{ p: P1, name: 'P1' }, { p: P2, name: 'P2' }, { p: P3, name: 'P3' }]) {
+    pic.draw(p, { style: { stroke: '#dc2626', strokeWidth: 3 } })
+    pic.text(p.add(polar(c.center.angleTo(p), 20)), name, { fontSize: 11 })
+  }
+  pic.draw(c.center, { style: { stroke: '#111827', strokeWidth: 2.5 } })
+  pic.text(c.center.add(point(14, 5)), 'O', { fontSize: 11 })
+
+  pic.mount(container, { width: 420, height: 250 })
+}`,
+      },
+
+      {
+        id: 'phyllotaxy',
+        title: 'Sunflower phyllotaxy',
+        description:
+          "Biology's favorite spiral: 250 florets on a Vogel spiral — radius c·√n, angle n·137.508° (the golden angle). Ten lines of math, and the alternating fills make the Fibonacci arms visible.",
+        code:
+`import { picture, circle, point, polar } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+  const GOLDEN = 137.508 // golden angle, degrees
+  const C = point(160, 160), scale = 9
+
+  for (let n = 1; n <= 250; n++) {
+    const r = scale * Math.sqrt(n)
+    const p = C.add(polar(n * GOLDEN, r))
+    const dot = 1.5 + n / 80 // florets grow outward
+    pic.fill(circle(p, dot), { style: { fill: n % 2 ? '#b45309' : '#f59e0b' } })
+  }
+
+  pic.mount(container, { width: 320, height: 320 })
+}`,
+      },
+
+      // ── Chess-study app prototypes (zuglog ideas) ─────────────────────
+
+      {
+        id: 'chess-transposition-dag',
+        title: 'Chess prototype — transposition DAG',
+        description:
+          "Repertoire move trees are really DAGs: 1.d4 d5 2.c4 e6 3.Nf3 Nf6 and 1.d4 Nf6 2.c4 e6 3.Nf3 d5 arrive at the SAME Queen's Gambit Declined position. Nodes are plain circle() Anchorables (edges auto-resolve boundary points along the ray), the shared position gets the amber dashed 'transposition' style, and the merge edges use out/in headings so the two histories join like railway tracks.",
+        code:
+`import { picture, point, circle } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+
+  const P = {
+    d4:   point(200, 30),
+    d5:   point(110, 90),   // 1...d5 order
+    c4L:  point(110, 150),  // 2.c4 e6
+    nf3L: point(110, 210),  // 3.Nf3
+    nf6:  point(290, 90),   // 1...Nf6 order
+    c4R:  point(290, 150),  // 2.c4 e6
+    d5R:  point(290, 210),  // 3...d5
+    qgd:  point(200, 270),  // ONE position, two histories
+    bg5:  point(200, 330),
+  }
+
+  const dot = (key, transposition = false) => {
+    const c = circle(P[key], 4.5)
+    pic.draw(c, {
+      style: transposition
+        ? { stroke: '#d97706', dash: 'dashed', strokeWidth: 1.5, fill: '#ffffff' }
+        : { stroke: '#475569', strokeWidth: 1.5, fill: '#ffffff' },
+    })
+    return c  // an Anchorable — edges resolve its boundary automatically
+  }
+
+  const d4 = dot('d4')
+  const d5 = dot('d5'), c4L = dot('c4L'), nf3L = dot('nf3L')
+  const nf6 = dot('nf6'), c4R = dot('c4R'), d5R = dot('d5R')
+  const qgd = dot('qgd', true)
+  const bg5 = dot('bg5')
+
+  const link = { style: { stroke: '#64748b', strokeWidth: 1.25 } }
+  pic.edge(d4, d5, {}, link)
+  pic.edge(d4, nf6, {}, link)
+  pic.edge(d5, c4L, {}, link)
+  pic.edge(c4L, nf3L, {}, link)
+  pic.edge(nf6, c4R, {}, link)
+  pic.edge(c4R, d5R, {}, link)
+  // the merge — out/in headings make the histories join like rail tracks
+  pic.edge(nf3L, qgd, { out: 45, in: 45 }, { style: { stroke: '#d97706', strokeWidth: 1.5 } })
+  pic.edge(d5R, qgd, { out: 135, in: 135 }, { style: { stroke: '#d97706', strokeWidth: 1.5 } })
+  pic.edge(qgd, bg5, {}, link)
+
+  pic.text(P.d4, '1.d4', { at: 'north', distance: 6, fontSize: 10 })
+  pic.text(P.d5, '1\\u2026d5', { at: 'west', distance: 6, fontSize: 10 })
+  pic.text(P.c4L, '2.c4 e6', { at: 'west', distance: 6, fontSize: 10 })
+  pic.text(P.nf3L, '3.Nf3', { at: 'west', distance: 6, fontSize: 10 })
+  pic.text(P.nf6, '1\\u2026Nf6', { at: 'east', distance: 6, fontSize: 10 })
+  pic.text(P.c4R, '2.c4 e6', { at: 'east', distance: 6, fontSize: 10 })
+  pic.text(P.d5R, '3\\u2026d5', { at: 'east', distance: 6, fontSize: 10 })
+  pic.text(P.qgd, 'QGD — same position!', { at: 'west', distance: 6, fontSize: 10, style: { stroke: '#d97706' } })
+  pic.text(P.bg5, '4.Bg5', { at: 'east', distance: 6, fontSize: 10 })
+
+  pic.mount(container, { fit: true, padding: 10 })
+}`,
+      },
+
+      {
+        id: 'chess-pawn-skeleton',
+        title: 'Chess prototype — pawn-structure skeleton',
+        description:
+          "The textbook pawn-skeleton diagram (French Advance structure), auto-derived from square coordinates: the board grid is ONE multi-subpath pen statement, chains are thick translucent pen runs painted under the pawns, levers (\\u2026c5, \\u2026f6) are dashed stealth-arrow edges with TikZ edge labels, and the chain base is annotated with directional text. In the app, sq() maps FEN squares to points — the diagram derives itself from any position.",
+        code:
+`import { picture, point, circle } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+  const SQ = 32
+  const M = 30  // margin
+  // file 0..7 = a..h, rank 1..8 — screen y flips the rank
+  const sq = (file, rank) => point(M + file * SQ + SQ / 2, M + (8 - rank) * SQ + SQ / 2)
+
+  // Board grid — one pen statement, 18 subpaths
+  const grid = pic.pen({ style: { stroke: '#e2e8f0', strokeWidth: 0.75 } })
+  for (let i = 0; i <= 8; i++) {
+    grid.moveTo(M + i * SQ, M).lineTo(M + i * SQ, M + 8 * SQ)
+    grid.moveTo(M, M + i * SQ).lineTo(M + 8 * SQ, M + i * SQ)
+  }
+
+  // Pawn chains UNDER the pawns — thick translucent pen runs
+  pic.pen({ style: { stroke: '#7c3aed', strokeWidth: 5, 'stroke-opacity': 0.35 } })
+    .moveTo(sq(1, 2)).lineTo(sq(2, 3)).lineTo(sq(3, 4)).lineTo(sq(4, 5)) // b2-c3-d4-e5
+  pic.pen({ style: { stroke: '#dc2626', strokeWidth: 5, 'stroke-opacity': 0.35 } })
+    .moveTo(sq(4, 6)).lineTo(sq(3, 5))                                    // e6-d5
+
+  // French Advance pawns
+  const pawn = (file, rank, white) =>
+    pic.draw(circle(sq(file, rank), 9), {
+      style: white
+        ? { fill: '#f8fafc', stroke: '#0f172a', strokeWidth: 1.25 }
+        : { fill: '#0f172a', stroke: '#94a3b8', strokeWidth: 1.25 },
+    })
+  for (const [f, r] of [[1, 2], [2, 3], [3, 4], [4, 5]]) pawn(f, r, true)
+  for (const [f, r] of [[0, 7], [2, 7], [3, 5], [4, 6], [5, 7], [6, 7], [7, 7]]) pawn(f, r, false)
+
+  // Levers (pawn breaks) — dashed arrows with edge labels
+  const lever = (from, to, san) =>
+    pic.edge(point(from.x + 13, from.y + 4), point(to.x + 13, to.y - 4),
+      { arrowEnd: 'stealth', label: san, labelOffset: 9 },
+      { style: { stroke: '#dc2626', dash: 'dashed', strokeWidth: 1.5 } })
+  lever(sq(2, 7), sq(2, 5), '\\u2026c5!')   // c7 -> c5 attacks the d4 link
+  lever(sq(5, 7), sq(5, 6), '\\u2026f6!')   // f7 -> f6 attacks the e5 head
+
+  // Chain-base annotation (TikZ: attack the base of the chain)
+  pic.text(sq(2, 3), 'chain base — attack it', { at: 'south west', distance: 8, fontSize: 10, style: { stroke: '#7c3aed' } })
+
+  pic.mount(container, { fit: true, padding: 10 })
+}`,
+      },
+
+      {
+        id: 'chess-theme-radar',
+        title: 'Chess prototype — tactics theme radar',
+        description:
+          "Puzzle success rate by motif as a polar spider chart — the diagram charting libraries do badly and jikz does natively: rings and axes derive from polar(), both series are closed filldraw pen statements, and axis labels sit on compass placement. Overlaying the previous period (grey) shows training progress per theme at a glance.",
+        code:
+`import { picture, point, polar, line } from 'jikz'
+
+export default function render(container) {
+  const pic = picture()
+  const themes = ['Fork', 'Pin', 'Skewer', 'Discovered', 'Deflection', 'Mate in 2']
+  const now  = [0.82, 0.64, 0.45, 0.71, 0.58, 0.90]
+  const prev = [0.70, 0.62, 0.55, 0.55, 0.48, 0.78]
+  const C = point(180, 160)
+  const R = 95
+  const N = themes.length
+  // axis i points at screen angle -90 + i*360/N (screen convention: -90 = north)
+  const vertex = (i, f) => C.add(polar(-90 + (i * 360) / N, R * f))
+
+  // Grid rings (25/50/75/100%) as closed pen statements
+  for (const f of [0.25, 0.5, 0.75, 1]) {
+    const ring = pic.pen({ style: { stroke: '#e2e8f0', strokeWidth: f === 1 ? 1.25 : 0.75 } })
+    for (let i = 0; i < N; i++) {
+      const v = vertex(i, f)
+      if (i === 0) ring.moveTo(v)
+      else ring.lineTo(v)
+    }
+    ring.close()
+  }
+  // Axes
+  for (let i = 0; i < N; i++) {
+    pic.draw(line(C, vertex(i, 1)), { style: { stroke: '#e2e8f0', strokeWidth: 0.75 } })
+  }
+
+  // Series — closed filldraw pen statements
+  const series = (vals, color, fillOp) => {
+    const pen = pic.pen({ mode: 'filldraw', style: { stroke: color, strokeWidth: 2, fill: color, 'fill-opacity': fillOp } })
+    vals.forEach((v, i) => (i === 0 ? pen.moveTo(vertex(i, v)) : pen.lineTo(vertex(i, v))))
+    pen.close()
+  }
+  series(prev, '#94a3b8', 0.10)
+  series(now, '#2563eb', 0.18)
+  now.forEach((v, i) => pic.draw(vertex(i, v), { style: { stroke: '#2563eb', strokeWidth: 3 } }))
+
+  // Axis labels on compass placement
+  themes.forEach((t, i) => {
+    pic.text(C.add(polar(-90 + (i * 360) / N, R + 26)), t, { fontSize: 10 })
+  })
+
+  // Legend
+  pic.pen({ style: { stroke: '#2563eb', strokeWidth: 2.5 } }).moveTo(110, 310).lineTo(135, 310)
+  pic.text(point(138, 310), 'current', { at: 'east', distance: 2, fontSize: 10 })
+  pic.pen({ style: { stroke: '#94a3b8', strokeWidth: 2.5 } }).moveTo(210, 310).lineTo(235, 310)
+  pic.text(point(238, 310), '3 months ago', { at: 'east', distance: 2, fontSize: 10 })
+
+  pic.mount(container, { fit: true, padding: 10 })
+}`,
+      },
+
+      {
+        id: 'circuit-symbols',
+        title: 'Circuit symbol gallery — ext/circuits',
+        description:
+          "The circuits extension (jikz's \\usetikzlibrary{circuits.ee} analogue) ships symbols built ONLY on public seams: registerShape, port anchors, rotate. registerCircuits() registers the names at runtime, while a ShapeRegistry augmentation makes them known to the IDE — shape names autocomplete and misspellings are compile errors. The circuit.* builders used below are the fully-typed route: variants autocomplete too. Every symbol has an intrinsic size and never stretches to fit text.",
+        code:
+`import { picture, registerCircuits, circuit, point } from 'jikz'
+
+export default function render(container) {
+  registerCircuits() // once, like \\usetikzlibrary{circuits.ee}
+  const pic = picture()
+  const sym = { stroke: '#0f172a', strokeWidth: 1.6 }
+
+  // circuit.* option builders: symbol names and variants autocomplete
+  // in the IDE — a typo is a compile error, not a runtime surprise.
+  const cells = [
+    [circuit.resistor(), 'resistor (ANSI)'],
+    [circuit.resistor({ variant: 'iec' }), 'resistor (IEC)'],
+    [circuit.capacitor(), 'capacitor'],
+    [circuit.inductor(), 'inductor'],
+    [circuit.diode(), 'diode'],
+    [circuit.diode({ variant: 'zener' }), 'Zener'],
+    [circuit.diode({ variant: 'led' }), 'LED'],
+    [circuit.switch(), 'switch'],
+    [circuit.voltageSource(), 'voltage source'],
+    [circuit.currentSource(), 'current source'],
+    [circuit.ground(), 'ground'],
+    [circuit.opAmp(), 'op amp'],
+  ]
+
+  cells.forEach(([options, label], i) => {
+    const x = 70 + (i % 4) * 120
+    const y = 45 + Math.floor(i / 4) * 85
+    pic.node('s' + i, { ...options, at: point(x, y) }, { style: sym })
+    pic.text(point(x, y + 38), label, { fontSize: 10 })
+  })
+
+  pic.mount(container, { width: 500, height: 280 })
+}`,
+      },
+
+      {
+        id: 'circuit-typed-api',
+        title: 'Two ways to reference symbols — strings vs typed builders',
+        description:
+          "The SAME circuit built twice. Top: string specs — shape names autocomplete via the ShapeRegistry augmentation, and 'R1.out'-style port strings resolve at runtime (typo'd ports throw AnchorError listing known names). Bottom: typed builders — circuit.resistor(...) returns ordinary NodeOptions with compile-checked variants, and symbol instances expose ports as Points (r1.out), so even port typos are compile errors. Both styles produce the same objects and mix freely; the RC-filter and op-amp cards use the typed style.",
+        code:
+`import { picture, registerCircuits, circuit, resistor, wire, point } from 'jikz'
+
+export default function render(container) {
+  registerCircuits()
+  const sym = { stroke: '#0f172a', strokeWidth: 1.6 }
+
+  // ── Style 1: string specs (TikZ-familiar, data-driven) ──
+  const strings = picture()
+  strings.text(point(150, 16), 'string specs — ports checked at runtime', { fontSize: 11 })
+  strings.node('V1', { shape: 'voltage source', at: point(50, 110), rotate: 90 }, { style: sym })
+  strings.node('R1', { shape: 'resistor', at: point(150, 55) }, { style: sym })
+  strings.node('D1', { shape: 'diode', shapeOptions: { variant: 'led' }, at: point(240, 110), rotate: 90 }, { style: sym })
+  strings.node('G1', { shape: 'ground', at: point(50, 165), anchor: 'in' }, { style: sym })
+  strings.node('G2', { shape: 'ground', at: point(240, 165), anchor: 'in' }, { style: sym })
+  wire(strings, ['V1.in', point(50, 55), 'R1.in'])
+  wire(strings, ['R1.out', point(240, 55), 'D1.in'])
+  wire(strings, ['V1.out', point(50, 165), point(240, 165), 'D1.out'])
+
+  // ── Style 2: typed builders + typed port Points ──
+  const typed = picture()
+  typed.text(point(150, 16), 'typed builders — compile-time checked', { fontSize: 11 })
+  typed.node('V1', circuit.voltageSource({ at: point(50, 110), rotate: 90 }), { style: sym })
+  const r1 = resistor({ center: point(150, 55) }) // typed instance
+  typed.node('R1', { shape: r1 }, { style: sym })
+  typed.node('D1', circuit.diode({ at: point(240, 110), rotate: 90, variant: 'led' }), { style: sym })
+  typed.node('G1', circuit.ground({ at: point(50, 165), anchor: 'in' }), { style: sym })
+  typed.node('G2', circuit.ground({ at: point(240, 165), anchor: 'in' }), { style: sym })
+  wire(typed, ['V1.in', point(50, 55), r1.in])     // Points are valid endpoints…
+  wire(typed, [r1.out, point(240, 55), 'D1.in'])   // …and mix with strings
+  wire(typed, ['V1.out', point(50, 165), point(240, 165), 'D1.out'])
+
+  strings.mount(container, { width: 300, height: 190 })
+  typed.mount(container, { width: 300, height: 190 })
+}`,
+      },
+
+      {
+        id: 'circuit-rc-filter',
+        title: 'RC low-pass filter — ports, rotation, wires',
+        description:
+          "A full schematic composed from ports, not coordinates. Symbols are placed with the typed circuit.* builders (names, rotate, anchor — all compile-checked); voltage source and capacitor rotate 90° for vertical branches; wire() chains endpoints (name.port specs and raw points) with arrows off; junctionDot marks the output node; ground nodes are placed by their 'in' terminal (at + anchor, TikZ's at+anchor=). Every connection is 'R1.out', not a hand-computed point.",
+        code:
+`import { picture, registerCircuits, circuit, wire, junctionDot, point } from 'jikz'
+
+export default function render(container) {
+  registerCircuits()
+  const pic = picture()
+  const sym = { stroke: '#0f172a', strokeWidth: 1.6 }
+
+  // Typed builders place every symbol — no shape-name strings to
+  // memorize or mistype. Source and capacitor rotate 90° for vertical
+  // branches; grounds are placed BY their 'in' terminal (at + anchor).
+  pic.node('V1', circuit.voltageSource({ at: point(60, 120), rotate: 90 }), { style: sym })
+  pic.node('R1', circuit.resistor({ at: point(140, 60) }), { style: sym })
+  pic.node('C1', circuit.capacitor({ at: point(220, 120), rotate: 90 }), { style: sym })
+  pic.node('G1', circuit.ground({ at: point(60, 180), anchor: 'in' }), { style: sym })
+  pic.node('G2', circuit.ground({ at: point(220, 180), anchor: 'in' }), { style: sym })
+
+  // Wiring: name.port specs resolve through the port table — no
+  // hand-computed coordinates except the two rail corners. A typo'd
+  // port throws AnchorError listing the valid names; the op-amp card
+  // shows the fully-typed (string-free) alternative.
+  wire(pic, ['V1.in', point(60, 60), 'R1.in'])
+  wire(pic, ['R1.out', point(220, 60), 'C1.in'])
+  wire(pic, ['V1.out', point(60, 180)])
+  wire(pic, ['C1.out', point(220, 180)])
+  wire(pic, [point(60, 180), point(220, 180)])
+
+  // Output node: junction dot + Vout label.
+  pic.fill(junctionDot(point(220, 60)))
+  pic.text(point(240, 63), 'Vout', { fontSize: 12, textAnchor: 'start' })
+  pic.text(point(140, 45), 'R', { fontSize: 12 })
+  pic.text(point(30, 120), 'V', { fontSize: 12 })
+  pic.text(point(238, 120), 'C', { fontSize: 12 })
+
+  pic.mount(container, { width: 320, height: 210 })
+}`,
+      },
+
+      {
+        id: 'circuit-opamp',
+        title: 'Inverting amplifier — multi-port op-amp, fully typed',
+        description:
+          "The op-amp is the multi-port validation of the port system — and the fully-typed workflow: symbol INSTANCES (opAmp(), resistor()) expose ports as Points (u1.minus/.plus/.out), so even wire endpoints autocomplete and a typo'd port is a compile error. Each instance doubles as its node's shape ({ shape: u1 }); the string path ('U1.-') still resolves against it at runtime. The feedback loop routes Rf around the top with wire() corners; the + input grounds with a single vertical drop.",
+        code:
+`import { picture, registerCircuits, circuit, opAmp, resistor, wire, junctionDot, point } from 'jikz'
+
+export default function render(container) {
+  registerCircuits()
+  const pic = picture()
+  const sym = { stroke: '#0f172a', strokeWidth: 1.6 }
+
+  // Typed instances: ports are Points (u1.minus/.plus/.out) that
+  // autocomplete in the IDE. Each instance doubles as its node's shape.
+  const u1 = opAmp({ center: point(200, 120) })
+  const rin = resistor({ center: point(95, 104) })
+  const rf = resistor({ center: point(150, 55) })
+  pic.node('U1', { shape: u1 }, { style: sym })
+  pic.node('Rin', { shape: rin }, { style: sym })
+  pic.node('Rf', { shape: rf }, { style: sym })
+  pic.node('GND', circuit.ground({ at: point(170, 190), anchor: 'in' }), { style: sym })
+
+  // Signal path: Vin → Rin → inverting input node J (145,104).
+  // No strings: every endpoint is a Point or a typed port.
+  wire(pic, [point(30, 104), rin.in])
+  wire(pic, [rin.out, u1.minus])
+
+  // Feedback loop: from the in- junction up, through Rf, down to the output node
+  const J = point(145, 104) // on the Rin→U1.minus wire
+  wire(pic, [rf.out, point(250, 55), point(250, 120), u1.out])
+  wire(pic, [J, point(145, 55), rf.in])
+  wire(pic, [u1.out, point(250, 120)])
+
+  // Vout tap + non-inverting input to ground
+  wire(pic, [point(250, 120), point(285, 120)])
+  pic.fill(junctionDot(point(250, 120)))
+  pic.fill(junctionDot(J))
+  wire(pic, [u1.plus, point(170, 190)])
+
+  pic.text(point(18, 107), 'Vin', { fontSize: 12 })
+  pic.text(point(95, 88), 'Rin', { fontSize: 11 })
+  pic.text(point(150, 40), 'Rf', { fontSize: 11 })
+  pic.text(point(293, 123), 'Vout', { fontSize: 12, textAnchor: 'start' })
+  pic.text(point(230, 146), 'U1', { fontSize: 11 })
+
+  pic.mount(container, { width: 320, height: 240 })
+}`,
+      },
+    ]
+
+    // Rewrite bare 'jikz' imports so the blob module can resolve them.
+    // Blob URLs are non-hierarchical, so the target must be an absolute
+    // URL — relative paths inside a blob module cannot resolve.
+    //
+    // Two modes:
+    //   - Vite dev server (`npm run dev`): use live source /src/index.ts
+    //     (Vite transpiles the TS on the fly) so demos track the working
+    //     tree during development.
+    //   - Any other static server: fall back to the built ../dist/jikz.js
+    //     — the exact artifact npm users get (run `npm run build` first).
+    //
+    // Detection: try importing the source URL; if the fetch or the TS
+    // parse fails (any non-Vite server), swap in dist. In production
+    // (after `npm install jikz`) the user's bundler resolves 'jikz'
+    // itself, so the displayed source stays portable.
+    const SRC_URL = new URL('/src/index.ts', window.location.href).href
+    const DIST_URL = new URL('../dist/jikz.js', window.location.href).href
+
+    async function resolveLibUrl() {
+      try {
+        await import(/* @vite-ignore */ SRC_URL)
+        return SRC_URL
+      } catch {
+        try {
+          await import(/* @vite-ignore */ DIST_URL)
+          return DIST_URL
+        } catch {
+          return null
+        }
+      }
+    }
+
+    function rewriteImports(code, libUrl) {
+      return code.replaceAll(/from\s+['"]jikz['"]/g, `from '${libUrl}'`)
+    }
+
+    async function execute(demo, container, libUrl) {
+      const src = rewriteImports(demo.code, libUrl)
+      const blob = new Blob([src], { type: 'application/javascript' })
+      const url = URL.createObjectURL(blob)
+      try {
+        const mod = await import(/* @vite-ignore */ url)
+        if (typeof mod.default !== 'function') {
+          throw new Error("Demo module must `export default function render(container) { ... }`.")
+        }
+        mod.default(container)
+      } finally {
+        URL.revokeObjectURL(url)
+      }
+    }
+
+    function escapeHtml(s) {
+      return s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+    }
+
+    function createCard(demo) {
+      const card = document.createElement('article')
+      card.className = 'card'
+      card.innerHTML = `
+        <header>
+          <h3>${escapeHtml(demo.title)}</h3>
+          <p class="desc">${escapeHtml(demo.description)}</p>
+        </header>
+        <div class="tabs" role="tablist">
+          <button class="tab active" data-panel="preview" role="tab">Preview</button>
+          <button class="tab" data-panel="code" role="tab">Code</button>
+        </div>
+        <div class="panel active" data-panel="preview">
+          <div class="preview" data-container></div>
+        </div>
+        <div class="panel" data-panel="code">
+          <pre class="code">${escapeHtml(demo.code)}</pre>
+        </div>
+      `
+
+      const tabs = card.querySelectorAll('.tab')
+      const panels = card.querySelectorAll('.panel')
+      tabs.forEach((t) => {
+        t.addEventListener('click', () => {
+          tabs.forEach((x) => x.classList.toggle('active', x === t))
+          const target = t.getAttribute('data-panel')
+          panels.forEach((p) =>
+            p.classList.toggle('active', p.getAttribute('data-panel') === target)
+          )
+        })
+      })
+
+      return card
+    }
+
+    const grid = document.getElementById('grid')
+
+    let libUrl
+    try {
+      libUrl = await resolveLibUrl()
+    } catch (err) {
+      libUrl = null
+    }
+    for (const demo of demos) {
+      const card = createCard(demo)
+      grid.appendChild(card)
+      const container = card.querySelector('[data-container]')
+      try {
+        if (!libUrl) {
+          throw new Error(
+            'Could not load the jikz library.\n\n' +
+            'This page needs an HTTP server — it cannot run from a file:// double-click. Either:\n' +
+            '  • npm run dev    (Vite dev server; demos use live source), or\n' +
+            '  • npm run build  then serve this folder with any static server\n' +
+            '    (demos use the built dist/jikz.js).'
+          )
+        }
+        await execute(demo, container, libUrl)
+      } catch (err) {
+        const panel = card.querySelector('.panel[data-panel="preview"]')
+        panel.innerHTML = `<pre class="error">${escapeHtml(String(err && err.stack || err))}</pre>`
+      }
+    }
+  </script>
+</body>
+</html>

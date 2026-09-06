@@ -1,0 +1,61 @@
+{
+  "name": "@ozan.e/jikz",
+  "version": "0.5.0",
+  "description": "TikZ-inspired coordinate and drawing library for JavaScript/TypeScript",
+  "type": "module",
+  "main": "./dist/jikz.umd.cjs",
+  "module": "./dist/jikz.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/jikz.js",
+      "require": "./dist/jikz.umd.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "preview": "vite preview",
+    "prepublishOnly": "npm run test && npm run build"
+  },
+  "peerDependencies": {
+    "katex": "^0.16.0"
+  },
+  "peerDependenciesMeta": {
+    "katex": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "katex": "^0.16.11",
+    "typescript": "^5.7.3",
+    "vite": "^5.4.14",
+    "vite-plugin-dts": "^4.4.0",
+    "vitest": "^2.1.8"
+  },
+  "keywords": [
+    "tikz",
+    "svg",
+    "graphics",
+    "geometry",
+    "coordinates",
+    "drawing"
+  ],
+  "author": "ozan.erdemir <erdemirozan@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@bitbucket.org/binboavetonik/jikz.git"
+  },
+  "homepage": "https://bitbucket.org/binboavetonik/jikz",
+  "bugs": "https://bitbucket.org/binboavetonik/jikz/issues",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}

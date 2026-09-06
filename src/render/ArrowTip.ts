@@ -1,0 +1,120 @@
+/**
+ * Arrow tip registry.
+ *
+ * Arrowheads are SVG `<marker>` defs. Because SVG marker paint cannot
+ * inherit the referencing path's stroke, markers are defined per
+ * (tip kind, color, position) — see SVGRenderer.ensureMarker.
+ *
+ * `end` artwork points +x (placed with orient=auto). `start` artwork
+ * is the same shape pre-mirrored to point −x — we do NOT rely on
+ * orient="auto-start-reverse" for start markers because some renderers
+ * (older WebKit/QuickLook) apply the reversal to the wrong markers,
+ * which flips every arrowhead on the page.
+ *
+ * Register your own tips with {@link registerArrowTip}:
+ *
+ * ```ts
+ * registerArrowTip('diamond', {
+ *   filled: true,
+ *   end:   { d: 'M 0 5 L 5 0 L 10 5 L 5 10 z', refX: 9 },
+ *   start: { d: 'M 10 5 L 5 0 L 0 5 L 5 10 z', refX: 1 },
+ * })
+ * edge(a, b, { arrowEnd: 'diamond' })
+ * ```
+ */
+
+/**
+ * Marker artwork for one end of a path. `d` is SVG path data drawn in
+ * a 10×10 viewBox centered vertically on y=5; `refX` is the x that
+ * sits on the path endpoint.
+ */
+export interface ArrowTipArtwork {
+  d: string
+  refX: number
+}
+
+/**
+ * Definition of a named arrow tip. `filled` shapes take the edge color
+ * as fill; the rest take it as stroke (with `strokeWidth`, default 1.5).
+ */
+export interface ArrowTipDefinition {
+  filled: boolean
+  strokeWidth?: number
+  end: ArrowTipArtwork
+  start: ArrowTipArtwork
+}
+
+const registry = new Map<string, ArrowTipDefinition>()
+
+/**
+ * Register an arrow tip under a name. Later registrations replace
+ * earlier ones under the same name.
+ */
+export function registerArrowTip(name: string, def: ArrowTipDefinition): void {
+  registry.set(name, def)
+}
+
+/**
+ * Look up a registered arrow tip (undefined when absent).
+ */
+export function getArrowTip(name: string): ArrowTipDefinition | undefined {
+  return registry.get(name)
+}
+
+/**
+ * Whether an arrow tip is registered under `name`.
+ */
+export function hasArrowTip(name: string): boolean {
+  return registry.has(name)
+}
+
+/**
+ * All registered arrow tip names.
+ */
+export function registeredArrowTips(): readonly string[] {
+  return Array.from(registry.keys())
+}
+
+/**
+ * Normalize ArrowTip aliases to a marker kind.
+ *
+ * TikZ-style whole-path specs reach here only if an Edge wasn't
+ * involved (e.g. manual renderPath markers) — they all mean the
+ * plain triangular tip; direction is positional.
+ */
+export function resolveArrowTipKind(arrowType: string): string {
+  if (arrowType === '>' || arrowType === '->' || arrowType === '<-' || arrowType === '<->') return 'to'
+  if (arrowType === '|') return 'bar'
+  return arrowType
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Built-in tips. Geometry matches TikZ's tips at markerWidth/Height 6
+// with default (strokeWidth-scaled) markerUnits.
+// ─────────────────────────────────────────────────────────────────────────────
+
+registerArrowTip('stealth', {
+  filled: true,
+  end: { d: 'M 0 0 L 10 5 L 0 10 L 3 5 z', refX: 9 },
+  start: { d: 'M 10 0 L 0 5 L 10 10 L 7 5 z', refX: 1 },
+})
+
+registerArrowTip('latex', {
+  filled: false,
+  strokeWidth: 1.5,
+  end: { d: 'M 0 0 L 10 5 L 0 10', refX: 9 },
+  start: { d: 'M 10 0 L 0 5 L 10 10', refX: 1 },
+})
+
+registerArrowTip('to', {
+  filled: true,
+  end: { d: 'M 0 0 L 10 5 L 0 10 z', refX: 9 },
+  start: { d: 'M 10 0 L 0 5 L 10 10 z', refX: 1 },
+})
+
+registerArrowTip('bar', {
+  filled: false,
+  strokeWidth: 2,
+  end: { d: 'M 5 0 L 5 10', refX: 5 },
+  start: { d: 'M 5 0 L 5 10', refX: 5 },
+})
