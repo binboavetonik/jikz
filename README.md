@@ -296,13 +296,13 @@ the known names in the message).
 ## Demo
 
 The demo page renders every example through the library itself — the
-code in each *Code* tab is exactly what produced the preview.
+code in each *Code* tab is exactly what produced the preview. Every
+example is a real module in `examples/`: type-checked by `tsc` and
+snapshot-tested by `vitest`, so the gallery can never drift from the
+library's API.
 
 ```sh
-npm run dev    # vite dev server; demos use live source
-# or
-npm run build  # then serve the repo folder with any static server;
-               # demos use the built dist/jikz.js
+npm run dev    # vite dev server; examples import the live src/
 ```
 
 Then open `http://localhost:5173/demo/index.html` (vite port may vary).
@@ -311,14 +311,15 @@ Then open `http://localhost:5173/demo/index.html` (vite port may vary).
 
 ```sh
 npm install
-npm test          # vitest, incl. SVG-output snapshot suite
-npm run build     # tsc typecheck + vite library build → dist/
+npm test          # vitest, incl. SVG-output + example-gallery snapshot suites
+npm run build     # tsc typecheck (src + examples) + vite library build → dist/
 npm run dev       # vite dev server (demo page)
 ```
 
 Layout: `src/{core,geometry,node,picture,path,render,layout,text,utils}`,
-with complex node shapes in `src/geometry/complex/`. Tests in `test/`
-mirror `src/`.
+with complex node shapes in `src/geometry/complex/`. The example gallery
+lives in `examples/` (one self-contained module per card, registered in
+`examples/manifest.ts`). Tests in `test/` mirror `src/`.
 
 ## Status
 

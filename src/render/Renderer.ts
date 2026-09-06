@@ -9,6 +9,9 @@ import type { Shape } from '../geometry/Shape'
 import type { Polygon } from '../geometry/Polygon'
 import type { Node } from '../node/Node'
 import type { Edge } from '../node/Edge'
+import type { Plot } from '../geometry/Plot'
+import type { Parabola } from '../geometry/Parabola'
+import type { Hyperbola } from '../geometry/Hyperbola'
 import type { StyleSpec } from './StyleMapper'
 import type { LayerName } from './Layer'
 
@@ -28,6 +31,9 @@ export type Renderable =
   | Polygon
   | Node
   | Edge
+  | Plot
+  | Parabola
+  | Hyperbola
   | Shape
 
 /**
