@@ -22,6 +22,25 @@ Start here — each page is short and load-bearing:
 5. [**Node, SSR & browser**](concepts/node-ssr-browser.md) — string
    output anywhere; KaTeX, text measurement, and what needs a DOM.
 
+## Tutorials
+
+A guided path — each builds one small figure and one set of ideas:
+
+1. [Your first picture](tutorials/01-first-picture.md) — the four path
+   verbs, and why a picture is just a string.
+2. [Points & coordinates](tutorials/02-points-and-coordinates.md) —
+   calc operators: `toward`, `horAt`/`verAt`, `polar`, named coordinates.
+3. [Nodes, anchors & labels](tutorials/03-nodes-anchors-labels.md) —
+   compass anchors, label distance, auto-sizing.
+4. [Edges & routing](tutorials/04-edges-and-routing.md) — boundary
+   anchoring, bends, out/in, loops, arrow tips.
+5. [Paths & pen statements](tutorials/05-paths-and-pen.md) — `path()`
+   vs `pic.pen()`, segment-riding labels, mid-statement restyling.
+6. [Styling](tutorials/06-styling.md) — dash vocabulary, patterns,
+   gradients, shadows, double lines, typed option arrays.
+7. [Layouts](tutorials/07-layouts.md) — chain, matrix, tree,
+   `nodeCircle`, `rectFit`.
+
 ## Examples
 
 The [example gallery](../examples/) is 50 self-contained,
@@ -30,8 +49,6 @@ type-checked, snapshot-tested modules — browse them on the demo page
 
 ## Coming next
 
-- **Tutorials** — a guided path from "hello, circle" to full diagrams
-  (Phase 2 of the documentation plan).
 - **Reference** — per-module API pages, generated where possible
   (Phase 3).
 - **Cookbook** — the gallery re-organized by task: math, physics,
