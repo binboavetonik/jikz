@@ -27,6 +27,8 @@ const CATEGORY_ORDER: [DemoCategory, string, string][] = [
     'Optics and circuit schematics — ports, typed symbols, and wires instead of coordinates.'],
   ['graphs-networks', 'Graphs & networks',
     'Complete graphs, state machines, graphical models — named nodes and boundary-aware edges.'],
+  ['statistics-data', 'Statistics & data',
+    'Charts and distributions built from raw arrays — data in, diagram out, no chart library between.'],
   ['diagram-layout', 'Diagram layout',
     'Chains, matrices, trees, and fit-boxes: declare structure, get coordinates.'],
   ['nodes-edges', 'Nodes & edges',

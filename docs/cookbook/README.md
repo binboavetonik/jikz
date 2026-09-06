@@ -236,6 +236,58 @@ ode[fit=(z)(x), label=below right:N]. No hand-computed box coordinates.
 
 **Source:** [`examples/plate-diagram.ts`](../../examples/plate-diagram.ts)
 
+## Statistics & data
+
+Charts and distributions built from raw arrays — data in, diagram out, no chart library between.
+
+### Grouped bar chart
+
+![Grouped bar chart](img/bar-chart.svg)
+
+The chart-library staple drawn from raw data: dashed gridlines, axes as one pen statement, bars as a rect loop, legend chips as tiny filldraws. jikz doesn't chart for you — it puts the skeleton exactly where you put it.
+
+**Source:** [`examples/bar-chart.ts`](../../examples/bar-chart.ts)
+
+### Function & derivative with tangent
+
+![Function & derivative with tangent](img/derivative-sketch.svg)
+
+f and f' on shared axes; the tangent at x=3.5 is computed from the derivative — lineFromAngle turns atan(f'(x)) into geometry. The calculus-slide figure, no hand-computed slope.
+
+**Source:** [`examples/derivative-sketch.ts`](../../examples/derivative-sketch.ts)
+
+### Normal curve with shaded tail
+
+![Normal curve with shaded tail](img/normal-curve.svg)
+
+The statistics-textbook figure: P(X > 1.5) as a closed plot on [1.5, 3.5] — sample the density, close the path, and the fill lands between curve and axis with no polygon stitching.
+
+**Source:** [`examples/normal-curve.ts`](../../examples/normal-curve.ts)
+
+### Polar rose gallery
+
+![Polar rose gallery](img/polar-roses.svg)
+
+r = cos(k·θ) for k = 3, 5, 7 via plotPolar (degrees, centered) — three curves composed by three centers, each over a dashed unit guide ring.
+
+**Source:** [`examples/polar-roses.ts`](../../examples/polar-roses.ts)
+
+### Lissajous figures
+
+![Lissajous figures](img/lissajous.svg)
+
+x = sin(a·t + δ), y = sin(b·t) through plotParametric — the 3:2, 3:4, and 5:4 frequency families side by side, one scale/offset pair per figure.
+
+**Source:** [`examples/lissajous.ts`](../../examples/lissajous.ts)
+
+### Box plot from raw data
+
+![Box plot from raw data](img/box-plot.svg)
+
+Quartiles computed in code; whiskers as one multi-subpath pen statement, boxes as filldraw pens, medians as thick lines. The point is the pipeline — data in, diagram out, no chart library between.
+
+**Source:** [`examples/box-plot.ts`](../../examples/box-plot.ts)
+
 ## Diagram layout
 
 Chains, matrices, trees, and fit-boxes: declare structure, get coordinates.
