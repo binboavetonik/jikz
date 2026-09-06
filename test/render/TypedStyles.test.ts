@@ -30,8 +30,8 @@ describe('dash style field (TikZ names)', () => {
     }
   })
 
-  it("dash: 'dashed' produces '6 4'", () => {
-    expect(styleToSVGAttributes({ dash: 'dashed' })['stroke-dasharray']).toBe('6 4')
+  it("dash: 'dashed' produces '3 3' (TikZ-exact)", () => {
+    expect(styleToSVGAttributes({ dash: 'dashed' })['stroke-dasharray']).toBe('3 3')
   })
 
   it('explicit strokeDasharray overrides dash', () => {
@@ -85,7 +85,7 @@ describe('array form of style (TikZ option list)', () => {
   it('mixes preset objects and inline overrides', () => {
     const merged = mergeStyles([thick, dashed, { stroke: '#2563eb' }])
     expect(merged.strokeWidth).toBe(0.8)
-    expect(merged.strokeDasharray).toBe('6 4') // the dashed preset's value
+    expect(merged.strokeDasharray).toBe('3 3') // the dashed preset's value (TikZ-exact)
     expect(merged.stroke).toBe('#2563eb')
   })
 
@@ -100,7 +100,7 @@ describe('array form of style (TikZ option list)', () => {
       .draw(line(point(0, 5), point(100, 5)), { style: [thick, dashed, red] })
       .toSVG({ width: 100, height: 10 })
     expect(svg).toContain('stroke-width="0.8"')
-    expect(svg).toContain('stroke-dasharray="6 4"')
+    expect(svg).toContain('stroke-dasharray="3 3"')
     expect(svg).toContain('stroke="#e74c3c"')
   })
 
@@ -122,7 +122,7 @@ describe('preset objects', () => {
 
   it('carry the STYLE_PRESETS values', () => {
     expect(thick.strokeWidth).toBe(0.8)
-    expect(dashed.strokeDasharray).toBe('6 4')
+    expect(dashed.strokeDasharray).toBe('3 3')
     expect(red.stroke).toBe('#e74c3c')
   })
 

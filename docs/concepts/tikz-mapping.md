@@ -18,8 +18,8 @@ porting rules. Everything else maps one-to-one.
 | `(A)!0.5!(B)` — partway modifier | `A.toward(B, 0.5)` |
 | `(A)!2cm!(B)` — distance modifier | `A.towardByDistance(B, 20)` |
 | `(A)!0.5!(B)` midpoint | `A.midpoint(B)` |
-| `(A |- B)` — vertical of A, horizontal of B | `A.verAt(B)` |
-| `(A -| B)` — horizontal of A, vertical of B | `A.horAt(B)` |
+| `(A |- B)` — vertical through A, horizontal through B | `A.horAt(B)` |
+| `(A -| B)` — horizontal through A, vertical through B | `A.verAt(B)` |
 | `\coordinate (P) at (2,3);` | `pic.coordinate('P', point(2, 3))` |
 | `(P)` — reference by name | `'P'` (string endpoints resolve by name) |
 | `(A)+(1,0)` — relative offset | `A.add(point(1, 0))` |

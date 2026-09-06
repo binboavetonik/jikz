@@ -1,6 +1,6 @@
 import { Point, point } from '../core/Point'
 import type { PointLike } from '../core/types'
-import { degToRad } from '../utils/math'
+import { degToRad, EPSILON } from '../utils/math'
 import type { AnchorSpec, Anchorable } from '../core/Anchor'
 
 /**
@@ -235,8 +235,10 @@ export class Edge {
     this.labelPos = opts.labelPos
     this.labelOffset = opts.labelOffset
 
-    // If out or in is specified, automatically use bezier routing
-    if (this.outAngle !== undefined || this.inAngle !== undefined) {
+    // If out/in/bendAngle is specified, automatically use bezier
+    // routing — otherwise the curve options are silently ignored and
+    // the edge renders straight.
+    if (this.outAngle !== undefined || this.inAngle !== undefined || this.bendAngle !== 0) {
       (this as { routing: EdgeRouting }).routing = 'bezier'
     }
   }
@@ -338,14 +340,19 @@ export class Edge {
   get controlPoints(): [Point, Point] {
     if (this._controlPoints) return this._controlPoints
 
-    const baseDist = this.length * this.looseness * 0.4
+    // Self-edges have zero endpoint distance, which would collapse
+    // all control offsets to the point itself (the loop vanishes).
+    // TikZ's loop opens regardless, so use a nominal chord: looseness
+    // alone then drives the loop size.
+    const effectiveLength = this.length < EPSILON ? 40 : this.length
+    const baseDist = effectiveLength * this.looseness * 0.4
     const baseAngle = this.angle
 
     // Calculate looseness for each control point
     const outLoose = this.outLooseness ?? this.looseness
     const inLoose = this.inLooseness ?? this.looseness
-    const outDist = this.length * outLoose * 0.4
-    const inDist = this.length * inLoose * 0.4
+    const outDist = effectiveLength * outLoose * 0.4
+    const inDist = effectiveLength * inLoose * 0.4
 
     if (this.outAngle !== undefined || this.inAngle !== undefined) {
       // TikZ-style out/in angles (absolute angles)

@@ -143,15 +143,18 @@ export const STYLE_PRESETS = {
   'very thick': { strokeWidth: 1.2 },
   'ultra thick': { strokeWidth: 1.6 },
 
-  // Dash patterns
+  // Dash patterns — TikZ-exact (tikz.code.tex:1583–1591). Dots use
+  // the stroke width as the "on" segment (TikZ: on \pgflinewidth);
+  // the static values here assume lw=1 (jikz default), and named-dash
+  // resolution in styleToAttributes substitutes the real width.
   solid: { strokeDasharray: '' },
-  dashed: { strokeDasharray: '6 4' },
-  dotted: { strokeDasharray: '2 3' },
-  dashdotted: { strokeDasharray: '6 3 2 3' },
+  dashed: { strokeDasharray: '3 3' },
+  dotted: { strokeDasharray: '1 2' },
+  dashdotted: { strokeDasharray: '3 2 1 2' },
   'densely dashed': { strokeDasharray: '3 2' },
-  'loosely dashed': { strokeDasharray: '6 6' },
-  'densely dotted': { strokeDasharray: '1 2' },
-  'loosely dotted': { strokeDasharray: '2 5' },
+  'loosely dashed': { strokeDasharray: '3 6' },
+  'densely dotted': { strokeDasharray: '1 1' },
+  'loosely dotted': { strokeDasharray: '1 4' },
 
   // Colors (common)
   red: { stroke: '#e74c3c' },
@@ -230,6 +233,29 @@ export type DashPatternName = (typeof DASH_PATTERN_NAMES)[number]
 const DASH_VALUES: Record<DashPatternName, string> = Object.fromEntries(
   DASH_PATTERN_NAMES.map((n) => [n, STYLE_PRESETS[n].strokeDasharray])
 ) as Record<DashPatternName, string>
+
+/**
+ * Dash names whose "on" segments are the line width in TikZ (`on
+ * \pgflinewidth`): the dots of dotted patterns and the dot inside
+ * dashdotted. Width substitution targets the FIRST segment (and the
+ * third for dashdotted).
+ */
+const WIDTH_AWARE_SEGMENTS: Partial<Record<DashPatternName, number[]>> = {
+  dotted: [0],
+  'densely dotted': [0],
+  'loosely dotted': [0],
+  dashdotted: [2],
+}
+
+/** Resolve a dash name to an SVG stroke-dasharray, TikZ-exact at the given line width. */
+export function dashArrayFor(name: DashPatternName, strokeWidth: number): string {
+  const staticValue = DASH_VALUES[name]
+  const segments = WIDTH_AWARE_SEGMENTS[name]
+  if (!segments) return staticValue
+  const parts = staticValue.split(' ')
+  for (const i of segments) parts[i] = String(strokeWidth)
+  return parts.join(' ')
+}
 
 /**
  * A style argument: either a partial style object, or an array of
@@ -341,9 +367,11 @@ export function styleToSVGAttributes(style: Partial<RenderStyle>): SVGAttributes
     attrs['stroke-opacity'] = strokeOpacity
   }
 
-  // Named dash resolves first so an explicit strokeDasharray overrides it
+  // Named dash resolves first so an explicit strokeDasharray overrides it.
+  // Dotted patterns are width-aware (TikZ: on \pgflinewidth) — the dot
+  // tracks the resolved stroke width rather than a hardcoded 1.
   if (style.dash !== undefined) {
-    attrs['stroke-dasharray'] = DASH_VALUES[style.dash]
+    attrs['stroke-dasharray'] = dashArrayFor(style.dash, style.strokeWidth ?? 1)
   }
 
   if (style.strokeDasharray !== undefined) {

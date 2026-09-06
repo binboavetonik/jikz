@@ -271,6 +271,11 @@ export interface DashPattern {
 
 /**
  * Common dash patterns
+ *
+ * @deprecated Legacy decoration-era values that do NOT match TikZ.
+ * Use the `dash` style field with TikZ's names (`'dashed'`,
+ * `'densely dotted'`, …) — resolved TikZ-exact and width-aware via
+ * `dashArrayFor` in the render layer.
  */
 export const DASH_PATTERNS = {
   solid: { pattern: [] },

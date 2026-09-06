@@ -33,8 +33,8 @@ describe('StyleMapper', () => {
     })
 
     it('has dash pattern presets', () => {
-      expect(STYLE_PRESETS.dashed.strokeDasharray).toBe('6 4')
-      expect(STYLE_PRESETS.dotted.strokeDasharray).toBe('2 3')
+      expect(STYLE_PRESETS.dashed.strokeDasharray).toBe('3 3')
+      expect(STYLE_PRESETS.dotted.strokeDasharray).toBe('1 2')
       expect(STYLE_PRESETS.solid.strokeDasharray).toBe('')
     })
 
@@ -137,7 +137,7 @@ describe('StyleMapper', () => {
     it('combines multiple presets', () => {
       const result = applyPresets('thick', 'dashed', 'red')
       expect(result.strokeWidth).toBe(0.8)
-      expect(result.strokeDasharray).toBe('6 4')
+      expect(result.strokeDasharray).toBe('3 3')
       expect(result.stroke).toBe('#e74c3c')
     })
   })
@@ -146,20 +146,20 @@ describe('StyleMapper', () => {
     it('parses comma-separated presets', () => {
       const result = parseStyleString('thick, dashed, red')
       expect(result.strokeWidth).toBe(0.8)
-      expect(result.strokeDasharray).toBe('6 4')
+      expect(result.strokeDasharray).toBe('3 3')
       expect(result.stroke).toBe('#e74c3c')
     })
 
     it('is case insensitive', () => {
       const result = parseStyleString('THICK, DASHED')
       expect(result.strokeWidth).toBe(0.8)
-      expect(result.strokeDasharray).toBe('6 4')
+      expect(result.strokeDasharray).toBe('3 3')
     })
 
     it('handles unknown presets gracefully', () => {
       const result = parseStyleString('thick, unknown, dashed')
       expect(result.strokeWidth).toBe(0.8)
-      expect(result.strokeDasharray).toBe('6 4')
+      expect(result.strokeDasharray).toBe('3 3')
     })
 
     it('parses pattern presets', () => {
