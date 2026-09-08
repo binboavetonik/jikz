@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Added
+
+- **`tree({ align: 'rank' })`.** Align every depth level to one column
+  (center-aligned tiers) for org-chart/pipeline trees; the inter-level
+  gap is `levelDistance` between the two levels' widest nodes. Default
+  `'parent'` keeps the per-parent tidy-tree behavior.
+
 ### Changed
 
 - **Size-aware tree layout.** `tree()` now auto-measures every node and

@@ -56,6 +56,11 @@ edge-to-edge gaps:
 - `siblingDistance` — whitespace between sibling subtree bounding boxes
   along the perpendicular axis.
 
+`align: 'rank'` (default `'parent'`) lines every depth level up into one
+column: the inter-level gap is `levelDistance` between the two levels'
+widest nodes, so org-chart/pipeline trees read as clean tiers. Per-node
+`sep` only applies in the default `'parent'` mode.
+
 Override the level gap per node with `.sep(d)` (builder) or
 `TreeNodeSpec.sep` (spec):
 

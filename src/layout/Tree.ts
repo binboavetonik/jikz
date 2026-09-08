@@ -5,9 +5,11 @@ import { Edge, edge, type EdgeOptions } from '../node/Edge'
 import {
   type LayoutGrowth,
   contentToNodeOptions,
+  isVerticalGrowth,
   measureNode,
   perpendicularExtent,
   primaryExtent,
+  primarySign,
 } from './shared'
 
 /**
@@ -28,6 +30,16 @@ export interface TreeOptions {
    * Growth direction (default: 'down')
    */
   grow?: TreeGrowth
+
+  /**
+   * Column policy along the growth axis:
+   * - `'parent'` (default): each parent advances its children past its
+   *   own measured edge (tidy-tree behavior).
+   * - `'rank'`: every depth level shares one column; the inter-level gap
+   *   is `levelDistance` between the two levels' widest nodes. Per-node
+   *   `sep` is ignored in rank mode.
+   */
+  align?: 'parent' | 'rank'
 
   /**
    * Gap along the growth axis between a node's far edge and its
@@ -275,6 +287,8 @@ class TreeNodeBuilderImpl implements TreeNodeBuilder {
 class TreeBuilderImpl implements TreeBuilder {
   private _options: TreeOptions
   private _rootBuilder?: TreeNodeBuilderImpl
+  /** Primary coordinate per level, only set when `align === 'rank'`. */
+  private rankColumns?: Map<number, number>
 
   constructor(options: TreeOptions = {}) {
     this._options = {
@@ -308,6 +322,14 @@ class TreeBuilderImpl implements TreeBuilder {
 
     // Calculate subtree widths (post-order)
     this.calculateSubtreeWidths(internalRoot)
+
+    // Rank alignment: compute the shared column per level before
+    // positioning — nodes' primary coordinate then comes from the column,
+    // not from their parent's advance.
+    this.rankColumns = undefined
+    if (this._options.align === 'rank') {
+      this.rankColumns = this.computeRankColumns(internalRoot)
+    }
 
     // Position nodes (pre-order)
     const rootPos = point(this._options.at!.x, this._options.at!.y)
@@ -443,21 +465,59 @@ class TreeBuilderImpl implements TreeBuilder {
     child: InternalTreeNode,
     perpOffset: number,
   ): Point {
-    const gap = parent.spec.sep ?? this._options.levelDistance!
-    const advance = parent.primaryHalf + gap + child.primaryHalf
+    const secondary = this.secondaryOf(parentPos) + perpOffset
 
-    switch (this._options.grow) {
-      case 'down':
-        return point(parentPos.x + perpOffset, parentPos.y + advance)
-      case 'up':
-        return point(parentPos.x + perpOffset, parentPos.y - advance)
-      case 'right':
-        return point(parentPos.x + advance, parentPos.y + perpOffset)
-      case 'left':
-        return point(parentPos.x - advance, parentPos.y + perpOffset)
-      default:
-        return point(parentPos.x + perpOffset, parentPos.y + advance)
+    let primary: number
+    if (this.rankColumns) {
+      primary = this.rankColumns.get(child.level) ?? this.primaryOf(parentPos)
+    } else {
+      const gap = parent.spec.sep ?? this._options.levelDistance!
+      const advance = parent.primaryHalf + gap + child.primaryHalf
+      primary = this.primaryOf(parentPos) + primarySign(this._options.grow!) * advance
     }
+
+    return this.axesToPoint(primary, secondary)
+  }
+
+  private computeRankColumns(root: InternalTreeNode): Map<number, number> {
+    const maxHalf = new Map<number, number>()
+    this.collectMaxPrimaryHalf(root, maxHalf)
+
+    const maxLevel = maxHalf.size > 0 ? Math.max(...maxHalf.keys()) : 0
+    const sign = primarySign(this._options.grow!)
+    const gap = this._options.levelDistance!
+    const columns = new Map<number, number>()
+    columns.set(0, this.primaryOf(point(this._options.at!.x, this._options.at!.y)))
+
+    for (let level = 0; level < maxLevel; level++) {
+      const prev = columns.get(level)!
+      const advance = (maxHalf.get(level) ?? 0) + gap + (maxHalf.get(level + 1) ?? 0)
+      columns.set(level + 1, prev + sign * advance)
+    }
+
+    return columns
+  }
+
+  private collectMaxPrimaryHalf(node: InternalTreeNode, maxHalf: Map<number, number>): void {
+    const current = maxHalf.get(node.level) ?? 0
+    maxHalf.set(node.level, Math.max(current, node.primaryHalf))
+    for (const child of node.children) {
+      this.collectMaxPrimaryHalf(child, maxHalf)
+    }
+  }
+
+  private primaryOf(p: Point): number {
+    return isVerticalGrowth(this._options.grow!) ? p.y : p.x
+  }
+
+  private secondaryOf(p: Point): number {
+    return isVerticalGrowth(this._options.grow!) ? p.x : p.y
+  }
+
+  private axesToPoint(primary: number, secondary: number): Point {
+    return isVerticalGrowth(this._options.grow!)
+      ? point(secondary, primary)
+      : point(primary, secondary)
   }
 
   private collectResults(

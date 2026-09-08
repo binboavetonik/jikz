@@ -325,6 +325,73 @@ describe('Tree', () => {
     })
   })
 
+  describe('rank alignment', () => {
+    it('aligns every level to one column (grow right)', () => {
+      const result = tree({ at: point(0, 0), grow: 'right', align: 'rank', levelDistance: 50 })
+        .root({ text: 'P', name: 'P', width: 40, height: 20 })
+          .children([
+            { text: 'A', name: 'A', width: 20, height: 20 },
+            { text: 'Wide', name: 'Wide', width: 80, height: 20 },
+          ])
+        .build()
+
+      const a = result.getNode('A')!
+      const wide = result.getNode('Wide')!
+      // Same column (centers aligned, unlike parent mode's near edges)
+      expect(a.center.x).toBe(wide.center.x)
+      // root.half (20) + gap (50) + level-1 max half (40)
+      expect(a.center.x).toBe(110)
+      // Level box near edge sits at the root's far edge + gap
+      expect(wide.center.x - wide.width / 2).toBe(70)
+    })
+
+    it('aligns every level to one column (grow down)', () => {
+      const result = tree({ at: point(0, 0), grow: 'down', align: 'rank', levelDistance: 50 })
+        .root({ text: 'P', name: 'P', width: 20, height: 40 })
+          .children([
+            { text: 'A', name: 'A', width: 20, height: 20 },
+            { text: 'Tall', name: 'Tall', width: 20, height: 80 },
+          ])
+        .build()
+
+      const a = result.getNode('A')!
+      const tall = result.getNode('Tall')!
+      expect(a.center.y).toBe(tall.center.y)
+      // root.half (20) + gap (50) + level-1 max half (40)
+      expect(a.center.y).toBe(110)
+    })
+
+    it('keeps per-parent drift by default', () => {
+      const result = tree({ at: point(0, 0), grow: 'right', levelDistance: 50 })
+        .root({ text: 'P', name: 'P', width: 40, height: 20 })
+          .children([
+            { text: 'A', name: 'A', width: 20, height: 20 },
+            { text: 'Wide', name: 'Wide', width: 80, height: 20 },
+          ])
+        .build()
+
+      const a = result.getNode('A')!
+      const wide = result.getNode('Wide')!
+      expect(a.center.x).not.toBe(wide.center.x)
+      // Parent mode aligns near edges
+      expect(a.center.x - a.width / 2).toBe(wide.center.x - wide.width / 2)
+    })
+
+    it('ignores per-node sep in rank mode', () => {
+      const withSep = tree({ at: point(0, 0), grow: 'right', align: 'rank', levelDistance: 50 })
+        .root({ text: 'P', name: 'P', width: 40, height: 20 })
+          .sep(200)
+          .child({ text: 'A', name: 'A', width: 20, height: 20 })
+        .build()
+      const withoutSep = tree({ at: point(0, 0), grow: 'right', align: 'rank', levelDistance: 50 })
+        .root({ text: 'P', name: 'P', width: 40, height: 20 })
+          .child({ text: 'A', name: 'A', width: 20, height: 20 })
+        .build()
+
+      expect(withSep.getNode('A')!.center.x).toBe(withoutSep.getNode('A')!.center.x)
+    })
+  })
+
   describe('edge options', () => {
     it('applies global edge options', () => {
       const result = tree({

@@ -73,7 +73,9 @@ node's far edge and its children's near edges along the growth axis;
 parent with a long label pushes its children further than a short one
 — see the [horizontal-tree example](../../examples/layout-tree-horizontal.ts).
 Override the level gap per node with `.sep(d)` (or `TreeNodeSpec.sep`)
-for spacer/invisible roots.
+for spacer/invisible roots. For clean tier columns, pass `align: 'rank'`
+— every depth level then shares one column, with the gap measured
+between the two levels' widest nodes.
 
 Nodes come back **named by their text**, which pairs with picture
 edges:
