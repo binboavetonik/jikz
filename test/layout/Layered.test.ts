@@ -113,14 +113,44 @@ describe('Layered', () => {
     expect(() => layered().node('A').edge('A', 'B')).toThrow(/unknown node "B"/)
   })
 
-  it('throws on cyclic input (cycle handling lands later)', () => {
-    expect(() =>
-      layered()
-        .node('A')
-        .node('B')
-        .edge('A', 'B')
-        .edge('B', 'A')
-        .build(),
-    ).toThrow(/cycle/)
+  it('breaks cycles by reversing back-edges', () => {
+    const result = layered({ at: point(0, 0), grow: 'down' })
+      .node('A', { width: 20, height: 20 })
+      .node('B', { width: 20, height: 20 })
+      .edge('A', 'B')
+      .edge('B', 'A')
+      .build()
+
+    expect(result.nodes).toHaveLength(2)
+    expect(result.edges).toHaveLength(2)
+    // Original direction is preserved on the rendered edges.
+    expect(result.outgoing(result.getNode('A')!).map((n) => n.name)).toEqual(['B'])
+    expect(result.outgoing(result.getNode('B')!).map((n) => n.name)).toEqual(['A'])
+  })
+
+  it('routes a multi-rank edge through dummy bend points', () => {
+    const result = layered({ at: point(0, 0), grow: 'down' })
+      .node('A', { width: 20, height: 20 })
+      .node('B', { width: 20, height: 20 })
+      .edge('A', 'B', { minLength: 3 })
+      .build()
+
+    expect(result.nodes).toHaveLength(2) // dummies are not exposed as nodes
+    expect(result.edges).toHaveLength(1)
+
+    const e = result.edges[0]!
+    const A = result.getNode('A')!
+    const B = result.getNode('B')!
+
+    // minLength 3 → ranks 0,1,2,3; two dummy bend points on ranks 1,2.
+    expect(result.levelCount).toBe(4)
+    expect(result.level(1)).toHaveLength(0)
+    expect(result.level(2)).toHaveLength(0)
+    expect(result.level(3).map((n) => n.name)).toEqual(['B'])
+    expect(e.bendPoints).toHaveLength(2)
+
+    expect(e.bendPoints![0]!.y).toBeGreaterThan(A.center.y)
+    expect(e.bendPoints![1]!.y).toBeGreaterThan(e.bendPoints![0]!.y)
+    expect(e.bendPoints![1]!.y).toBeLessThan(B.center.y)
   })
 })

@@ -67,6 +67,15 @@ export interface EdgeOptions {
   routing?: EdgeRouting
 
   /**
+   * Intermediate points for a polyline path (`straight` routing only).
+   * The path runs start → points → end; arrowheads stay at the real
+   * endpoints and the `'auto'` endpoint anchors aim at the first/last
+   * point. This is TikZ's `bend_points` (used by layered dummy-node
+   * edges).
+   */
+  bendPoints?: PointLike[]
+
+  /**
    * Bend angle for curved paths in degrees.
    * Positive bends to the **left** of the travel direction (TikZ
    * `bend left`); negative bends right. Shortcut that sets symmetric
@@ -188,6 +197,7 @@ export class Edge {
   readonly label: string
   readonly labelPos: number
   readonly labelOffset: number
+  readonly bendPoints: Point[]
 
   // Control points for bezier curves
   private _controlPoints?: [Point, Point]
@@ -199,21 +209,26 @@ export class Edge {
   ) {
     const opts = { ...DEFAULT_EDGE_OPTIONS, ...options }
 
-    // Resolve from point
+    // Resolve intermediate bend points (polyline routing).
+    this.bendPoints = (opts.bendPoints ?? []).map((p) => point(p.x, p.y))
+    const firstBend = this.bendPoints[0]
+    const lastBend = this.bendPoints[this.bendPoints.length - 1]
+
+    // Resolve from point — 'auto' aims at the first bend point if any.
     if ('anchor' in from) {
       // It's an Anchorable (Node)
       this.fromAnchor = opts.fromAnchor
-      this.from = this.resolveAnchor(from, to, opts.fromAnchor)
+      this.from = this.resolveAnchor(from, firstBend ?? to, opts.fromAnchor)
     } else {
       this.fromAnchor = 'center'
       this.from = point(from.x, from.y)
     }
 
-    // Resolve to point
+    // Resolve to point — 'auto' aims at the last bend point if any.
     if ('anchor' in to) {
       // It's an Anchorable (Node)
       this.toAnchor = opts.toAnchor
-      this.to = this.resolveAnchor(to, from, opts.toAnchor)
+      this.to = this.resolveAnchor(to, lastBend ?? from, opts.toAnchor)
     } else {
       this.toAnchor = 'center'
       this.to = point(to.x, to.y)
@@ -453,8 +468,28 @@ export class Edge {
       }
 
       case 'straight':
-      default:
-        return this.start.toward(this.end, t)
+      default: {
+        if (this.bendPoints.length === 0) {
+          return this.start.toward(this.end, t)
+        }
+        const pts = [this.start, ...this.bendPoints, this.end]
+        const segLens: number[] = []
+        let total = 0
+        for (let i = 0; i < pts.length - 1; i++) {
+          const seg = pts[i]!.distanceTo(pts[i + 1]!)
+          segLens.push(seg)
+          total += seg
+        }
+        let target = t * total
+        for (let i = 0; i < segLens.length; i++) {
+          const seg = segLens[i]!
+          if (target <= seg || i === segLens.length - 1) {
+            return pts[i]!.toward(pts[i + 1]!, seg > 0 ? target / seg : 0)
+          }
+          target -= seg
+        }
+        return pts[pts.length - 1]!
+      }
     }
   }
 
@@ -503,7 +538,9 @@ export class Edge {
 
       case 'straight':
       default:
-        return [this.start, this.end]
+        return this.bendPoints.length > 0
+          ? [this.start, ...this.bendPoints, this.end]
+          : [this.start, this.end]
     }
   }
 
@@ -532,8 +569,15 @@ export class Edge {
       }
 
       case 'straight':
-      default:
-        return `M ${this.start.x} ${this.start.y} L ${this.end.x} ${this.end.y}`
+      default: {
+        if (this.bendPoints.length === 0) {
+          return `M ${this.start.x} ${this.start.y} L ${this.end.x} ${this.end.y}`
+        }
+        const pts = [this.start, ...this.bendPoints, this.end]
+        return pts
+          .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`)
+          .join(' ')
+      }
     }
   }
 

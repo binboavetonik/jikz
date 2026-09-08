@@ -395,4 +395,46 @@ describe('Edge', () => {
       expect(e.inAngle).toBe(30)
     })
   })
+
+  describe('bend points', () => {
+    it('renders a polyline through the bend points', () => {
+      const e = edge(point(0, 0), point(100, 0), {
+        bendPoints: [point(30, 20), point(70, -20)],
+      })
+      expect(e.bendPoints).toHaveLength(2)
+      expect(e.toSVGPath()).toBe('M 0 0 L 30 20 L 70 -20 L 100 0')
+    })
+
+    it('exposes waypoints as start, bends, end', () => {
+      const e = edge(point(0, 0), point(100, 0), {
+        bendPoints: [point(50, 10)],
+      })
+      expect(e.waypoints.map((p) => [p.x, p.y])).toEqual([
+        [0, 0],
+        [50, 10],
+        [100, 0],
+      ])
+    })
+
+    it('computes pointAt along the polyline', () => {
+      const e = edge(point(0, 0), point(100, 0), {
+        bendPoints: [point(50, 100)],
+      })
+      // First segment is √(50²+100²) ≈ 111.8; second equal. Halfway lands
+      // exactly at the bend point.
+      const mid = e.pointAt(0.5)
+      expect(mid.x).toBeCloseTo(50)
+      expect(mid.y).toBeCloseTo(100)
+    })
+
+    it('aims auto endpoints at the first/last bend point', () => {
+      const n1 = rectNode({ at: point(0, 0), width: 20, height: 20 })
+      const n2 = rectNode({ at: point(100, 0), width: 20, height: 20 })
+      const e = edge(n1, n2, { bendPoints: [point(50, 50)] })
+      // from anchor aims at the first bend (down-right), to at the last
+      // bend (down-left relative to n2).
+      expect(e.from.y).toBeGreaterThan(0)
+      expect(e.to.y).toBeGreaterThan(0)
+    })
+  })
 })

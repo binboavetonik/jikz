@@ -76,13 +76,13 @@ export interface LayeredEdgeSpec {
  * Result of building a layered layout.
  */
 export interface LayeredResult {
-  /** All nodes, in insertion order. */
+  /** All real nodes, in insertion order. */
   nodes: Node[]
 
-  /** All edges. */
+  /** All edges (multi-rank edges carry bend points). */
   edges: Edge[]
 
-  /** Nodes at a specific rank (0 = first rank). */
+  /** Real nodes at a specific rank (0 = first rank). */
   level(index: number): Node[]
 
   /** Total number of ranks. */
@@ -91,10 +91,10 @@ export interface LayeredResult {
   /** Get a node by name. */
   getNode(name: string): Node | undefined
 
-  /** Parent nodes (nodes with an edge into `node`). */
+  /** Parent nodes (original edges into `node`). */
   incoming(node: Node): Node[]
 
-  /** Child nodes (nodes with an edge out of `node`). */
+  /** Child nodes (original edges out of `node`). */
   outgoing(node: Node): Node[]
 
   /** Bounding box [minX, minY, maxX, maxY]. */
@@ -119,7 +119,8 @@ export interface LayeredBuilder {
 
 interface InternalVertex {
   name: string
-  resolvedOptions: Omit<NodeOptions, 'at'>
+  kind: 'node' | 'dummy'
+  resolvedOptions?: Omit<NodeOptions, 'at'>
   node?: Node
   rank: number
   secondary: number
@@ -130,11 +131,21 @@ interface InternalVertex {
 }
 
 interface InternalEdge {
+  /** Effective tail after cycle removal (equals origFrom unless reversed). */
   from: InternalVertex
+  /** Effective head after cycle removal (equals origTo unless reversed). */
   to: InternalVertex
+  /** Original tail (set on user-declared edges; undefined on sub-edges). */
+  origFrom?: InternalVertex
+  /** Original head (set on user-declared edges; undefined on sub-edges). */
+  origTo?: InternalVertex
+  /** True when the edge was reversed to break a cycle. */
+  reversed?: boolean
   minLength: number
   weight: number
   edge?: Edge
+  /** Dummy vertices inserted along this edge (effective direction). */
+  dummies?: InternalVertex[]
 }
 
 const DEFAULT_RANK_SEP = 50
@@ -152,6 +163,10 @@ class LayeredBuilderImpl implements LayeredBuilder {
   private _options: LayeredOptions
   private _vertices = new Map<string, InternalVertex>()
   private _edges: InternalEdge[] = []
+  private _dummies: InternalVertex[] = []
+  private _dummyCounter = 0
+  private _ranks: Map<number, InternalVertex[]> = new Map()
+  private _maxRank = 0
 
   constructor(options: LayeredOptions = {}) {
     this._options = {
@@ -170,6 +185,7 @@ class LayeredBuilderImpl implements LayeredBuilder {
     }
     this._vertices.set(name, {
       name,
+      kind: 'node',
       resolvedOptions: resolveNodeOptions(name, options, this._options.nodeOptions),
       rank: 0,
       secondary: 0,
@@ -196,6 +212,9 @@ class LayeredBuilderImpl implements LayeredBuilder {
     const internalEdge: InternalEdge = {
       from: fromVertex,
       to: toVertex,
+      origFrom: fromVertex,
+      origTo: toVertex,
+      reversed: false,
       minLength: options?.minLength ?? 1,
       weight: options?.weight ?? 1,
     }
@@ -206,18 +225,25 @@ class LayeredBuilderImpl implements LayeredBuilder {
   }
 
   build(): LayeredResult {
+    this._dummies = []
+    this._dummyCounter = 0
+    const declaredEdges = this._edges
+
     if (this._vertices.size === 0) {
       return this.emptyResult()
     }
 
     this.measure()
+    this.removeCycles()
+    this.rebuildDirection()
     this.assignRanks()
+    this.insertDummies()
     this.buildRankArrays()
     this.orderRanks()
     this.assignSecondary()
     const columns = this.assignPrimary()
 
-    // Build nodes in insertion order.
+    // Build real nodes in insertion order.
     const nodes: Node[] = []
     const vertexToNode = new Map<InternalVertex, Node>()
     const nodeToVertex = new Map<Node, InternalVertex>()
@@ -225,7 +251,7 @@ class LayeredBuilderImpl implements LayeredBuilder {
 
     for (const v of this._vertices.values()) {
       const node = new Node({
-        ...v.resolvedOptions,
+        ...v.resolvedOptions!,
         at: axesToPoint(columns.get(v.rank)!, v.secondary, this._options.grow!),
       })
       v.node = node
@@ -235,20 +261,35 @@ class LayeredBuilderImpl implements LayeredBuilder {
       if (node.name) nodesByName.set(node.name, node)
     }
 
-    // Build edges.
+    // Build edges; collapse dummies into bend points.
     const edges: Edge[] = []
     if (this._options.drawEdges) {
       for (const e of this._edges) {
-        const edgeObj = edge(vertexToNode.get(e.from)!, vertexToNode.get(e.to)!, this._options.edgeOptions)
+        let bendPoints: PointLike[] | undefined
+        if (e.dummies && e.dummies.length > 0) {
+          const pts = e.dummies.map((d) =>
+            axesToPoint(columns.get(d.rank)!, d.secondary, this._options.grow!),
+          )
+          // Dummies were laid out in effective direction; for reversed
+          // edges the effective direction is origTo → origFrom, so flip
+          // them back for the original from → to rendering.
+          bendPoints = e.reversed ? pts.reverse() : pts
+        }
+        const edgeObj = edge(vertexToNode.get(e.origFrom!)!, vertexToNode.get(e.origTo!)!, {
+          ...this._options.edgeOptions,
+          ...(bendPoints ? { bendPoints } : {}),
+        })
         e.edge = edgeObj
         edges.push(edgeObj)
       }
     }
 
-    // Rank → nodes, in within-rank order.
     const levelNodes = new Map<number, Node[]>()
     for (const [rank, vertices] of this._ranks) {
-      levelNodes.set(rank, vertices.map((v) => v.node!))
+      levelNodes.set(
+        rank,
+        vertices.filter((v) => v.kind === 'node').map((v) => v.node!),
+      )
     }
 
     const bounds = this.computeBounds(nodes)
@@ -266,12 +307,20 @@ class LayeredBuilderImpl implements LayeredBuilder {
       incoming(node: Node): Node[] {
         const v = nodeToVertex.get(node)
         if (!v) return []
-        return v.inEdges.map((e) => e.from.node!).filter((n): n is Node => !!n)
+        const result: Node[] = []
+        for (const e of declaredEdges) {
+          if (e.origTo === v) result.push(e.origFrom!.node!)
+        }
+        return result
       },
       outgoing(node: Node): Node[] {
         const v = nodeToVertex.get(node)
         if (!v) return []
-        return v.outEdges.map((e) => e.to.node!).filter((n): n is Node => !!n)
+        const result: Node[] = []
+        for (const e of declaredEdges) {
+          if (e.origFrom === v) result.push(e.origTo!.node!)
+        }
+        return result
       },
       bounds,
       toRenderables(): (Node | Edge)[] {
@@ -279,9 +328,6 @@ class LayeredBuilderImpl implements LayeredBuilder {
       },
     }
   }
-
-  private _ranks: Map<number, InternalVertex[]> = new Map()
-  private _maxRank = 0
 
   private emptyResult(): LayeredResult {
     return {
@@ -299,9 +345,60 @@ class LayeredBuilderImpl implements LayeredBuilder {
 
   private measure(): void {
     for (const v of this._vertices.values()) {
-      const temp = new Node({ ...v.resolvedOptions, at: { x: 0, y: 0 } })
+      const temp = new Node({ ...v.resolvedOptions!, at: { x: 0, y: 0 } })
       v.primaryHalf = primaryExtent(temp, this._options.grow!) / 2
       v.secondaryHalf = perpendicularExtent(temp, this._options.grow!) / 2
+    }
+  }
+
+  /**
+   * Gansner et al. 1993 DFS cycle removal: reverse back-edges so the
+   * graph becomes acyclic. The original direction is preserved on
+   * `origFrom`/`origTo` and restored at render time.
+   */
+  private removeCycles(): void {
+    const WHITE = 0
+    const GRAY = 1
+    const BLACK = 2
+    const color = new Map<InternalVertex, number>()
+    for (const v of this._vertices.values()) color.set(v, WHITE)
+
+    const visit = (v: InternalVertex): void => {
+      color.set(v, GRAY)
+      for (const e of v.outEdges) {
+        const w = e.to
+        if (color.get(w) === WHITE) {
+          visit(w)
+        } else if (color.get(w) === GRAY) {
+          // Back edge to an ancestor: reverse it.
+          e.reversed = true
+        }
+      }
+      color.set(v, BLACK)
+    }
+
+    for (const v of this._vertices.values()) {
+      if (color.get(v) === WHITE) visit(v)
+    }
+  }
+
+  /**
+   * Rebuild in/out adjacency from the effective (post-cycle-removal)
+   * direction. After this, `edge.from`/`edge.to` are the effective
+   * endpoints; `origFrom`/`origTo` retain the user's direction.
+   */
+  private rebuildDirection(): void {
+    for (const v of this._vertices.values()) {
+      v.inEdges = []
+      v.outEdges = []
+    }
+    for (const e of this._edges) {
+      const effFrom = e.reversed ? e.origTo! : e.origFrom!
+      const effTo = e.reversed ? e.origFrom! : e.origTo!
+      e.from = effFrom
+      e.to = effTo
+      effFrom.outEdges.push(e)
+      effTo.inEdges.push(e)
     }
   }
 
@@ -329,16 +426,57 @@ class LayeredBuilderImpl implements LayeredBuilder {
     }
 
     if (processed !== this._vertices.size) {
-      throw new Error(
-        'layered layout: the graph contains a cycle (cycle handling lands in a later slice)',
-      )
+      throw new Error('layered layout: failed to rank the graph (cycle?)')
+    }
+  }
+
+  /**
+   * Split edges spanning more than one rank into dummy-node chains, so
+   * every edge connects adjacent ranks and routing bends through them.
+   */
+  private insertDummies(): void {
+    for (const e of this._edges) {
+      const dist = e.to.rank - e.from.rank
+      if (dist <= 1) continue
+
+      // Unwire the original edge.
+      e.from.outEdges = e.from.outEdges.filter((x) => x !== e)
+      e.to.inEdges = e.to.inEdges.filter((x) => x !== e)
+
+      const dummies: InternalVertex[] = []
+      let prev = e.from
+      for (let i = 1; i < dist; i++) {
+        const dummy: InternalVertex = {
+          name: `__dummy__${this._dummyCounter++}`,
+          kind: 'dummy',
+          rank: e.from.rank + i,
+          secondary: 0,
+          primaryHalf: 0,
+          secondaryHalf: 0,
+          inEdges: [],
+          outEdges: [],
+        }
+        dummies.push(dummy)
+        this._dummies.push(dummy)
+
+        const sub: InternalEdge = { from: prev, to: dummy, minLength: 1, weight: e.weight }
+        prev.outEdges.push(sub)
+        dummy.inEdges.push(sub)
+        prev = dummy
+      }
+
+      const lastSub: InternalEdge = { from: prev, to: e.to, minLength: 1, weight: e.weight }
+      prev.outEdges.push(lastSub)
+      e.to.inEdges.push(lastSub)
+
+      e.dummies = dummies
     }
   }
 
   private buildRankArrays(): void {
     this._ranks = new Map()
     this._maxRank = 0
-    for (const v of this._vertices.values()) {
+    for (const v of [...this._vertices.values(), ...this._dummies]) {
       if (!this._ranks.has(v.rank)) this._ranks.set(v.rank, [])
       this._ranks.get(v.rank)!.push(v)
       this._maxRank = Math.max(this._maxRank, v.rank)
@@ -468,9 +606,10 @@ class LayeredBuilderImpl implements LayeredBuilder {
  * Create a layered (Sugiyama) layout builder for directed graphs / DAGs.
  *
  * Unlike `tree()`, a node may have any number of parents — edges are
- * declared by name. The minimal slice uses longest-path rank assignment,
- * barycenter ordering, and center coordinate assignment; the full slice
- * (network simplex + dummy nodes) lands later.
+ * declared by name. The current slice: DFS cycle removal, longest-path
+ * rank assignment, dummy nodes for multi-rank edges, barycenter ordering,
+ * and center coordinate assignment. (Network-simplex ranking and
+ * coordinate assignment are the remaining full-slice work.)
  *
  * @example
  * ```typescript

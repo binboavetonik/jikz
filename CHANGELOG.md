@@ -8,10 +8,15 @@
   (center-aligned tiers) for org-chart/pipeline trees; the inter-level
   gap is `levelDistance` between the two levels' widest nodes. Default
   `'parent'` keeps the per-parent tidy-tree behavior.
-- **`layered()` — Sugiyama-style DAG layout (minimal slice).** Nodes
-  and edges declared by name; multi-parent support; longest-path rank
-  assignment, barycenter ordering, center coordinates. `rankSep` /
-  `nodeSep` are edge-to-edge gaps. Cyclic input throws for now.
+- **`layered()` — Sugiyama-style DAG layout.** Nodes and edges declared
+  by name; multi-parent support; DFS cycle removal (back-edges reversed,
+  original direction restored at render), longest-path rank assignment,
+  dummy nodes for multi-rank edges, barycenter ordering, center
+  coordinates. `rankSep` / `nodeSep` are edge-to-edge gaps.
+- **`Edge` bend points.** `EdgeOptions.bendPoints` renders a polyline
+  path through intermediate points (TikZ `bend_points`), with `'auto'`
+  endpoints aiming at the first/last point; used by `layered()` for
+  multi-rank edges.
 
 ### Changed
 

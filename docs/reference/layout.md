@@ -93,9 +93,9 @@ layered({ at: point(40, 40), grow: 'down', rankSep, nodeSep })
 
 Sugiyama-style DAG layout. Nodes are declared by name and edges by name
 pair; a node may have any number of parents. `rankSep` / `nodeSep` are
-edge-to-edge gaps (the same rule as `tree`). Current slice: longest-path
-rank assignment, barycenter ordering, center coordinates; cyclic input
-throws. Demo:
+edge-to-edge gaps (the same rule as `tree`). Cycles are broken by
+reversing back-edges (original direction restored at render), and
+multi-rank edges route through dummy bend points. Demo:
 [`examples/layout-layered.ts`](../../examples/layout-layered.ts).
 
 ## Placement helpers
