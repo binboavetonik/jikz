@@ -92,7 +92,8 @@ layered({ at: point(40, 40), grow: 'down', rankSep, nodeSep })
 ```
 
 Sugiyama-style DAG layout. Nodes are declared by name and edges by name
-pair; a node may have any number of parents. `rankSep` / `nodeSep` are
+pair; a node may have any number of parents. Ranks are assigned by
+network simplex (Gansner et al. 1993). `rankSep` / `nodeSep` are
 edge-to-edge gaps (the same rule as `tree`). Cycles are broken by
 reversing back-edges (original direction restored at render), and
 multi-rank edges route through dummy bend points. Demo:

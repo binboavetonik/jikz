@@ -107,9 +107,10 @@ const { nodes, edges } = layered({ at: point(20, 20), grow: 'down' })
 ```
 
 `rankSep` / `nodeSep` are edge-to-edge gaps, exactly like `tree`'s
-`levelDistance` / `siblingDistance`. Cycles are handled by reversing
-back-edges (the rendered arrow keeps your original direction), and
-multi-rank edges bend through intermediate points.
+`levelDistance` / `siblingDistance`. Ranks come from network simplex
+(Gansner et al. 1993), cycles are handled by reversing back-edges (the
+rendered arrow keeps your original direction), and multi-rank edges bend
+through intermediate points.
 
 ## Two utilities that finish the job
 

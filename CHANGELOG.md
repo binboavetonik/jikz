@@ -10,9 +10,10 @@
   `'parent'` keeps the per-parent tidy-tree behavior.
 - **`layered()` — Sugiyama-style DAG layout.** Nodes and edges declared
   by name; multi-parent support; DFS cycle removal (back-edges reversed,
-  original direction restored at render), longest-path rank assignment,
-  dummy nodes for multi-rank edges, barycenter ordering, center
-  coordinates. `rankSep` / `nodeSep` are edge-to-edge gaps.
+  original direction restored at render), network-simplex rank assignment
+  (Gansner et al. 1993 + TikZ's balance pass), dummy nodes for multi-rank
+  edges, barycenter ordering, center coordinates. `rankSep` / `nodeSep`
+  are edge-to-edge gaps.
 - **`Edge` bend points.** `EdgeOptions.bendPoints` renders a polyline
   path through intermediate points (TikZ `bend_points`), with `'auto'`
   endpoints aiming at the first/last point; used by `layered()` for

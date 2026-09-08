@@ -10,6 +10,7 @@ import {
   primaryOf,
   primarySign,
 } from './shared'
+import { networkSimplexRanks } from './networkSimplex'
 
 /**
  * Options for the layered (Sugiyama) layout.
@@ -236,7 +237,7 @@ class LayeredBuilderImpl implements LayeredBuilder {
     this.measure()
     this.removeCycles()
     this.rebuildDirection()
-    this.assignRanks()
+    networkSimplexRanks(Array.from(this._vertices.values()), this._edges)
     this.insertDummies()
     this.buildRankArrays()
     this.orderRanks()
@@ -399,34 +400,6 @@ class LayeredBuilderImpl implements LayeredBuilder {
       e.to = effTo
       effFrom.outEdges.push(e)
       effTo.inEdges.push(e)
-    }
-  }
-
-  private assignRanks(): void {
-    const indegree = new Map<InternalVertex, number>()
-    for (const v of this._vertices.values()) {
-      v.rank = 0
-      indegree.set(v, v.inEdges.length)
-    }
-
-    const queue: InternalVertex[] = []
-    for (const v of this._vertices.values()) {
-      if (indegree.get(v) === 0) queue.push(v)
-    }
-
-    let processed = 0
-    while (queue.length > 0) {
-      const v = queue.shift()!
-      processed++
-      for (const e of v.outEdges) {
-        e.to.rank = Math.max(e.to.rank, v.rank + e.minLength)
-        indegree.set(e.to, indegree.get(e.to)! - 1)
-        if (indegree.get(e.to) === 0) queue.push(e.to)
-      }
-    }
-
-    if (processed !== this._vertices.size) {
-      throw new Error('layered layout: failed to rank the graph (cycle?)')
     }
   }
 
@@ -606,10 +579,10 @@ class LayeredBuilderImpl implements LayeredBuilder {
  * Create a layered (Sugiyama) layout builder for directed graphs / DAGs.
  *
  * Unlike `tree()`, a node may have any number of parents — edges are
- * declared by name. The current slice: DFS cycle removal, longest-path
- * rank assignment, dummy nodes for multi-rank edges, barycenter ordering,
- * and center coordinate assignment. (Network-simplex ranking and
- * coordinate assignment are the remaining full-slice work.)
+ * declared by name. The current slice: DFS cycle removal, network-simplex
+ * rank assignment (Gansner et al. 1993 + TikZ balance), dummy nodes for
+ * multi-rank edges, barycenter ordering, and center coordinate assignment.
+ * (Network-simplex coordinate assignment is the remaining full-slice work.)
  *
  * @example
  * ```typescript
