@@ -85,6 +85,30 @@ for (const n of t.nodes) pic.node(n.text, { at: n.center, ... })
 pic.edge('start', 'H', { label: '1/2' })
 ```
 
+## Layered — DAGs
+
+`tree` requires exactly one parent per node. When a node can have
+several parents (a DAG), use `layered` — nodes and edges are declared
+by name, ranks align into columns:
+
+```ts
+import { layered, point } from 'jikz'
+
+const { nodes, edges } = layered({ at: point(20, 20), grow: 'down' })
+  .node('config')
+  .node('db')
+  .node('cache')
+  .node('api')
+  .edge('config', 'db')
+  .edge('config', 'cache')
+  .edge('db', 'api')
+  .edge('cache', 'api')   // two parents
+  .build()
+```
+
+`rankSep` / `nodeSep` are edge-to-edge gaps, exactly like `tree`'s
+`levelDistance` / `siblingDistance`.
+
 ## Two utilities that finish the job
 
 **`nodeCircle`** — vertices evenly on a ring (the

@@ -76,6 +76,28 @@ Demos: [`examples/layout-tree.ts`](../../examples/layout-tree.ts),
 [`layout-tree-horizontal.ts`](../../examples/layout-tree-horizontal.ts),
 [probability-tree](../../examples/probability-tree.ts).
 
+## layered
+
+```ts
+layered({ at: point(40, 40), grow: 'down', rankSep, nodeSep })
+  .node('config', { shape: 'circle', minWidth: 40, minHeight: 40 })
+  .node('db', { shape: 'circle', minWidth: 40, minHeight: 40 })
+  .node('cache', { shape: 'circle', minWidth: 40, minHeight: 40 })
+  .node('api', { shape: 'circle', minWidth: 40, minHeight: 40 })
+  .edge('config', 'db')
+  .edge('config', 'cache')
+  .edge('db', 'api')
+  .edge('cache', 'api')   // api has two parents — tree() can't express this
+  .build()   // → { nodes, edges, level(), incoming(), outgoing(), ... }
+```
+
+Sugiyama-style DAG layout. Nodes are declared by name and edges by name
+pair; a node may have any number of parents. `rankSep` / `nodeSep` are
+edge-to-edge gaps (the same rule as `tree`). Current slice: longest-path
+rank assignment, barycenter ordering, center coordinates; cyclic input
+throws. Demo:
+[`examples/layout-layered.ts`](../../examples/layout-layered.ts).
+
 ## Placement helpers
 
 - `nodeCircle(center, radius, names)` — nodes evenly on a ring

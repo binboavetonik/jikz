@@ -456,6 +456,14 @@ grow: 'right' with variable-width labels: each parent pushes its children past i
 
 **Source:** [`examples/layout-tree-horizontal.ts`](../../examples/layout-tree-horizontal.ts)
 
+### Layered (DAG) layout
+
+![Layered (DAG) layout](img/layout-layered.svg)
+
+Sugiyama-style DAG layout: nodes may have several parents — declared by name — and each rank aligns into a column. Minimal slice: longest-path ranks, barycenter ordering, center coordinates.
+
+**Source:** [`examples/layout-layered.ts`](../../examples/layout-layered.ts)
+
 ### rectFit — TikZ fit library
 
 ![rectFit — TikZ fit library](img/fit-library.svg)

@@ -552,6 +552,8 @@ export {
   // Tree
   tree,
   treeFromSpec,
+  // Layered
+  layered,
 } from './layout'
 
 export type {
@@ -573,6 +575,12 @@ export type {
   TreeResult,
   TreeNodeBuilder,
   TreeBuilder,
+  // Layered
+  LayeredOptions,
+  LayeredNodeSpec,
+  LayeredEdgeSpec,
+  LayeredResult,
+  LayeredBuilder,
 } from './layout'
 
 // ─────────────────────────────────────────────────────────────────────────────

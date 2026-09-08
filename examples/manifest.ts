@@ -272,6 +272,12 @@ const meta: DemoMeta[] = [
     description: "grow: 'right' with variable-width labels: each parent pushes its children past its own measured text, so long labels can't overlap the next level. levelDistance is an edge-to-edge gap; per-node sep overrides it.",
   },
   {
+    id: "layout-layered",
+    category: "diagram-layout",
+    title: "Layered (DAG) layout",
+    description: "Sugiyama-style DAG layout: nodes may have several parents — declared by name — and each rank aligns into a column. Minimal slice: longest-path ranks, barycenter ordering, center coordinates.",
+  },
+  {
     id: "katex-math",
     category: "paths-decorations",
     title: "KaTeX math labels",

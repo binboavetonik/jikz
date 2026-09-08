@@ -38,3 +38,15 @@ export type {
   TreeNodeBuilder,
   TreeBuilder,
 } from './Tree'
+
+// Layered
+export {
+  layered,
+} from './Layered'
+export type {
+  LayeredOptions,
+  LayeredNodeSpec,
+  LayeredEdgeSpec,
+  LayeredResult,
+  LayeredBuilder,
+} from './Layered'

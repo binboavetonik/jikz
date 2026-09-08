@@ -1,3 +1,5 @@
+import { Point, point } from '../core/Point'
+import type { PointLike } from '../core/types'
 import { Node, type NodeOptions } from '../node/Node'
 
 /**
@@ -69,4 +71,23 @@ export function primaryAdvance(
   childPrimary: number,
 ): number {
   return parentPrimary / 2 + gap + childPrimary / 2
+}
+
+/** Primary coordinate of a screen point under `grow` (x for right/left, y for down/up). */
+export function primaryOf(p: PointLike, grow: LayoutGrowth): number {
+  return isVerticalGrowth(grow) ? p.y : p.x
+}
+
+/** Secondary (perpendicular) coordinate of a screen point under `grow`. */
+export function secondaryOf(p: PointLike, grow: LayoutGrowth): number {
+  return isVerticalGrowth(grow) ? p.x : p.y
+}
+
+/** Map a (primary, secondary) pair to a screen point for `grow`. */
+export function axesToPoint(
+  primary: number,
+  secondary: number,
+  grow: LayoutGrowth,
+): Point {
+  return isVerticalGrowth(grow) ? point(secondary, primary) : point(primary, secondary)
 }

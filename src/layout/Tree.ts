@@ -4,12 +4,14 @@ import { Node, type NodeOptions } from '../node/Node'
 import { Edge, edge, type EdgeOptions } from '../node/Edge'
 import {
   type LayoutGrowth,
+  axesToPoint,
   contentToNodeOptions,
-  isVerticalGrowth,
   measureNode,
   perpendicularExtent,
   primaryExtent,
+  primaryOf,
   primarySign,
+  secondaryOf,
 } from './shared'
 
 /**
@@ -465,18 +467,18 @@ class TreeBuilderImpl implements TreeBuilder {
     child: InternalTreeNode,
     perpOffset: number,
   ): Point {
-    const secondary = this.secondaryOf(parentPos) + perpOffset
+    const secondary = secondaryOf(parentPos, this._options.grow!) + perpOffset
 
     let primary: number
     if (this.rankColumns) {
-      primary = this.rankColumns.get(child.level) ?? this.primaryOf(parentPos)
+      primary = this.rankColumns.get(child.level) ?? primaryOf(parentPos, this._options.grow!)
     } else {
       const gap = parent.spec.sep ?? this._options.levelDistance!
       const advance = parent.primaryHalf + gap + child.primaryHalf
-      primary = this.primaryOf(parentPos) + primarySign(this._options.grow!) * advance
+      primary = primaryOf(parentPos, this._options.grow!) + primarySign(this._options.grow!) * advance
     }
 
-    return this.axesToPoint(primary, secondary)
+    return axesToPoint(primary, secondary, this._options.grow!)
   }
 
   private computeRankColumns(root: InternalTreeNode): Map<number, number> {
@@ -487,7 +489,7 @@ class TreeBuilderImpl implements TreeBuilder {
     const sign = primarySign(this._options.grow!)
     const gap = this._options.levelDistance!
     const columns = new Map<number, number>()
-    columns.set(0, this.primaryOf(point(this._options.at!.x, this._options.at!.y)))
+    columns.set(0, primaryOf(point(this._options.at!.x, this._options.at!.y), this._options.grow!))
 
     for (let level = 0; level < maxLevel; level++) {
       const prev = columns.get(level)!
@@ -506,19 +508,7 @@ class TreeBuilderImpl implements TreeBuilder {
     }
   }
 
-  private primaryOf(p: Point): number {
-    return isVerticalGrowth(this._options.grow!) ? p.y : p.x
-  }
 
-  private secondaryOf(p: Point): number {
-    return isVerticalGrowth(this._options.grow!) ? p.x : p.y
-  }
-
-  private axesToPoint(primary: number, secondary: number): Point {
-    return isVerticalGrowth(this._options.grow!)
-      ? point(secondary, primary)
-      : point(primary, secondary)
-  }
 
   private collectResults(
     node: InternalTreeNode,

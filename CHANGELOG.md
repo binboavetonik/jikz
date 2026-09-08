@@ -8,6 +8,10 @@
   (center-aligned tiers) for org-chart/pipeline trees; the inter-level
   gap is `levelDistance` between the two levels' widest nodes. Default
   `'parent'` keeps the per-parent tidy-tree behavior.
+- **`layered()` — Sugiyama-style DAG layout (minimal slice).** Nodes
+  and edges declared by name; multi-parent support; longest-path rank
+  assignment, barycenter ordering, center coordinates. `rankSep` /
+  `nodeSep` are edge-to-edge gaps. Cyclic input throws for now.
 
 ### Changed
 
