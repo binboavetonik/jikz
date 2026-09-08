@@ -230,6 +230,101 @@ describe('Tree', () => {
     })
   })
 
+  describe('size-aware spacing', () => {
+    it('places children edge-to-edge along the growth axis', () => {
+      const result = tree({ at: point(0, 0), grow: 'right', levelDistance: 30 })
+        .root({ text: 'P', name: 'P', width: 40, height: 20 })
+          .child({ text: 'C', name: 'C', width: 20, height: 20 })
+        .build()
+
+      const child = result.getNode('C')!
+      // parent.half (20) + gap (30) + child.half (10)
+      expect(child.center.x - result.root.center.x).toBe(60)
+      expect(child.center.y).toBe(result.root.center.y)
+    })
+
+    it('uses node heights for vertical growth', () => {
+      const result = tree({ at: point(0, 0), grow: 'down', levelDistance: 30 })
+        .root({ text: 'P', name: 'P', width: 50, height: 40 })
+          .child({ text: 'C', name: 'C', width: 20, height: 30 })
+        .build()
+
+      const child = result.getNode('C')!
+      // parent.half (20) + gap (30) + child.half (15)
+      expect(child.center.y - result.root.center.y).toBe(65)
+    })
+
+    it('supports per-node sep via the builder', () => {
+      const result = tree({ at: point(0, 0), grow: 'down', levelDistance: 30 })
+        .root({ text: 'P', name: 'P', width: 20, height: 20 })
+          .sep(80)
+          .child({ text: 'C', name: 'C', width: 20, height: 20 })
+        .build()
+
+      // parent.half (10) + sep (80) + child.half (10)
+      expect(result.getNode('C')!.center.y - result.root.center.y).toBe(100)
+    })
+
+    it('supports per-node sep via treeFromSpec', () => {
+      const result = treeFromSpec({
+        content: { text: 'P', name: 'P', width: 20, height: 20 },
+        sep: 80,
+        children: [{ content: { text: 'C', name: 'C', width: 20, height: 20 } }],
+      }, { at: point(0, 0), grow: 'down', levelDistance: 30 })
+
+      expect(result.getNode('C')!.center.y - result.root.center.y).toBe(100)
+    })
+
+    it('supports an invisible zero-size root with a small sep', () => {
+      const result = tree({ at: point(0, 0), grow: 'right', levelDistance: 50 })
+        .root({ text: '', name: 'root', width: 0, height: 0, minWidth: 0, minHeight: 0 })
+          .sep(20)
+          .child({ text: 'A', name: 'A', width: 20, height: 20 })
+        .build()
+
+      // root.half (0) + sep (20) + child.half (10)
+      expect(result.getNode('A')!.center.x - result.root.center.x).toBe(30)
+    })
+
+    it('advances a wide parent further than a narrow parent', () => {
+      const short = tree({ at: point(0, 0), grow: 'right' })
+        .root('1.e4').child('2.Nf3').build()
+      const long = tree({ at: point(0, 0), grow: 'right' })
+        .root('6.Bg5 e6 Nf3 d5').child('7...').build()
+
+      const shortAdvance = short.getNode('2.Nf3')!.center.x - short.root.center.x
+      const longAdvance = long.getNode('7...')!.center.x - long.root.center.x
+      expect(longAdvance).toBeGreaterThan(shortAdvance)
+    })
+
+    it('aligns sibling near edges under a parent', () => {
+      const result = tree({ at: point(0, 0), grow: 'right', levelDistance: 30 })
+        .root({ text: 'P', name: 'P', width: 40, height: 20 })
+          .children([
+            { text: 'A', name: 'A', width: 20, height: 20 },
+            { text: 'Wide', name: 'Wide', width: 80, height: 20 },
+          ])
+        .build()
+
+      const a = result.getNode('A')!
+      const wide = result.getNode('Wide')!
+      // parent far edge (20) + gap (30) = 50 from parent center
+      expect(a.center.x - a.width / 2).toBe(50)
+      expect(wide.center.x - wide.width / 2).toBe(50)
+      expect(wide.center.x).toBeGreaterThan(a.center.x)
+    })
+
+    it('does not overlap a long parent label', () => {
+      const result = tree({ at: point(0, 0), grow: 'right', levelDistance: 20 })
+        .root('6.Bg5 e6 Nf3 d5').child('7...').build()
+
+      const child = result.getNode('7...')!
+      const parentFar = result.root.center.x + result.root.width / 2
+      const childNear = child.center.x - child.width / 2
+      expect(childNear).toBeGreaterThanOrEqual(parentFar + 20)
+    })
+  })
+
   describe('edge options', () => {
     it('applies global edge options', () => {
       const result = tree({

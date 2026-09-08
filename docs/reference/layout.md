@@ -48,7 +48,27 @@ tree({ at: point(220, 35), grow: 'down', levelDistance, siblingDistance })
 ```
 
 Hierarchical auto-layout; `grow`: `'down' | 'up' | 'left' | 'right'`.
+Node extents are **auto-measured**, and the two spacing options are
+edge-to-edge gaps:
+
+- `levelDistance` — whitespace between a node's far edge and its
+  children's near edges along the growth axis.
+- `siblingDistance` — whitespace between sibling subtree bounding boxes
+  along the perpendicular axis.
+
+Override the level gap per node with `.sep(d)` (builder) or
+`TreeNodeSpec.sep` (spec):
+
+```ts
+tree({ grow: 'right' })
+  .root({ text: '', name: 'root', width: 0, height: 0, minWidth: 0, minHeight: 0 })
+    .sep(16)                 // invisible spacer root hugging its children
+    .child('1.e4')
+    .build()
+```
+
 Demos: [`examples/layout-tree.ts`](../../examples/layout-tree.ts),
+[`layout-tree-horizontal.ts`](../../examples/layout-tree-horizontal.ts),
 [probability-tree](../../examples/probability-tree.ts).
 
 ## Placement helpers

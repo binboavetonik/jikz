@@ -448,6 +448,14 @@ Hierarchical auto-layout: declare the tree, jikz positions every level.
 
 **Source:** [`examples/layout-tree.ts`](../../examples/layout-tree.ts)
 
+### Horizontal tree — size-aware spacing
+
+![Horizontal tree — size-aware spacing](img/layout-tree-horizontal.svg)
+
+grow: 'right' with variable-width labels: each parent pushes its children past its own measured text, so long labels can't overlap the next level. levelDistance is an edge-to-edge gap; per-node sep overrides it.
+
+**Source:** [`examples/layout-tree-horizontal.ts`](../../examples/layout-tree-horizontal.ts)
+
 ### rectFit — TikZ fit library
 
 ![rectFit — TikZ fit library](img/fit-library.svg)

@@ -1,3 +1,7 @@
+// Shared
+// (LayoutGrowth is the canonical growth type; TreeGrowth aliases it.)
+export type { LayoutGrowth } from './shared'
+
 // Chain
 export {
   chain,

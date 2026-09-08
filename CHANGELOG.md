@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **Size-aware tree layout.** `tree()` now auto-measures every node and
+  treats `levelDistance` as an **edge-to-edge gap** along the growth
+  axis (previously a center-to-center constant). Children align their
+  near edges at the parent's far edge + gap, so horizontal trees with
+  variable-width labels no longer overlap or waste columns.
+- **Per-node `sep`.** `TreeNodeSpec.sep` and `TreeNodeBuilder.sep(d)`
+  override `levelDistance` for a single node's children — e.g. a small
+  gap under an invisible zero-size spacer root.
+- Shared layout primitives extracted to `src/layout/shared.ts`
+  (`measureNode`, `contentToNodeOptions`, axis helpers) for the other
+  builders to consume.
+
 ## 0.5.0
 
 Fluent pen statements, named coordinates, and real arc math.

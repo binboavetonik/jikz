@@ -2,11 +2,18 @@ import { Point, point } from '../core/Point'
 import type { PointLike } from '../core/types'
 import { Node, type NodeOptions } from '../node/Node'
 import { Edge, edge, type EdgeOptions } from '../node/Edge'
+import {
+  type LayoutGrowth,
+  contentToNodeOptions,
+  measureNode,
+  perpendicularExtent,
+  primaryExtent,
+} from './shared'
 
 /**
  * Direction the tree grows
  */
-export type TreeGrowth = 'down' | 'up' | 'right' | 'left'
+export type TreeGrowth = LayoutGrowth
 
 /**
  * Options for tree configuration
@@ -23,12 +30,16 @@ export interface TreeOptions {
   grow?: TreeGrowth
 
   /**
-   * Distance between levels (default: 50)
+   * Gap along the growth axis between a node's far edge and its
+   * children's near edges (default: 50). Node extents are
+   * auto-measured, so this is whitespace, not center-to-center
+   * distance.
    */
   levelDistance?: number
 
   /**
-   * Distance between siblings (default: 30)
+   * Gap along the axis perpendicular to growth between sibling subtree
+   * bounding boxes (default: 30).
    */
   siblingDistance?: number
 
@@ -61,6 +72,14 @@ export interface TreeNodeSpec {
    * Child nodes
    */
   children?: TreeNodeSpec[]
+
+  /**
+   * Primary-axis gap between this node's far edge and each child's near
+   * edge, in px. Overrides `levelDistance` for this node's children.
+   * Node extents are auto-measured; `sep` is only the whitespace
+   * between them. Use small values for invisible/spacer roots.
+   */
+  sep?: number
 }
 
 /**
@@ -72,6 +91,8 @@ interface InternalTreeNode {
   children: InternalTreeNode[]
   parent?: InternalTreeNode
   subtreeWidth: number
+  /** Half the node's extent along the growth axis (edge-to-edge advance). */
+  primaryHalf: number
   level: number
 }
 
@@ -150,6 +171,12 @@ export interface TreeNodeBuilder {
   parent(): TreeNodeBuilder
 
   /**
+   * Set the gap between this node and its children along the growth
+   * axis (overrides `levelDistance` for this node's children).
+   */
+  sep(d: number): TreeNodeBuilder
+
+  /**
    * Build the tree
    */
   build(): TreeResult
@@ -222,6 +249,11 @@ class TreeNodeBuilderImpl implements TreeNodeBuilder {
       return this
     }
     return this._parentBuilder
+  }
+
+  sep(d: number): TreeNodeBuilder {
+    this._spec.sep = d
+    return this
   }
 
   build(): TreeResult {
@@ -341,6 +373,7 @@ class TreeBuilderImpl implements TreeBuilder {
       children: [],
       parent,
       subtreeWidth: 0,
+      primaryHalf: 0,
       level,
     }
 
@@ -354,14 +387,12 @@ class TreeBuilderImpl implements TreeBuilder {
   }
 
   private calculateSubtreeWidths(node: InternalTreeNode): void {
-    // Create temporary node to get dimensions
-    const nodeOpts = this.contentToNodeOptions(node.spec.content)
-    const tempNode = new Node({ ...nodeOpts, at: { x: 0, y: 0 } })
+    const tempNode = measureNode(node.spec.content, this._options.nodeOptions)
 
-    // Get the dimension perpendicular to growth direction
-    const nodeWidth = this.isVerticalGrowth()
-      ? tempNode.width
-      : tempNode.height
+    // Extents: perpendicular drives sibling spacing; primary drives the
+    // edge-to-edge advance to children.
+    const nodeWidth = perpendicularExtent(tempNode, this._options.grow!)
+    node.primaryHalf = primaryExtent(tempNode, this._options.grow!) / 2
 
     if (node.children.length === 0) {
       node.subtreeWidth = nodeWidth
@@ -381,7 +412,7 @@ class TreeBuilderImpl implements TreeBuilder {
 
   private positionNodes(node: InternalTreeNode, position: Point): void {
     // Create the actual node at this position
-    const nodeOpts = this.contentToNodeOptions(node.spec.content)
+    const nodeOpts = contentToNodeOptions(node.spec.content, this._options.nodeOptions)
     node.node = new Node({ ...nodeOpts, at: position })
 
     if (node.children.length === 0) {
@@ -398,7 +429,7 @@ class TreeBuilderImpl implements TreeBuilder {
 
     for (const child of node.children) {
       const childCenter = childOffset + child.subtreeWidth / 2
-      const childPos = this.calculateChildPosition(position, childCenter)
+      const childPos = this.calculateChildPosition(position, node, child, childCenter)
 
       this.positionNodes(child, childPos)
 
@@ -406,25 +437,27 @@ class TreeBuilderImpl implements TreeBuilder {
     }
   }
 
-  private calculateChildPosition(parentPos: Point, perpOffset: number): Point {
-    const levelDist = this._options.levelDistance!
+  private calculateChildPosition(
+    parentPos: Point,
+    parent: InternalTreeNode,
+    child: InternalTreeNode,
+    perpOffset: number,
+  ): Point {
+    const gap = parent.spec.sep ?? this._options.levelDistance!
+    const advance = parent.primaryHalf + gap + child.primaryHalf
 
     switch (this._options.grow) {
       case 'down':
-        return point(parentPos.x + perpOffset, parentPos.y + levelDist)
+        return point(parentPos.x + perpOffset, parentPos.y + advance)
       case 'up':
-        return point(parentPos.x + perpOffset, parentPos.y - levelDist)
+        return point(parentPos.x + perpOffset, parentPos.y - advance)
       case 'right':
-        return point(parentPos.x + levelDist, parentPos.y + perpOffset)
+        return point(parentPos.x + advance, parentPos.y + perpOffset)
       case 'left':
-        return point(parentPos.x - levelDist, parentPos.y + perpOffset)
+        return point(parentPos.x - advance, parentPos.y + perpOffset)
       default:
-        return point(parentPos.x + perpOffset, parentPos.y + levelDist)
+        return point(parentPos.x + perpOffset, parentPos.y + advance)
     }
-  }
-
-  private isVerticalGrowth(): boolean {
-    return this._options.grow === 'down' || this._options.grow === 'up'
   }
 
   private collectResults(
@@ -497,26 +530,20 @@ class TreeBuilderImpl implements TreeBuilder {
     return [minX, minY, maxX, maxY]
   }
 
-  private contentToNodeOptions(
-    content: string | Omit<NodeOptions, 'at'>
-  ): Omit<NodeOptions, 'at'> {
-    if (typeof content === 'string') {
-      return { ...this._options.nodeOptions, text: content, name: content }
-    }
-    return { ...this._options.nodeOptions, ...content }
-  }
 }
 
 /**
- * Create a new tree builder
+ * Create a new tree builder.
+ *
+ * `levelDistance` is an edge-to-edge gap (node sizes are auto-measured);
+ * override it per node with `.sep(d)` or `TreeNodeSpec.sep`.
  *
  * @example
  * ```typescript
  * const t = tree({ at: point(200, 30), grow: 'down' })
  *   .root('CEO')
  *     .child('CTO')
- *       .child('Dev Lead')
- *       .child('QA Lead')
+ *       .children(['Dev Lead', 'QA Lead'])
  *       .parent()
  *     .child('CFO')
  *       .child('Finance')

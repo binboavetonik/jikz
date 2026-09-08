@@ -266,6 +266,12 @@ const meta: DemoMeta[] = [
     description: "Hierarchical auto-layout: declare the tree, jikz positions every level.",
   },
   {
+    id: "layout-tree-horizontal",
+    category: "diagram-layout",
+    title: "Horizontal tree — size-aware spacing",
+    description: "grow: 'right' with variable-width labels: each parent pushes its children past its own measured text, so long labels can't overlap the next level. levelDistance is an edge-to-edge gap; per-node sep overrides it.",
+  },
+  {
     id: "katex-math",
     category: "paths-decorations",
     title: "KaTeX math labels",

@@ -555,6 +555,8 @@ export {
 } from './layout'
 
 export type {
+  // Shared
+  LayoutGrowth,
   // Chain
   ChainDirection,
   ChainOptions,

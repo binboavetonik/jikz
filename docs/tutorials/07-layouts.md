@@ -65,7 +65,15 @@ const { nodes, edges } = tree({ at: point(220, 35), grow: 'down' })
 `grow: 'right'` gives horizontal trees — the
 [probability-tree example](../../examples/probability-tree.ts) lays out
 two coin flips this way and hangs branch probabilities on the edges.
-`levelDistance` / `siblingDistance` control the spacing.
+
+The tree measures every node and treats the two spacing options as
+**edge-to-edge gaps**: `levelDistance` is the whitespace between a
+node's far edge and its children's near edges along the growth axis;
+`siblingDistance` is the whitespace between sibling subtrees. So a
+parent with a long label pushes its children further than a short one
+— see the [horizontal-tree example](../../examples/layout-tree-horizontal.ts).
+Override the level gap per node with `.sep(d)` (or `TreeNodeSpec.sep`)
+for spacer/invisible roots.
 
 Nodes come back **named by their text**, which pairs with picture
 edges:

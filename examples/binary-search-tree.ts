@@ -23,7 +23,13 @@ export default function render(container: HTMLElement) {
   }
 
   // map the BST onto the tree-layout DSL (node names = values)
-  const layout = tree({ at: point(210, 30), grow: 'down', levelDistance: 44, siblingDistance: 30 })
+  const layout = tree({
+    at: point(210, 30),
+    grow: 'down',
+    levelDistance: 44,
+    siblingDistance: 30,
+    nodeOptions: { shape: 'circle', minWidth: 30, minHeight: 30 },
+  })
   const build = (t: ReturnType<typeof layout.root>, n: BNode | undefined): void => {
     if (!n) return
     const me = t.child(String(n.v))
