@@ -110,7 +110,10 @@ const { nodes, edges } = layered({ at: point(20, 20), grow: 'down' })
 `levelDistance` / `siblingDistance`. Ranks come from network simplex
 (Gansner et al. 1993), cycles are handled by reversing back-edges (the
 rendered arrow keeps your original direction), and multi-rank edges bend
-through intermediate points.
+through intermediate points. Within each rank, weighted-median +
+transpose sweeps minimize crossings (edge `weight` counts in the
+comparison), and a second network-simplex pass assigns balanced,
+symmetric coordinates — including straightening long-edge dummy chains.
 
 ## Two utilities that finish the job
 

@@ -10,10 +10,23 @@ measureText('hello', { fontSize: 14, fontFamily: 'sans-serif' })
 // → { width, height }
 ```
 
-Two backends: canvas `measureText` in the browser (real advance
-widths), a font-metrics table elsewhere (deterministic estimate).
+Deterministic everywhere by default: the same text, font and size
+measure the same in Node, a worker and the browser, so SSR output and
+client output agree. Widths come from a built-in per-character table
+(Adobe core-14 AFM metrics) — exact for Helvetica/Arial/Liberation Sans,
+Times New Roman/Nimbus Roman and Courier clones, an estimate for other
+faces in the same generic family. Bold widens proportional faces by 5%;
+full-width forms (CJK, kana, Hangul) advance a whole em.
+
 Multi-line text (`\n`): width = widest line, height =
-`lines × fontSize × LINE_HEIGHT` (1.25). This powers auto-sized nodes.
+`lines × fontSize × LINE_HEIGHT` (1.25). This powers auto-sized nodes,
+label placement and `{ fit: true }` viewBoxes.
+
+`setTextMeasurementBackend('canvas')` switches to the browser's own
+`<canvas>` measurement — more accurate for unusual webfont stacks, but
+DOM-only, so it makes SSR and client renders disagree. See
+[Node, SSR & browser](../concepts/node-ssr-browser.md#text-measurement).
+`getTextMeasurementBackend()` reports the current setting.
 
 ## Placing — `placeText(anchor, text, options?)`
 

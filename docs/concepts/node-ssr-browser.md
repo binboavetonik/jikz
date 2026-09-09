@@ -38,14 +38,34 @@ every card in `examples/` renders into jsdom in CI.
 
 ## Text measurement
 
-Auto-sized nodes (no `width`/`height`) measure their text:
+Auto-sized nodes (no `width`/`height`) measure their text, and so do
+labels and `{ fit: true }` viewBoxes. **Measurement is deterministic:
+the same picture measures the same in Node, a worker and the browser**,
+so an SSR render and the client render agree and the diagram does not
+reflow on hydration.
 
-- **Browser**: an offscreen `<canvas>` 2D context — real advance
-  widths for the actual font.
-- **Node**: a font-metrics table (average advance per family) —
-  coarse but deterministic. Treat auto-size in Node as an estimate;
-  pass explicit `width`/`height` when pixel-perfect sizing matters in
-  SSR output.
+That works because the default backend is a built-in table of
+per-character advance widths (the Adobe core-14 AFM metrics), not the
+host's font engine. It is exact for Helvetica, Arial and Liberation Sans
+— which are metrically compatible with each other — for Times New Roman
+and Nimbus Roman, and for any Courier clone; for other faces it is an
+estimate from the same generic family.
+
+If you render only in the browser and use a webfont whose metrics differ
+from those, you can opt into measuring the font the browser actually
+resolved:
+
+```ts
+import { setTextMeasurementBackend } from '@ozan.e/jikz'
+
+setTextMeasurementBackend('canvas')   // browser-only; breaks SSR agreement
+```
+
+Don't do that if anything renders outside a DOM: canvas measurement is
+unavailable there, so the two environments would disagree again — which
+is exactly the bug the default avoids. (Earlier versions picked canvas
+automatically whenever a `document` existed, so SSR and client output
+disagreed by construction.)
 
 ## KaTeX (optional peer)
 

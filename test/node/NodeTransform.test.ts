@@ -122,8 +122,9 @@ describe('node({ at, anchor }) — placement by anchor (TikZ at + anchor=)', () 
 })
 
 describe("text anchors ('base'/'mid' family)", () => {
-  // Node env measurement fallback: 'Hello' = 5 × 14 × 0.55 = 38.5 wide,
-  // 17.5 high (14 × 1.25); +2×4 innerSep → 46.5 × 25.5. em = 14.
+  // Deterministic metrics backend, Helvetica widths (1/1000 em):
+  // 'Hello' = H722 + e556 + l222 + l222 + o556 = 2278 → 31.892 wide at
+  // 14px, 17.5 high (14 × 1.25); +2×4 innerSep → 39.892 × 25.5. em = 14.
   const n = new Node({ text: 'Hello', at: point(100, 100) })
 
   it('isTextAnchor recognizes the family and rejects cardinals', () => {
@@ -141,9 +142,10 @@ describe("text anchors ('base'/'mid' family)", () => {
   })
 
   it('base east/west take the border x at baseline height', () => {
-    expectPt(n.anchor('base east'), 123.25, 104.2, 'base east')
-    expectPt(n.anchor('base west'), 76.75, 104.2, 'base west')
-    expectPt(n.anchor('mid east'), 123.25, 100.7, 'mid east')
+    // Border x = 100 ± 39.892/2.
+    expectPt(n.anchor('base east'), 119.946, 104.2, 'base east')
+    expectPt(n.anchor('base west'), 80.054, 104.2, 'base west')
+    expectPt(n.anchor('mid east'), 119.946, 100.7, 'mid east')
   })
 
   it('multi-line text: base is the LAST line baseline', () => {
@@ -172,8 +174,9 @@ describe("text anchors ('base'/'mid' family)", () => {
 
 describe('labels on rotated nodes', () => {
   // 80×40 at (100,100), rotated 90° cw → visual 40×80, borders at
-  // x∈[80,120], y∈[60,140]. Label 'X' at font 12: measured 6.6×15,
-  // default gap 4 → push = 4 + half-extent along the push direction.
+  // x∈[80,120], y∈[60,140]. Label 'X' at font 12: Helvetica X = 667/1000
+  // → 8.004 × 15 measured; default gap 4 → push = 4 + 8.004/2 = 8.002
+  // along the push direction.
   const mk = (label: import('../../src/node/Node').NodeLabel) =>
     rectNode({
       at: point(100, 100),
@@ -185,19 +188,19 @@ describe('labels on rotated nodes', () => {
 
   it("label at 'north' follows the rotation: pushed to the visual east", () => {
     const n = mk({ text: 'X' }) // default at: 'north'
-    // Rotated north anchor: (120,100); push dir east; 4 + 6.6/2 = 7.3.
-    expectPt(n.labelPoint(n.labels[0]!), 127.3, 100, 'label north')
+    // Rotated north anchor: (120,100); push dir east; 4 + 8.004/2 = 8.002.
+    expectPt(n.labelPoint(n.labels[0]!), 128.002, 100, 'label north')
   })
 
   it('numeric label angles rotate with the node too', () => {
     const n = mk({ text: 'X', at: 270 }) // local 270° = north → east
-    expectPt(n.labelPoint(n.labels[0]!), 127.3, 100, 'label 270')
+    expectPt(n.labelPoint(n.labels[0]!), 128.002, 100, 'label 270')
   })
 
   it("label at 'south' lands on the visual west", () => {
     const n = mk({ text: 'X', at: 'south' })
-    // Rotated south anchor: (80,100); push dir west → 80 − 7.3.
-    expectPt(n.labelPoint(n.labels[0]!), 72.7, 100, 'label south')
+    // Rotated south anchor: (80,100); push dir west → 80 − 8.002.
+    expectPt(n.labelPoint(n.labels[0]!), 71.998, 100, 'label south')
   })
 
   it("label at 'center' stays at the center (rotation-invariant)", () => {
@@ -215,7 +218,7 @@ describe('labels on rotated nodes', () => {
       labels: [{ text: 'X' }],
     })
     // Local outer border north: (100,75) → rotated → (125,100); +7.3.
-    expectPt(n.labelPoint(n.labels[0]!), 132.3, 100, 'label outerSep')
+    expectPt(n.labelPoint(n.labels[0]!), 133.002, 100, 'label outerSep')
   })
 
   it('unrotated labels are unchanged', () => {

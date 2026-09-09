@@ -17,8 +17,17 @@ export {
 } from './utils/math'
 
 // Text measurement (canvas in browser, font-metrics table in Node)
-export { measureText } from './text/measureText'
-export type { TextMeasureOptions, TextMetrics } from './text/measureText'
+export {
+  measureText,
+  setTextMeasurementBackend,
+  getTextMeasurementBackend,
+  LINE_HEIGHT,
+} from './text/measureText'
+export type {
+  TextMeasureOptions,
+  TextMetrics,
+  TextMeasurementBackend,
+} from './text/measureText'
 export { placeText, estimateLabelSize } from './text/placeText'
 export type { TextPlacement } from './text/placeText'
 

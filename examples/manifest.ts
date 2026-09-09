@@ -275,7 +275,19 @@ const meta: DemoMeta[] = [
     id: "layout-layered",
     category: "diagram-layout",
     title: "Layered (DAG) layout",
-    description: "Sugiyama-style DAG layout: nodes may have several parents — declared by name — and each rank aligns into a column. Minimal slice: longest-path ranks, barycenter ordering, center coordinates.",
+    description: "Sugiyama-style DAG layout: nodes may have several parents — declared by name — and each rank aligns into a column. Full pipeline: network-simplex ranks and coordinates, weighted-median + transpose crossing minimization, dummy-routed long edges.",
+  },
+  {
+    id: "dependency-graph",
+    category: "diagram-layout",
+    title: "Dependency graph — build pipeline",
+    description: "A build pipeline as a DAG: multi-parent milestones (test, package) and a config→publish edge spanning four ranks, routed as a straight dummy chain by the network-simplex coordinate assignment.",
+  },
+  {
+    id: "class-hierarchy",
+    category: "diagram-layout",
+    title: "Class hierarchy with interfaces",
+    description: "Interfaces with multiple implementers — a DAG a tree layout cannot express. Weighted-median + transpose sweeps untangle the implements-edges; interfaces are dashed by name convention.",
   },
   {
     id: "katex-math",

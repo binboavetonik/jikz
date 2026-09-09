@@ -104,10 +104,228 @@ interface InternalTreeNode {
   node?: Node
   children: InternalTreeNode[]
   parent?: InternalTreeNode
-  subtreeWidth: number
   /** Half the node's extent along the growth axis (edge-to-edge advance). */
   primaryHalf: number
+  /** Half the node's extent across the growth axis (drives sibling separation). */
+  secondaryHalf: number
   level: number
+  /** 0-based position among its siblings. */
+  siblingIndex: number
+
+  // ── Contour-layout scratch (Buchheim et al. 2002) ──────────────────────
+  /** Preliminary cross-axis coordinate, relative to the parent. */
+  prelim: number
+  /** Offset applied to this node's whole subtree during the second walk. */
+  mod: number
+  /** Pending shift for this node and its right siblings. */
+  shift: number
+  /** Per-subtree share of a shift, accumulated right to left. */
+  change: number
+  /** Contour thread: the next contour node when this one has no children. */
+  thread?: InternalTreeNode
+  /** Greatest distinct ancestor used for shift attribution. */
+  ancestor?: InternalTreeNode
+  /** Absolute cross-axis coordinate, set by the second walk. */
+  cross: number
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Contour packing — Reingold–Tilford by way of Buchheim, Jünger & Leipert
+// 2002, "Improving Walker's Algorithm to Run in Linear Time".
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Place every node on the cross axis so sibling subtrees nest as tightly
+ * as their *contours* allow, then shift the tree so the root sits at
+ * `rootCross`.
+ *
+ * This replaced bounding-box packing, where each subtree reserved its
+ * widest level's width at every level. Two subtrees whose widest levels sit
+ * at different depths could then never interleave even though nothing
+ * actually collided; on random trees that wasted a mean of ~4 node widths
+ * per drawing (worst case ~13). Walking the facing contours lets them mesh.
+ *
+ * Linear time comes from two tricks: `thread` pointers stitch a subtree's
+ * contour into a traversable chain so each contour node is visited once,
+ * and `shift`/`change` accumulate the space a shifted subtree owes its
+ * smaller left siblings so `executeShifts` can settle them all in one
+ * right-to-left pass instead of moving each individually.
+ *
+ * Node sizes vary here, so {@link separation} is the two nodes' half-extents
+ * plus `siblingDistance` rather than the paper's constant.
+ */
+function contourLayout(
+  root: InternalTreeNode,
+  siblingDistance: number,
+  rootCross: number
+): void {
+  firstWalk(root, siblingDistance)
+  secondWalk(root, rootCross - root.prelim)
+}
+
+/** Center-to-center distance two same-level neighbors must keep. */
+function separation(
+  left: InternalTreeNode,
+  right: InternalTreeNode,
+  siblingDistance: number
+): number {
+  return left.secondaryHalf + siblingDistance + right.secondaryHalf
+}
+
+function leftSibling(v: InternalTreeNode): InternalTreeNode | undefined {
+  if (!v.parent || v.siblingIndex === 0) return undefined
+  return v.parent.children[v.siblingIndex - 1]
+}
+
+/** Next node along the left contour: first child, else the thread. */
+function nextLeft(v: InternalTreeNode): InternalTreeNode | undefined {
+  return v.children.length > 0 ? v.children[0] : v.thread
+}
+
+/** Next node along the right contour: last child, else the thread. */
+function nextRight(v: InternalTreeNode): InternalTreeNode | undefined {
+  return v.children.length > 0 ? v.children[v.children.length - 1] : v.thread
+}
+
+/**
+ * Assign preliminary coordinates bottom-up. A leaf goes just right of its
+ * left sibling; an interior node is centered over its outermost children,
+ * after `apportion` has pushed its subtree clear of everything to the left.
+ */
+function firstWalk(v: InternalTreeNode, siblingDistance: number): void {
+  if (v.children.length === 0) {
+    const w = leftSibling(v)
+    v.prelim = w ? w.prelim + separation(w, v, siblingDistance) : 0
+    return
+  }
+
+  let defaultAncestor = v.children[0]!
+  for (const child of v.children) {
+    firstWalk(child, siblingDistance)
+    defaultAncestor = apportion(child, defaultAncestor, siblingDistance)
+  }
+  executeShifts(v)
+
+  const first = v.children[0]!
+  const last = v.children[v.children.length - 1]!
+  const midpoint = (first.prelim + last.prelim) / 2
+
+  const w = leftSibling(v)
+  if (w) {
+    v.prelim = w.prelim + separation(w, v, siblingDistance)
+    v.mod = v.prelim - midpoint
+  } else {
+    v.prelim = midpoint
+  }
+}
+
+/**
+ * Walk the right contour of everything left of `v` against `v`'s left
+ * contour, and shift `v` right by the largest overlap found. Threads make
+ * each step O(1), so the whole pass is linear rather than the quadratic
+ * re-scan of the original Reingold–Tilford.
+ */
+function apportion(
+  v: InternalTreeNode,
+  defaultAncestor: InternalTreeNode,
+  siblingDistance: number
+): InternalTreeNode {
+  const w = leftSibling(v)
+  if (!w) return defaultAncestor
+
+  // Inside/outside contour cursors: `i` = inner, `o` = outer;
+  // `p` = v's side (plus), `m` = the left siblings' side (minus).
+  let vip = v
+  let vop = v
+  let vim = w
+  let vom = v.parent!.children[0]!
+  let sip = vip.mod
+  let sop = vop.mod
+  let sim = vim.mod
+  let som = vom.mod
+
+  while (nextRight(vim) && nextLeft(vip)) {
+    vim = nextRight(vim)!
+    vip = nextLeft(vip)!
+    vom = nextLeft(vom)!
+    vop = nextRight(vop)!
+    vop.ancestor = v
+
+    const shift = vim.prelim + sim - (vip.prelim + sip) + separation(vim, vip, siblingDistance)
+    if (shift > 0) {
+      moveSubtree(resolveAncestor(vim, v, defaultAncestor), v, shift)
+      sip += shift
+      sop += shift
+    }
+
+    sim += vim.mod
+    sip += vip.mod
+    som += vom.mod
+    sop += vop.mod
+  }
+
+  // Thread the shorter contour onto the longer one so later siblings can
+  // keep walking past the end of this subtree.
+  if (nextRight(vim) && !nextRight(vop)) {
+    vop.thread = nextRight(vim)
+    vop.mod += sim - sop
+  }
+  if (nextLeft(vip) && !nextLeft(vom)) {
+    vom.thread = nextLeft(vip)
+    vom.mod += sip - som
+    defaultAncestor = v
+  }
+
+  return defaultAncestor
+}
+
+/**
+ * `wm` and `wp` are siblings; move `wp`'s subtree right by `shift` and
+ * record the share owed to each sibling between them, for
+ * {@link executeShifts} to distribute.
+ */
+function moveSubtree(wm: InternalTreeNode, wp: InternalTreeNode, shift: number): void {
+  const subtrees = wp.siblingIndex - wm.siblingIndex
+  if (subtrees === 0) return
+  wp.change -= shift / subtrees
+  wp.shift += shift
+  wm.change += shift / subtrees
+  wp.prelim += shift
+  wp.mod += shift
+}
+
+/** Settle the shifts `moveSubtree` recorded, right to left, in one pass. */
+function executeShifts(v: InternalTreeNode): void {
+  let shift = 0
+  let change = 0
+  for (let i = v.children.length - 1; i >= 0; i--) {
+    const w = v.children[i]!
+    w.prelim += shift
+    w.mod += shift
+    change += w.change
+    shift += w.shift + change
+  }
+}
+
+/**
+ * The sibling of `v` whose subtree `vim` belongs to, when that is known;
+ * otherwise the leftmost sibling touched so far.
+ */
+function resolveAncestor(
+  vim: InternalTreeNode,
+  v: InternalTreeNode,
+  defaultAncestor: InternalTreeNode
+): InternalTreeNode {
+  const candidate = vim.ancestor
+  return candidate && candidate.parent === v.parent ? candidate : defaultAncestor
+}
+
+/** Turn preliminary coordinates into absolute ones, accumulating modifiers. */
+function secondWalk(v: InternalTreeNode, m: number): void {
+  v.cross = v.prelim + m
+  for (const child of v.children) {
+    secondWalk(child, m + v.mod)
+  }
 }
 
 /**
@@ -322,8 +540,14 @@ class TreeBuilderImpl implements TreeBuilder {
     // Build internal tree structure
     const internalRoot = this.buildInternalTree(rootSpec, 0)
 
-    // Calculate subtree widths (post-order)
-    this.calculateSubtreeWidths(internalRoot)
+    // Measure both axes (post-order), then place on the cross axis with
+    // contour packing.
+    this.measureTree(internalRoot)
+    contourLayout(
+      internalRoot,
+      this._options.siblingDistance!,
+      secondaryOf(point(this._options.at!.x, this._options.at!.y), this._options.grow!)
+    )
 
     // Rank alignment: compute the shared column per level before
     // positioning — nodes' primary coordinate then comes from the column,
@@ -390,47 +614,47 @@ class TreeBuilderImpl implements TreeBuilder {
   private buildInternalTree(
     spec: TreeNodeSpec,
     level: number,
-    parent?: InternalTreeNode
+    parent?: InternalTreeNode,
+    siblingIndex = 0
   ): InternalTreeNode {
     const internal: InternalTreeNode = {
       spec,
       children: [],
       parent,
-      subtreeWidth: 0,
       primaryHalf: 0,
+      secondaryHalf: 0,
       level,
+      siblingIndex,
+      prelim: 0,
+      mod: 0,
+      shift: 0,
+      change: 0,
+      cross: 0,
     }
+    // The paper's `v.ancestor` defaults to v itself.
+    internal.ancestor = internal
 
     if (spec.children) {
-      for (const childSpec of spec.children) {
-        internal.children.push(this.buildInternalTree(childSpec, level + 1, internal))
-      }
+      spec.children.forEach((childSpec, i) => {
+        internal.children.push(this.buildInternalTree(childSpec, level + 1, internal, i))
+      })
     }
 
     return internal
   }
 
-  private calculateSubtreeWidths(node: InternalTreeNode): void {
+  /**
+   * Measure every node's half-extent on both axes (post-order).
+   * `primaryHalf` drives the edge-to-edge advance to children;
+   * `secondaryHalf` is what the contour pass separates siblings by.
+   */
+  private measureTree(node: InternalTreeNode): void {
     const tempNode = measureNode(node.spec.content, this._options.nodeOptions)
-
-    // Extents: perpendicular drives sibling spacing; primary drives the
-    // edge-to-edge advance to children.
-    const nodeWidth = perpendicularExtent(tempNode, this._options.grow!)
     node.primaryHalf = primaryExtent(tempNode, this._options.grow!) / 2
+    node.secondaryHalf = perpendicularExtent(tempNode, this._options.grow!) / 2
 
-    if (node.children.length === 0) {
-      node.subtreeWidth = nodeWidth
-    } else {
-      // Calculate children's subtree widths first (post-order)
-      for (const child of node.children) {
-        this.calculateSubtreeWidths(child)
-      }
-
-      // Sum of children's widths + gaps
-      const childrenWidth = node.children.reduce((sum, c) => sum + c.subtreeWidth, 0)
-      const gaps = (node.children.length - 1) * this._options.siblingDistance!
-
-      node.subtreeWidth = Math.max(nodeWidth, childrenWidth + gaps)
+    for (const child of node.children) {
+      this.measureTree(child)
     }
   }
 
@@ -439,25 +663,9 @@ class TreeBuilderImpl implements TreeBuilder {
     const nodeOpts = contentToNodeOptions(node.spec.content, this._options.nodeOptions)
     node.node = new Node({ ...nodeOpts, at: position })
 
-    if (node.children.length === 0) {
-      return
-    }
-
-    // Calculate total width of children
-    const totalChildWidth =
-      node.children.reduce((sum, c) => sum + c.subtreeWidth, 0) +
-      (node.children.length - 1) * this._options.siblingDistance!
-
-    // Starting position for first child
-    let childOffset = -totalChildWidth / 2
-
     for (const child of node.children) {
-      const childCenter = childOffset + child.subtreeWidth / 2
-      const childPos = this.calculateChildPosition(position, node, child, childCenter)
-
+      const childPos = this.calculateChildPosition(position, node, child)
       this.positionNodes(child, childPos)
-
-      childOffset += child.subtreeWidth + this._options.siblingDistance!
     }
   }
 
@@ -465,9 +673,9 @@ class TreeBuilderImpl implements TreeBuilder {
     parentPos: Point,
     parent: InternalTreeNode,
     child: InternalTreeNode,
-    perpOffset: number,
   ): Point {
-    const secondary = secondaryOf(parentPos, this._options.grow!) + perpOffset
+    // Cross-axis coordinate is absolute, decided by the contour pass.
+    const secondary = child.cross
 
     let primary: number
     if (this.rankColumns) {

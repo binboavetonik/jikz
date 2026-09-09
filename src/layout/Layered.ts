@@ -9,8 +9,11 @@ import {
   primaryExtent,
   primaryOf,
   primarySign,
+  secondaryOf,
 } from './shared'
-import { networkSimplexRanks } from './networkSimplex'
+import { NetworkSimplex, networkSimplexRanks, type SimplexEdge, type SimplexVertex } from './networkSimplex'
+import { minimizeCrossings } from './ordering'
+import { assignCoordinatesBK } from './brandesKoepf'
 
 /**
  * Options for the layered (Sugiyama) layout.
@@ -50,6 +53,34 @@ export interface LayeredOptions {
    * Whether to create edges (default: true).
    */
   drawEdges?: boolean
+
+  /**
+   * Which algorithm assigns coordinates on the secondary (cross) axis —
+   * the axis perpendicular to `grow`. Ranking and crossing minimization
+   * are unaffected, so both settings produce the same ranks and the same
+   * left-to-right order; only the spacing within each rank differs.
+   *
+   * - `'gansner'` (default) — network simplex on the Gansner et al. 1993
+   *   auxiliary graph, the same choice TikZ's
+   *   `NodePositioningGansnerKNV1993` makes. Optimal for its objective,
+   *   so drawings come out maximally balanced and symmetric. Cost grows
+   *   superlinearly: the auxiliary graph has |V|+|E| vertices and the
+   *   simplex does full work per pivot, which dominates `build()` past a
+   *   few hundred nodes.
+   * - `'brandes-koepf'` — Brandes & Köpf 2002, a linear-time heuristic
+   *   (four extreme alignments, median-averaged). Keeps long edges
+   *   straight and is dramatically faster on large graphs; spacing is
+   *   slightly less symmetric than `'gansner'`.
+   *
+   * Rule of thumb: keep the default for hand-authored diagrams, switch to
+   * `'brandes-koepf'` for generated graphs of more than ~200 nodes.
+   *
+   * @example
+   * ```typescript
+   * layered({ grow: 'down', coordinates: 'brandes-koepf' })
+   * ```
+   */
+  coordinates?: 'gansner' | 'brandes-koepf'
 }
 
 /**
@@ -166,6 +197,7 @@ class LayeredBuilderImpl implements LayeredBuilder {
   private _edges: InternalEdge[] = []
   private _dummies: InternalVertex[] = []
   private _dummyCounter = 0
+  private _unitEdges: InternalEdge[] = []
   private _ranks: Map<number, InternalVertex[]> = new Map()
   private _maxRank = 0
 
@@ -176,6 +208,7 @@ class LayeredBuilderImpl implements LayeredBuilder {
       rankSep: DEFAULT_RANK_SEP,
       nodeSep: DEFAULT_NODE_SEP,
       drawEdges: true,
+      coordinates: 'gansner',
       ...options,
     }
   }
@@ -228,6 +261,7 @@ class LayeredBuilderImpl implements LayeredBuilder {
   build(): LayeredResult {
     this._dummies = []
     this._dummyCounter = 0
+    this._unitEdges = []
     const declaredEdges = this._edges
 
     if (this._vertices.size === 0) {
@@ -240,7 +274,7 @@ class LayeredBuilderImpl implements LayeredBuilder {
     networkSimplexRanks(Array.from(this._vertices.values()), this._edges)
     this.insertDummies()
     this.buildRankArrays()
-    this.orderRanks()
+    minimizeCrossings(this.rankList())
     this.assignSecondary()
     const columns = this.assignPrimary()
 
@@ -410,7 +444,10 @@ class LayeredBuilderImpl implements LayeredBuilder {
   private insertDummies(): void {
     for (const e of this._edges) {
       const dist = e.to.rank - e.from.rank
-      if (dist <= 1) continue
+      if (dist <= 1) {
+        this._unitEdges.push(e)
+        continue
+      }
 
       // Unwire the original edge.
       e.from.outEdges = e.from.outEdges.filter((x) => x !== e)
@@ -435,12 +472,14 @@ class LayeredBuilderImpl implements LayeredBuilder {
         const sub: InternalEdge = { from: prev, to: dummy, minLength: 1, weight: e.weight }
         prev.outEdges.push(sub)
         dummy.inEdges.push(sub)
+        this._unitEdges.push(sub)
         prev = dummy
       }
 
       const lastSub: InternalEdge = { from: prev, to: e.to, minLength: 1, weight: e.weight }
       prev.outEdges.push(lastSub)
       e.to.inEdges.push(lastSub)
+      this._unitEdges.push(lastSub)
 
       e.dummies = dummies
     }
@@ -456,79 +495,101 @@ class LayeredBuilderImpl implements LayeredBuilder {
     }
   }
 
-  private orderRanks(): void {
-    const orderIndex = (v: InternalVertex): number => {
-      return this._ranks.get(v.rank)!.indexOf(v)
-    }
-
-    // Down pass: order each rank by its parents' positions.
-    for (let r = 1; r <= this._maxRank; r++) {
-      const rank = this._ranks.get(r)!
-      const desired = new Map<InternalVertex, number>()
-      for (const v of rank) {
-        desired.set(v, this.barycenter(v.inEdges, 'from', orderIndex))
-      }
-      rank.sort((a, b) => desired.get(a)! - desired.get(b)!)
-    }
-
-    // Up pass: order each rank by its children's positions.
-    for (let r = this._maxRank - 1; r >= 0; r--) {
-      const rank = this._ranks.get(r)!
-      const desired = new Map<InternalVertex, number>()
-      for (const v of rank) {
-        desired.set(v, this.barycenter(v.outEdges, 'to', orderIndex))
-      }
-      rank.sort((a, b) => desired.get(a)! - desired.get(b)!)
-    }
-  }
-
-  private barycenter(
-    edges: InternalEdge[],
-    side: 'from' | 'to',
-    orderIndex: (v: InternalVertex) => number,
-  ): number {
-    if (edges.length === 0) return 0
-    let sum = 0
-    for (const e of edges) {
-      sum += orderIndex(side === 'from' ? e.from : e.to)
-    }
-    return sum / edges.length
-  }
-
-  private assignSecondary(): void {
+  /** Ranks 0..maxRank as an ordered array of vertex arrays. */
+  private rankList(): InternalVertex[][] {
+    const list: InternalVertex[][] = []
     for (let r = 0; r <= this._maxRank; r++) {
-      const rank = this._ranks.get(r)!
+      list.push(this._ranks.get(r) ?? [])
+    }
+    return list
+  }
 
-      const desired = new Map<InternalVertex, number>()
-      for (const v of rank) {
-        if (v.inEdges.length === 0) {
-          desired.set(v, 0)
-        } else {
-          let sum = 0
-          for (const e of v.inEdges) sum += e.from.secondary
-          desired.set(v, sum / v.inEdges.length)
-        }
+  /**
+   * Secondary-axis coordinate assignment. Dispatches to the configured
+   * algorithm, then applies the normalization both share: the minimum
+   * near-edge box coordinate lands on the secondary component of `at`.
+   */
+  private assignSecondary(): void {
+    const vertices = [...this._vertices.values(), ...this._dummies]
+    const grow = this._options.grow!
+
+    if (this._options.coordinates === 'brandes-koepf') {
+      assignCoordinatesBK(this.rankList(), this._options.nodeSep!)
+    } else {
+      this.assignSecondaryGansner(vertices)
+    }
+
+    let min = Infinity
+    for (const v of vertices) {
+      min = Math.min(min, v.secondary - v.secondaryHalf)
+    }
+    const shift = secondaryOf(this._options.at!, grow) - min
+    for (const v of vertices) {
+      v.secondary += shift
+    }
+  }
+
+  /**
+   * Gansner et al. 1993 §5 (TikZ `NodePositioningGansnerKNV1993`): build
+   * an auxiliary graph — one vertex per node/dummy, one "edge node" per
+   * unit edge, plus weight-0 separator edges between rank neighbors —
+   * and run the network simplex with `balanceLeftRight` for balanced,
+   * symmetric coordinates. Multi-rank dummy chains get pulled straight
+   * by the omega weights (8/2/1).
+   */
+  private assignSecondaryGansner(vertices: InternalVertex[]): void {
+    const auxOf = new Map<InternalVertex, SimplexVertex>()
+    const auxVertices: SimplexVertex[] = []
+    for (const v of vertices) {
+      const av: SimplexVertex = { rank: 0 }
+      auxOf.set(v, av)
+      auxVertices.push(av)
+    }
+
+    const auxEdges: SimplexEdge[] = []
+
+    // Edge-node edges: the edge node is pulled toward both endpoints
+    // with weight = edge weight × omega.
+    for (const e of this._unitEdges) {
+      const en: SimplexVertex = { rank: 0 }
+      auxVertices.push(en)
+      const w = e.weight * omega(e)
+      auxEdges.push({ from: en, to: auxOf.get(e.from)!, minLength: 0, weight: w })
+      auxEdges.push({ from: en, to: auxOf.get(e.to)!, minLength: 0, weight: w })
+    }
+
+    // Separator edges between rank neighbors: edge-to-edge gap (Phase A
+    // semantics), weight 0.
+    const nodeSep = this._options.nodeSep!
+    for (const rank of this.rankList()) {
+      for (let i = 0; i + 1 < rank.length; i++) {
+        const v = rank[i]!
+        const w = rank[i + 1]!
+        auxEdges.push({
+          from: auxOf.get(v)!,
+          to: auxOf.get(w)!,
+          minLength: v.secondaryHalf + nodeSep + w.secondaryHalf,
+          weight: 0,
+        })
       }
+    }
 
-      // Sort by desired (stable), then sweep to resolve overlaps.
-      rank.sort((a, b) => desired.get(a)! - desired.get(b)!)
+    // Zero-weight virtual root (minLength 0) so disconnected auxiliary
+    // graphs still form one component for the simplex.
+    const root: SimplexVertex = { rank: 0 }
+    const rootEdges: SimplexEdge[] = auxVertices.map((v) => ({
+      from: root,
+      to: v,
+      minLength: 0,
+      weight: 0,
+    }))
 
-      let prevFar = -Infinity
-      for (const v of rank) {
-        const minCenter = prevFar + this._options.nodeSep! + v.secondaryHalf
-        v.secondary = Math.max(desired.get(v)!, minCenter)
-        prevFar = v.secondary + v.secondaryHalf
-      }
+    const simplex = new NetworkSimplex([root, ...auxVertices], [...rootEdges, ...auxEdges])
+    simplex.run()
+    simplex.balanceLeftRight()
 
-      // Center the rank on the mean of its desired positions.
-      const first = rank[0]!.secondary
-      const last = rank[rank.length - 1]!.secondary
-      const rankCenter = (first + last) / 2
-      let desiredSum = 0
-      for (const v of rank) desiredSum += desired.get(v)!
-      const desiredCenter = desiredSum / rank.length
-      const shift = desiredCenter - rankCenter
-      for (const v of rank) v.secondary += shift
+    for (const v of vertices) {
+      v.secondary = auxOf.get(v)!.rank
     }
   }
 
@@ -575,14 +636,26 @@ class LayeredBuilderImpl implements LayeredBuilder {
   }
 }
 
+/** TikZ `getOmega`: dummy-heavy edges pull harder on their endpoints,
+ * which straightens multi-rank dummy chains. */
+function omega(e: InternalEdge): number {
+  const fromDummy = e.from.kind === 'dummy'
+  const toDummy = e.to.kind === 'dummy'
+  if (fromDummy && toDummy) return 8
+  if (fromDummy || toDummy) return 2
+  return 1
+}
+
 /**
  * Create a layered (Sugiyama) layout builder for directed graphs / DAGs.
  *
  * Unlike `tree()`, a node may have any number of parents — edges are
- * declared by name. The current slice: DFS cycle removal, network-simplex
- * rank assignment (Gansner et al. 1993 + TikZ balance), dummy nodes for
- * multi-rank edges, barycenter ordering, and center coordinate assignment.
- * (Network-simplex coordinate assignment is the remaining full-slice work.)
+ * declared by name. The full Sugiyama pipeline: DFS cycle removal,
+ * network-simplex rank assignment (Gansner et al. 1993 + TikZ balance),
+ * dummy nodes for multi-rank edges, weighted-median + transpose crossing
+ * minimization, and network-simplex secondary-axis coordinate assignment
+ * (auxiliary graph + left/right balance) for balanced, symmetric
+ * drawings with straight long-edge routing.
  *
  * @example
  * ```typescript

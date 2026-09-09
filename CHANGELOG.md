@@ -2,8 +2,87 @@
 
 ## Unreleased
 
+### Changed
+
+- **Text measurement is deterministic across environments.** `measureText`
+  used canvas in the browser and a table in Node, so a picture rendered
+  server-side and re-rendered on the client measured differently and the
+  diagram reflowed on hydration — auto-sized nodes, label placement and
+  `{ fit: true }` viewBoxes all depend on it. The default backend is now
+  a built-in per-character width table used identically in Node, workers
+  and the browser.
+
+  Accuracy improved substantially as a side effect. The old model charged
+  every character the same 0.55 em, which over a sample of realistic
+  labels was off by a mean of 42% and up to 148% (`"i"` measured 148% too
+  wide, `"W"` 42% too narrow, `"CEO"` 24% too narrow — that last kind
+  overflowed its own box). Widths now come from the Adobe core-14 AFM
+  metrics: exact for Helvetica, Arial and Liberation Sans, for Times New
+  Roman and Nimbus Roman, and for Courier clones. Bold widens
+  proportional faces by 5%; full-width forms (CJK, kana, Hangul) advance
+  a whole em instead of 0.55.
+
+  Browser-only projects using a webfont with different metrics can opt
+  back in with `setTextMeasurementBackend('canvas')`, at the cost of the
+  SSR agreement. 29 example snapshots moved; auto-sized boxes now contain
+  their text in cases where they previously clipped it.
+
+- **`tree()` packs siblings by contour instead of bounding box.**
+  Reingold–Tilford, via Buchheim et al. 2002's linear-time formulation,
+  generalized for variable node sizes. Previously each subtree reserved
+  its widest level's width at *every* level, so two subtrees whose widest
+  levels sat at different depths could never interleave even when nothing
+  collided — on random trees 74% of drawings carried reclaimable space,
+  a mean of ~4 node widths (worst case ~13). Now they mesh: drawings are
+  15–20% narrower, with `siblingDistance` still honored exactly and no
+  overlaps.
+
+  Two visible changes: layouts are tighter, and a parent now sits midway
+  between its outermost children's *centers* (so its edges are
+  symmetric) rather than at the center of their combined span. Three
+  example snapshots moved accordingly.
+
+- **Network simplex micro-optimizations.** Queue traversals use a head
+  index instead of `Array.shift()`, and `balanceRanks` keeps one rank
+  histogram instead of rebuilding it per vertex (O(V²) → O(V)). Layout
+  output is unchanged; `layered()` builds are ~10% faster at a few
+  hundred nodes. The dominant cost remains the per-pivot low/lim and
+  cut-value recomputation — see `coordinates: 'brandes-koepf'` to avoid
+  it entirely.
+
+### Fixed
+
+- **`layered()` no longer hangs on some node sizes.** The network
+  simplex tested edge tightness with `slack === 0`. Ranks are integers
+  when it assigns ranks, but the coordinate pass feeds it separator
+  edges whose length is `halfWidth + nodeSep + halfWidth` — measured text
+  extents, so arbitrary reals. A slack of 7.1e-15 then made
+  `feasibleTree` spin forever: `tightTree` refused to absorb the edge,
+  `findMinSlackEdge` handed the same edge back, and shifting the tree by
+  7.1e-15 changed nothing. Tightness and cut-value sign now carry a 1e-9
+  tolerance. Latent since the coordinate pass landed; reachable with any
+  font size or node text whose measurement happens to leave that residue.
+
+- **KaTeX labels no longer wrap mid-formula in the browser.** KaTeX
+  emits multiple `.base` spans (e.g. for `$A \cap B$`) and its CSS only
+  applies `white-space: nowrap` per `.base`; the foreignObject's inner
+  div now sets `white-space: nowrap` itself, so a box measured before
+  KaTeX's web fonts load overflows symmetrically around the anchor
+  point instead of wrapping the second base onto its own line.
+
 ### Added
 
+- **`layered({ coordinates: 'brandes-koepf' })`.** A linear-time
+  alternative to the default Gansner auxiliary-graph network simplex for
+  cross-axis coordinate assignment (Brandes & Köpf 2002). Ranks and
+  left-to-right order are unchanged — only the spacing within each rank
+  differs. Long edges stay perfectly straight; spacing is slightly less
+  symmetric than `'gansner'`, which remains the default because it is
+  prettier and fast enough for hand-authored diagrams. On a chain-like
+  DAG the difference is 284 ms → 5 ms at 200 nodes and 12.9 s → 18 ms at
+  1,000; 4,000 nodes lay out in 68 ms where the default is impractical.
+  The block compaction is iterative rather than the paper's recursion, so
+  deep dummy chains cannot overflow the stack.
 - **`tree({ align: 'rank' })`.** Align every depth level to one column
   (center-aligned tiers) for org-chart/pipeline trees; the inter-level
   gap is `levelDistance` between the two levels' widest nodes. Default
@@ -12,12 +91,27 @@
   by name; multi-parent support; DFS cycle removal (back-edges reversed,
   original direction restored at render), network-simplex rank assignment
   (Gansner et al. 1993 + TikZ's balance pass), dummy nodes for multi-rank
-  edges, barycenter ordering, center coordinates. `rankSep` / `nodeSep`
-  are edge-to-edge gaps.
+  edges. `rankSep` / `nodeSep` are edge-to-edge gaps.
+- **`layered()` crossing minimization.** Weighted-median + transpose
+  sweeps (TikZ `CrossingMinimizationGansnerKNV1993`) with a weighted
+  bilayer cross count (Barth et al., via dagre) and an early-stop
+  keep-best loop. `LayeredEdgeSpec.weight` now genuinely biases the
+  kept order.
+- **`layered()` network-simplex coordinate assignment.** The secondary
+  axis is computed by network simplex on an auxiliary graph (Gansner et
+  al. 1993 §5: edge nodes weighted 8/2/1 by dummy-ness, weight-0
+  separator edges) plus TikZ's left/right balance pass — balanced,
+  symmetric drawings with straight multi-rank dummy chains. The
+  secondary component of `at` now anchors the first box edge.
 - **`Edge` bend points.** `EdgeOptions.bendPoints` renders a polyline
   path through intermediate points (TikZ `bend_points`), with `'auto'`
   endpoints aiming at the first/last point; used by `layered()` for
   multi-rank edges.
+- **Examples: earth-orbit and euler-line use border-aware node
+  labels.** Markers are now small circle nodes with `labels:` entries
+  (measured, `distance`-gapped), so label text can no longer overlap
+  the marker discs. The earth-orbit sun disc no longer overlaps the
+  perihelion Earth dot (smaller radii).
 
 ### Changed
 

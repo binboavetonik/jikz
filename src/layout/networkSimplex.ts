@@ -25,7 +25,23 @@ function slack(e: SimplexEdge): number {
   return e.to.rank - e.from.rank - e.minLength
 }
 
-class NetworkSimplex {
+/**
+ * Tolerance for "this edge is tight" and "this cut value is negative".
+ *
+ * Ranks are integers only when the simplex is assigning *ranks*. The
+ * coordinate pass (`Layered.assignSecondaryGansner`) feeds it separator
+ * edges whose `minLength` is `halfWidth + nodeSep + halfWidth` — measured
+ * text extents, so arbitrary reals. Exact `=== 0` tests then fail on
+ * values like 7.1e-15, and `feasibleTree` spins forever: `tightTree`
+ * refuses to absorb an edge it considers slack, `findMinSlackEdge` hands
+ * that same edge back, and shifting the tree by 7.1e-15 changes nothing.
+ *
+ * 1e-9 is far below any distance that matters in a drawing (a nanometre
+ * of a pixel) and far above the residue float arithmetic leaves behind.
+ */
+const SLACK_EPSILON = 1e-9
+
+export class NetworkSimplex {
   private vertices: SimplexVertex[]
   private edges: SimplexEdge[]
   private outEdges = new Map<SimplexVertex, SimplexEdge[]>()
@@ -67,8 +83,62 @@ class NetworkSimplex {
     let leave = this.findLeaveEdge()
     while (leave) {
       const enter = this.findEnterEdge(leave)
+      if (!enter) {
+        throw new Error('network simplex: no replacement edge found (infeasible)')
+      }
       this.exchangeEdges(leave, enter)
       leave = this.findLeaveEdge()
+    }
+  }
+
+  /**
+   * TikZ `balanceRanksLeftRight` (Gansner et al. 1993 §5.2): after the
+   * optimum is reached, tree edges whose cut value is zero carry slack
+   * that can be distributed to either side without changing the
+   * objective. Shift such components by half the replacement edge's
+   * slack so drawings come out balanced/symmetric instead of tight to
+   * one side. Call after `run()`, while the tree state is alive.
+   *
+   * Used for coordinate assignment (secondary axis); rank assignment
+   * uses the top/bottom balance in `networkSimplexRanks` instead.
+   */
+  balanceLeftRight(): void {
+    for (const edge of [...this.treeEdgeList]) {
+      if (Math.abs(this.cutValues.get(edge) ?? 0) > SLACK_EPSILON) continue
+      const enter = this.findEnterEdge(edge)
+      if (!enter) continue
+      const delta = slack(enter)
+      if (delta > 1) {
+        // TikZ rerank(node, d) does rank -= d on the node's component.
+        if (this.lim.get(edge.from)! < this.lim.get(edge.to)!) {
+          this.shiftComponent(edge, edge.from, -delta / 2)
+        } else {
+          this.shiftComponent(edge, edge.to, delta / 2)
+        }
+      }
+    }
+  }
+
+  /**
+   * Shift every vertex in `from`'s tree component (the tree cut at
+   * `edge`) by `delta`. Equivalent to TikZ's `rerank`.
+   */
+  private shiftComponent(edge: SimplexEdge, from: SimplexVertex, delta: number): void {
+    const visited = new Set<SimplexVertex>([from])
+    // BFS over a growing array with a head index rather than
+    // `queue.shift()`. V8 left-trims fast-element arrays, so shift() is
+    // amortized O(1) in practice and this is a modest constant-factor
+    // win — but it is O(1) by construction rather than by grace of a VM
+    // optimization that stops applying once the array leaves fast mode.
+    const queue: SimplexVertex[] = [from]
+    for (let head = 0; head < queue.length; head++) {
+      const v = queue[head]!
+      v.rank += delta
+      for (const { node: w, edge: treeEdge } of this.treeAdj.get(v) ?? []) {
+        if (treeEdge === edge || visited.has(w)) continue
+        visited.add(w)
+        queue.push(w)
+      }
     }
   }
 
@@ -86,9 +156,10 @@ class NetworkSimplex {
       if (indegree.get(v) === 0) queue.push(v)
     }
 
+    // Head index instead of `queue.shift()` — see shiftComponent.
     let processed = 0
-    while (queue.length > 0) {
-      const v = queue.shift()!
+    for (let head = 0; head < queue.length; head++) {
+      const v = queue[head]!
       processed++
       for (const e of this.outEdges.get(v)!) {
         e.to.rank = Math.max(e.to.rank, v.rank + e.minLength)
@@ -124,7 +195,7 @@ class NetworkSimplex {
     const dfs = (v: SimplexVertex): void => {
       for (const { edge, isOut } of this.incident.get(v) ?? []) {
         const w = isOut ? edge.to : edge.from
-        if (!this.treeNodes.has(w) && slack(edge) === 0) {
+        if (!this.treeNodes.has(w) && Math.abs(slack(edge)) <= SLACK_EPSILON) {
           this.treeNodes.add(w)
           this.addTreeEdge(v, w, edge)
           dfs(w)
@@ -265,12 +336,14 @@ class NetworkSimplex {
 
   private findLeaveEdge(): SimplexEdge | undefined {
     for (const e of this.treeEdgeList) {
-      if ((this.cutValues.get(e) ?? 0) < 0) return e
+      // Strictly negative beyond tolerance — pivoting on numerical noise
+      // would flip the same pair of edges forever without improving.
+      if ((this.cutValues.get(e) ?? 0) < -SLACK_EPSILON) return e
     }
     return undefined
   }
 
-  private findEnterEdge(leave: SimplexEdge): SimplexEdge {
+  private findEnterEdge(leave: SimplexEdge): SimplexEdge | undefined {
     const v = leave.from
     const w = leave.to
 
@@ -294,7 +367,7 @@ class NetworkSimplex {
         }
       }
     }
-    return best!
+    return best
   }
 
   private exchangeEdges(leave: SimplexEdge, enter: SimplexEdge): void {
@@ -307,11 +380,15 @@ class NetworkSimplex {
 
   private updateRanks(): void {
     const root = this.vertices[0]!
+    // Head index instead of `queue.shift()` — see shiftComponent. This
+    // runs once per simplex pivot, so it is the hottest of the three.
+    // (The pivot loop's real cost is the full low/lim + cut-value
+    // recomputation in exchangeEdges, not the traversal itself.)
     const queue: SimplexVertex[] = [root]
     const visited = new Set<SimplexVertex>()
 
-    while (queue.length > 0) {
-      const v = queue.shift()!
+    for (let head = 0; head < queue.length; head++) {
+      const v = queue[head]!
       visited.add(v)
       for (const { node: w, edge } of this.treeAdj.get(v) ?? []) {
         if (visited.has(w)) continue
@@ -379,6 +456,15 @@ function balanceRanks(vertices: SimplexVertex[], edges: SimplexEdge[]): void {
     outEdges.get(e.from)!.push(e)
   }
 
+  // Rank histogram, built once and patched whenever a vertex moves.
+  // Rebuilding it inside the loop (once per balanced vertex) made this
+  // pass O(V²); the incremental form sees identical counts, because the
+  // only thing that changes a rank here is this loop itself. Cheap
+  // either way in profiles — balanceRanks is well under 1% of a
+  // `layered()` build — but O(V) beats O(V²) for free.
+  const counts = new Map<number, number>()
+  for (const x of vertices) counts.set(x.rank, (counts.get(x.rank) ?? 0) + 1)
+
   for (const v of vertices) {
     let iw = 0
     let ow = 0
@@ -394,14 +480,15 @@ function balanceRanks(vertices: SimplexVertex[], edges: SimplexEdge[]): void {
     }
 
     if (iw === ow) {
-      const counts = new Map<number, number>()
-      for (const x of vertices) counts.set(x.rank, (counts.get(x.rank) ?? 0) + 1)
-
       let best = minRank.get(v)!
       for (let r = best + 1; r <= maxRank.get(v)!; r++) {
         if ((counts.get(r) ?? 0) < (counts.get(best) ?? 0)) best = r
       }
-      if (best !== v.rank) v.rank = best
+      if (best !== v.rank) {
+        counts.set(v.rank, counts.get(v.rank)! - 1)
+        counts.set(best, (counts.get(best) ?? 0) + 1)
+        v.rank = best
+      }
     }
   }
 }

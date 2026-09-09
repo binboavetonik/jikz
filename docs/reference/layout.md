@@ -53,8 +53,16 @@ edge-to-edge gaps:
 
 - `levelDistance` — whitespace between a node's far edge and its
   children's near edges along the growth axis.
-- `siblingDistance` — whitespace between sibling subtree bounding boxes
-  along the perpendicular axis.
+- `siblingDistance` — minimum whitespace between any two nodes at the
+  same depth, along the perpendicular axis.
+
+Sibling subtrees are packed by **contour**, not by bounding box
+(Reingold–Tilford, via Buchheim et al. 2002's linear-time formulation).
+Two subtrees are pushed apart only at the depths where they actually
+collide, so a leaf can tuck in beside a sibling whose subtree is wide
+only further down. Drawings come out 15–20% narrower than bounding-box
+packing on random trees, and a parent sits exactly midway between its
+outermost children, so its edges are symmetric.
 
 `align: 'rank'` (default `'parent'`) lines every depth level up into one
 column: the inter-level gap is `levelDistance` between the two levels'
@@ -92,12 +100,60 @@ layered({ at: point(40, 40), grow: 'down', rankSep, nodeSep })
 ```
 
 Sugiyama-style DAG layout. Nodes are declared by name and edges by name
-pair; a node may have any number of parents. Ranks are assigned by
-network simplex (Gansner et al. 1993). `rankSep` / `nodeSep` are
-edge-to-edge gaps (the same rule as `tree`). Cycles are broken by
-reversing back-edges (original direction restored at render), and
-multi-rank edges route through dummy bend points. Demo:
-[`examples/layout-layered.ts`](../../examples/layout-layered.ts).
+pair; a node may have any number of parents. `rankSep` / `nodeSep` are
+edge-to-edge gaps (the same rule as `tree`). The full pipeline:
+
+1. **Cycle removal** — DFS back-edges are reversed for layout; the
+   original direction is restored at render.
+2. **Rank assignment** — network simplex (Gansner et al. 1993) with
+   TikZ's top/bottom balance pass; `edge(a, b, { minLength: n })`
+   stretches an edge across `n` ranks.
+3. **Dummy nodes** — edges spanning several ranks are split into dummy
+   chains, collapsed into `Edge.bendPoints` at render.
+4. **Crossing minimization** — weighted-median + transpose sweeps
+   (TikZ's GansnerKNV1993) with a weighted bilayer cross count
+   (Barth et al., via dagre); `edge(a, b, { weight: w })` makes an edge
+   count heavier in the keep-best comparison.
+5. **Coordinate assignment** — selectable via `coordinates`, see below.
+
+### `coordinates` — cross-axis placement
+
+Step 5 decides where nodes sit *within* a rank. Ranks and left-to-right
+order are identical either way; only the spacing differs.
+
+| | `'gansner'` (default) | `'brandes-koepf'` |
+|---|---|---|
+| Method | network simplex on an auxiliary graph (edge nodes weighted 8/2/1 by dummy-ness) + left/right balance | four extreme alignments (upper/lower × left/right), median-averaged |
+| Source | Gansner et al. 1993 §5, as in TikZ's `NodePositioningGansnerKNV1993` | Brandes & Köpf 2002 |
+| Result | optimal for its objective — the most balanced, symmetric drawings | heuristic; long edges still straight, spacing slightly less symmetric |
+| Cost | superlinear — the auxiliary graph has \|V\|+\|E\| vertices and the simplex does full work per pivot | linear in V+E |
+
+```ts
+layered({ grow: 'down', coordinates: 'brandes-koepf' })
+```
+
+Measured on a chain-like DAG (n nodes, ~2n edges), median of 3:
+
+| nodes | `'gansner'` | `'brandes-koepf'` |
+|---:|---:|---:|
+| 200 | 284 ms | 5 ms |
+| 500 | 2,244 ms | 10 ms |
+| 1,000 | 12,867 ms | 18 ms |
+| 2,000 | 56,812 ms | 36 ms |
+| 4,000 | — | 68 ms |
+
+Keep the default for hand-authored diagrams, where it is both prettier
+and fast enough. Switch to `'brandes-koepf'` for generated graphs past a
+couple of hundred nodes.
+
+One visible difference beyond speed: given a lone parent with two
+children, every position between them is an optimum of Gansner's
+objective, and the balance pass does not break the tie — the parent ends
+up flush with one child. Brandes–Köpf centers it.
+
+Demos: [`examples/layout-layered.ts`](../../examples/layout-layered.ts),
+[`examples/dependency-graph.ts`](../../examples/dependency-graph.ts),
+[`examples/class-hierarchy.ts`](../../examples/class-hierarchy.ts).
 
 ## Placement helpers
 

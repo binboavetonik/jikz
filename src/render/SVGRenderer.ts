@@ -822,10 +822,18 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
           y: position.y - h / 2, // Center vertically
           overflow: 'visible',
         })
+        // white-space:nowrap is essential: KaTeX emits MULTIPLE `.base`
+        // spans (e.g. for `A \\cap B`), and katex.css applies nowrap only
+        // per `.base` — without a container-level nowrap the second base
+        // can wrap under the first whenever the measured box is even 1px
+        // narrow (e.g. when measure() ran before KaTeX's web fonts
+        // loaded). With nowrap, an undersized box simply overflows
+        // symmetrically (justify-content:center + overflow:visible) and
+        // the formula stays centered on the intended point.
         fo.raw(
           `<div xmlns="http://www.w3.org/1999/xhtml" style="display:flex;` +
           `justify-content:center;align-items:center;width:100%;height:100%;` +
-          `font-size:${options?.fontSize ?? 14}px">${html}</div>`
+          `white-space:nowrap;font-size:${options?.fontSize ?? 14}px">${html}</div>`
         )
         return this.applyOptions(fo, options)
       }

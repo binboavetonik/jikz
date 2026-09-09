@@ -139,6 +139,16 @@ describe('MathRenderer injection', () => {
     const adapter = katexAdapter({ renderToString: () => '<b>y</b>' })
     expect(adapter.measure?.('y')).toBeUndefined()
   })
+
+  it('marks the foreignObject content white-space:nowrap (KaTeX multi-base wrap guard)', () => {
+    // KaTeX emits multiple `.base` spans (e.g. `A \cap B`), and katex.css
+    // only applies nowrap per `.base` — the container must forbid wrapping
+    // or a narrowly-measured box wraps the second base under the first.
+    const renderer = new SVGRenderer(undefined, undefined, { mathRenderer: fakeMath })
+    renderer.renderText('$A \\cap B$', point(50, 50))
+    const svg = renderer.toSVG({ width: 100, height: 100 })
+    expect(svg).toContain('white-space:nowrap')
+  })
 })
 
 describe('SVGRenderer with collaborators', () => {

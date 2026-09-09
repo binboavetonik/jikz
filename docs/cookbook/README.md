@@ -460,9 +460,25 @@ grow: 'right' with variable-width labels: each parent pushes its children past i
 
 ![Layered (DAG) layout](img/layout-layered.svg)
 
-Sugiyama-style DAG layout: nodes may have several parents — declared by name — and each rank aligns into a column. Minimal slice: longest-path ranks, barycenter ordering, center coordinates.
+Sugiyama-style DAG layout: nodes may have several parents — declared by name — and each rank aligns into a column. Full pipeline: network-simplex ranks and coordinates, weighted-median + transpose crossing minimization, dummy-routed long edges.
 
 **Source:** [`examples/layout-layered.ts`](../../examples/layout-layered.ts)
+
+### Dependency graph — build pipeline
+
+![Dependency graph — build pipeline](img/dependency-graph.svg)
+
+A build pipeline as a DAG: multi-parent milestones (test, package) and a config→publish edge spanning four ranks, routed as a straight dummy chain by the network-simplex coordinate assignment.
+
+**Source:** [`examples/dependency-graph.ts`](../../examples/dependency-graph.ts)
+
+### Class hierarchy with interfaces
+
+![Class hierarchy with interfaces](img/class-hierarchy.svg)
+
+Interfaces with multiple implementers — a DAG a tree layout cannot express. Weighted-median + transpose sweeps untangle the implements-edges; interfaces are dashed by name convention.
+
+**Source:** [`examples/class-hierarchy.ts`](../../examples/class-hierarchy.ts)
 
 ### rectFit — TikZ fit library
 

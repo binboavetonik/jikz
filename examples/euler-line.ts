@@ -24,13 +24,22 @@ export default function render(container: HTMLElement) {
   // faint circumcircle for context (centered at O)
   pic.draw(circle(O, O.distanceTo(point(60, 190))), { style: { stroke: '#e2e8f0' } })
 
-  for (const { p, name, color } of [
-    { p: G, name: 'G centroid', color: '#dc2626' },
-    { p: O, name: 'O circumcenter', color: '#7c3aed' },
-    { p: H, name: 'H orthocenter', color: '#2563eb' },
+  // Center markers as nodes with border-relative labels: the measured
+  // label is pushed clear of the disc, so text can never sit under it
+  // (previously hand-offset center-anchored text overlapped the markers
+  // in the marker's own color, hiding glyphs).
+  for (const { p, id, name, color } of [
+    { p: G, id: 'G', name: 'G centroid', color: '#dc2626' },
+    { p: O, id: 'O', name: 'O circumcenter', color: '#7c3aed' },
+    { p: H, id: 'H', name: 'H orthocenter', color: '#2563eb' },
   ]) {
-    pic.draw(p, { style: { stroke: color, strokeWidth: 3 } })
-    pic.text(p.add(polar(dir + 90, 14)), name, { fontSize: 10, style: { stroke: color } })
+    pic.node(id, {
+      at: p, shape: 'circle', width: 10, height: 10,
+      labels: [{
+        text: name, at: dir + 90, distance: 6,
+        options: { fontSize: 10, style: { stroke: color } },
+      }],
+    }, { style: { stroke: color, fill: color, strokeWidth: 1 } })
   }
 
   pic.mount(container, { fit: true, padding: 14 })

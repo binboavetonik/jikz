@@ -153,4 +153,140 @@ describe('Layered', () => {
     expect(e.bendPoints![1]!.y).toBeGreaterThan(e.bendPoints![0]!.y)
     expect(e.bendPoints![1]!.y).toBeLessThan(B.center.y)
   })
+
+  describe('network-simplex coordinate assignment', () => {
+    it('balances a full binary tree symmetrically about the root', () => {
+      const result = layered({ at: point(0, 0), grow: 'down', nodeSep: 20 })
+        .node('R', { width: 20, height: 20 })
+        .node('A', { width: 20, height: 20 })
+        .node('B', { width: 20, height: 20 })
+        .node('C', { width: 20, height: 20 })
+        .node('D', { width: 20, height: 20 })
+        .node('E', { width: 20, height: 20 })
+        .node('F', { width: 20, height: 20 })
+        .edge('R', 'A')
+        .edge('R', 'B')
+        .edge('A', 'C')
+        .edge('A', 'D')
+        .edge('B', 'E')
+        .edge('B', 'F')
+        .build()
+
+      const x = (n: string) => result.getNode(n)!.center.x
+
+      // Parents centered between rank neighbors…
+      expect(x('R')).toBeCloseTo((x('A') + x('B')) / 2)
+      // …and the whole drawing is mirror-symmetric about the root.
+      expect(x('A') + x('B')).toBeCloseTo(2 * x('R'))
+      expect(x('C') + x('F')).toBeCloseTo(2 * x('R'))
+      expect(x('D') + x('E')).toBeCloseTo(2 * x('R'))
+    })
+
+    it('keeps multi-rank dummy chains straight (omega straightening)', () => {
+      const result = layered({ at: point(0, 0), grow: 'down', nodeSep: 20 })
+        .node('A', { width: 20, height: 20 })
+        .node('X', { width: 20, height: 20 })
+        .node('B', { width: 20, height: 20 })
+        .edge('A', 'B', { minLength: 3 })
+        .edge('X', 'B')
+        .build()
+
+      const A = result.getNode('A')!
+      const B = result.getNode('B')!
+      const long = result.edges.find((e) => e.bendPoints?.length === 2)!
+
+      expect(long.bendPoints).toHaveLength(2)
+      for (const p of long.bendPoints!) {
+        expect(p.x).toBeCloseTo(A.center.x)
+      }
+      expect(B.center.x).toBeCloseTo(A.center.x)
+    })
+
+    it('places the first box edge at the secondary component of `at`', () => {
+      const result = layered({ at: point(100, 50), grow: 'down', nodeSep: 20 })
+        .node('A', { width: 20, height: 20 })
+        .node('B', { width: 40, height: 20 })
+        .edge('A', 'B')
+        .build()
+
+      const [minX] = result.bounds
+      expect(minX).toBeCloseTo(100)
+    })
+  })
+
+  describe('crossing minimization', () => {
+    it('uncrosses a reversed 4×4 bipartite graph', () => {
+      let b = layered({ at: point(0, 0), grow: 'down', nodeSep: 10 })
+      for (const n of ['N1', 'N2', 'N3', 'N4']) b = b.node(n, { width: 10, height: 10 })
+      for (const s of ['S1', 'S2', 'S3', 'S4']) b = b.node(s, { width: 10, height: 10 })
+      // Adversarial insertion: fully reversed crossings.
+      const edges: [string, string][] = [
+        ['N1', 'S4'],
+        ['N2', 'S3'],
+        ['N3', 'S2'],
+        ['N4', 'S1'],
+      ]
+      let bb = b
+      for (const [f, t] of edges) bb = bb.edge(f, t)
+      const result = bb.build()
+
+      const north = result.level(0).map((n) => n.name)
+      const south = result.level(1).map((n) => n.name)
+
+      // Zero crossings: every pair of edges keeps its relative order
+      // on both ranks (either orientation — the mirror is equivalent).
+      for (const [f1, t1] of edges) {
+        for (const [f2, t2] of edges) {
+          const dn = north.indexOf(f1) - north.indexOf(f2)
+          const ds = south.indexOf(t1) - south.indexOf(t2)
+          expect(dn * ds).toBeGreaterThanOrEqual(0)
+        }
+      }
+      // And the fully-parallel order was actually found (not left crossed).
+      expect(new Set(north)).toEqual(new Set(['N1', 'N2', 'N3', 'N4']))
+    })
+
+    it('reorders both ranks to remove crossings a single sweep misses', () => {
+      const result = layered({ at: point(0, 0), grow: 'down', nodeSep: 10 })
+        .node('A', { width: 10, height: 10 })
+        .node('B', { width: 10, height: 10 })
+        .node('C', { width: 10, height: 10 })
+        .node('X', { width: 10, height: 10 })
+        .node('Y', { width: 10, height: 10 })
+        .node('Z', { width: 10, height: 10 })
+        .edge('A', 'X')
+        .edge('A', 'Y')
+        .edge('B', 'X')
+        .edge('C', 'Z')
+        .build()
+
+      // Zero crossings requires reversing both ranks (median ties alone
+      // cannot get there).
+      expect(result.level(0).map((n) => n.name)).toEqual(['C', 'B', 'A'])
+      expect(result.level(1).map((n) => n.name)).toEqual(['Z', 'X', 'Y'])
+    })
+
+    it('lets a heavy edge decide between tied crossing counts', () => {
+      const mk = (heavy: boolean) => {
+        let b = layered({ at: point(0, 0), grow: 'down', nodeSep: 10 })
+        b = b.node('N0', { width: 10, height: 10 }).node('N1', { width: 10, height: 10 })
+        for (const s of ['S0', 'S1', 'S2', 'S3']) b = b.node(s, { width: 10, height: 10 })
+        return b
+          .edge('N0', 'S0', { weight: heavy ? 10 : 1 })
+          .edge('N0', 'S2')
+          .edge('N0', 'S3')
+          .edge('N1', 'S0')
+          .edge('N1', 'S1')
+          .build()
+      }
+
+      const plain = mk(false)
+      const heavy = mk(true)
+
+      expect(plain.level(1).map((n) => n.name)).toEqual(['S1', 'S0', 'S2', 'S3'])
+      // With N0→S0 heavy, the kept order groups S0 with S1 (both N0/N1
+      // neighbors) so the heavy edge stays uncrossed.
+      expect(heavy.level(1).map((n) => n.name)).toEqual(['S2', 'S3', 'S0', 'S1'])
+    })
+  })
 })

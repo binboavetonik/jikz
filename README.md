@@ -138,7 +138,7 @@ pic.pen({ style: { stroke: '#0f172a', strokeWidth: 1.6 } })
 | `path` | Chainable path builder, decorations (snake, zigzag, coil, bumps, saw, brace…), operations (offset, double, smooth, join) |
 | `render` | `SVGRenderer` + `SVGBuilder` (string/DOM), 12 TikZ fill patterns, linear/radial gradients, drop shadows, clip paths, double lines, layers, 4 arrow tip kinds (color follows the edge stroke). Every geometry type is renderable — uncommon shapes fall back to their path outline |
 | `layout` | `chain`, `matrix`, `tree` auto-layout builders |
-| `text` | `measureText` — canvas-accurate in the browser, font-metrics table in Node; powers auto-sized nodes (`node({ text })` with no width/height). `placeText` — directional label placement for bare text (same ray math as node labels) |
+| `text` | `measureText` — deterministic per-character font metrics, identical in Node, workers and the browser (so SSR output doesn't reflow on hydration); powers auto-sized nodes (`node({ text })` with no width/height). Opt into the browser's own canvas measurement with `setTextMeasurementBackend('canvas')`. `placeText` — directional label placement for bare text (same ray math as node labels) |
 
 ## Styling
 

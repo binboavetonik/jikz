@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { networkSimplexRanks, type SimplexVertex, type SimplexEdge } from '../../src/layout/networkSimplex'
+import {
+  NetworkSimplex,
+  networkSimplexRanks,
+  type SimplexVertex,
+  type SimplexEdge,
+} from '../../src/layout/networkSimplex'
 
 interface V extends SimplexVertex {
   name: string
@@ -102,5 +107,36 @@ describe('networkSimplexRanks', () => {
     expectFeasible(vertices, edges)
     expect(rank(vertices, 'a')).toBe(0)
     expect(rank(vertices, 'e')).toBe(3)
+  })
+})
+
+describe('balanceLeftRight', () => {
+  it('distributes slack evenly on a zero-cut tree edge', () => {
+    // c is free to sit anywhere in [a, b-10] = [0, 20] without changing
+    // the objective (in-weight == out-weight across the a-c cut). The
+    // simplex leaves it tight at 0; the balance pass moves it halfway.
+    const a: SimplexVertex = { rank: 0 }
+    const b: SimplexVertex = { rank: 0 }
+    const c: SimplexVertex = { rank: 0 }
+    const edges: SimplexEdge[] = [
+      { from: a, to: b, minLength: 30, weight: 1 },
+      { from: a, to: c, minLength: 0, weight: 1 },
+      { from: c, to: b, minLength: 10, weight: 1 },
+    ]
+
+    const simplex = new NetworkSimplex([a, b, c], edges)
+    simplex.run()
+
+    expect(a.rank).toBe(0)
+    expect(b.rank).toBe(30)
+    expect(c.rank).toBe(0) // tight to one side before balancing
+
+    simplex.balanceLeftRight()
+
+    expect(c.rank).toBe(10) // half the replacement edge's slack (20)
+    // Still feasible.
+    expect(b.rank - a.rank).toBeGreaterThanOrEqual(30)
+    expect(c.rank - a.rank).toBeGreaterThanOrEqual(0)
+    expect(b.rank - c.rank).toBeGreaterThanOrEqual(10)
   })
 })
