@@ -456,6 +456,14 @@ grow: 'right' with variable-width labels: each parent pushes its children past i
 
 **Source:** [`examples/layout-tree-horizontal.ts`](../../examples/layout-tree-horizontal.ts)
 
+### Scopes — group transform, style cascade, opacity
+
+![Scopes — group transform, style cascade, opacity](img/scope-groups.svg)
+
+One sub-assembly authored around its own origin and instantiated three times: each scope() shifts the whole group and cascades a stroke color onto every node, edge and shape inside it, while each item can still override a single key. Geometry inside a scope stays in the scope's own coordinates — the transform rides on a <g>, so strokes and arrow tips scale with it. Node names stay global to the picture, so the connecting edges are declared at picture level and resolve across scope boundaries. The strip at the bottom shows group opacity compositing a scope as one unit rather than per item.
+
+**Source:** [`examples/scope-groups.ts`](../../examples/scope-groups.ts)
+
 ### Layered (DAG) layout
 
 ![Layered (DAG) layout](img/layout-layered.svg)

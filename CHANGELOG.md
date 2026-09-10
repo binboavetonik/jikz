@@ -72,6 +72,36 @@
 
 ### Added
 
+- **Scopes — `pic.scope(options, build)`.** TikZ's `\begin{scope}`. The
+  picture's flat item list becomes a tree: a scope holds its own items,
+  cascades a `style` onto the nodes, edges and shapes inside it, and can
+  carry a `transform`/`scale`, `opacity`, `clip`, `className` and `id`
+  as group properties. A scope accepts every verb a picture does,
+  including nested scopes, and returns the container so the chain
+  continues.
+
+  This is mainly a *composition* primitive rather than a styling
+  convenience: until now a picture had exactly one global transform, so
+  the same sub-assembly could not be drawn twice at two positions
+  without recomputing every coordinate by hand. Geometry inside a scope
+  stays in the scope's own coordinates and the transform rides on a
+  `<g>`, so strokes and arrow tips scale with it.
+
+  Node names stay global to the picture, as in TikZ, and resolve into
+  whichever container asks for them — so an edge declared at picture
+  level can join nodes declared in different scopes, and `resolve()`
+  always returns picture space. `{ fit: true }` folds scope transforms
+  into the content bounds.
+
+  Two carve-outs in the cascade, both deliberate: `path()` keeps its
+  invisible baseline (an enclosing `stroke` must not make every `\path`
+  visible), and text is not restyled (a scope `fill` for shapes must not
+  recolor every label). `PictureRenderer` gains optional
+  `beginGroup`/`endGroup`; the style cascade needs neither, so existing
+  four-method backends keep working.
+
+  Purely additive — a picture with no scopes emits byte-identical SVG.
+
 - **`layered({ coordinates: 'brandes-koepf' })`.** A linear-time
   alternative to the default Gansner auxiliary-graph network simplex for
   cross-axis coordinate assignment (Brandes & Köpf 2002). Ranks and

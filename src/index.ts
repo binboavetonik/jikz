@@ -506,10 +506,32 @@ export {
 // verbs (`path` / `draw` / `fill` / `filldraw`) that mirror `\path` /
 // `\draw` / `\fill` / `\filldraw`. Terminate with `toSVG(viewBox)` for
 // a string (Node + browser) or `mount(container, viewBox)` for live DOM.
-export { Picture, picture, PATH_MODE_STYLE, mergePathMode } from './picture'
+export {
+  Picture,
+  picture,
+  PATH_MODE_STYLE,
+  mergePathMode,
+  mergePathModeIn,
+  ItemContainer,
+  Scope,
+  TransformedAnchorable,
+} from './picture'
 export { Pen } from './picture'
 export type { PenOptions, PenHost, PenPoint } from './picture'
-export type { PictureEndpoint, PictureItem, PathMode, PictureRenderer, PictureOptions, PictureTextOptions, PictureViewBox, DrawOptions, DrawLabel } from './picture'
+export type {
+  PictureEndpoint,
+  PictureItem,
+  PathMode,
+  PictureRenderer,
+  PictureOptions,
+  PictureTextOptions,
+  PictureViewBox,
+  DrawOptions,
+  DrawLabel,
+  ScopeOptions,
+  GroupRenderOptions,
+  ContainerRoot,
+} from './picture'
 
 export type {
   Renderer,
