@@ -448,6 +448,54 @@ Hierarchical auto-layout: declare the tree, jikz positions every level.
 
 **Source:** [`examples/layout-tree.ts`](../../examples/layout-tree.ts)
 
+### Horizontal tree — size-aware spacing
+
+![Horizontal tree — size-aware spacing](img/layout-tree-horizontal.svg)
+
+grow: 'right' with variable-width labels: each parent pushes its children past its own measured text, so long labels can't overlap the next level. levelDistance is an edge-to-edge gap; per-node sep overrides it.
+
+**Source:** [`examples/layout-tree-horizontal.ts`](../../examples/layout-tree-horizontal.ts)
+
+### Clusters — a box around a subgraph
+
+![Clusters — a box around a subgraph](img/layout-clusters.svg)
+
+layered().cluster() groups nodes into a subgraph box, and clusters nest — name one in another's member list. Members are kept contiguous at every level of nesting, and border vertices go on every rank a cluster spans (including ranks it has no member on), so nothing foreign drifts between the boxes. Here the request→audit log→service path bypasses the gateway and is pushed clear of both boxes rather than routed through them. The nested policy cluster sets grow: 'right', so it is laid out as a graph of its own and collapsed to a box in the parent — two rank directions in one drawing. Each cluster comes back with bounds, a ready-made rect, its depth and its parent — paint them outermost first.
+
+**Source:** [`examples/layout-clusters.ts`](../../examples/layout-clusters.ts)
+
+### Scopes — group transform, style cascade, opacity
+
+![Scopes — group transform, style cascade, opacity](img/scope-groups.svg)
+
+One sub-assembly authored around its own origin and instantiated three times: each scope() shifts the whole group and cascades a stroke color onto every node, edge and shape inside it, while each item can still override a single key. Geometry inside a scope stays in the scope's own coordinates — the transform rides on a <g>, so strokes and arrow tips scale with it. Node names stay global to the picture, so the connecting edges are declared at picture level and resolve across scope boundaries. The strip at the bottom shows group opacity compositing a scope as one unit rather than per item.
+
+**Source:** [`examples/scope-groups.ts`](../../examples/scope-groups.ts)
+
+### Layered (DAG) layout
+
+![Layered (DAG) layout](img/layout-layered.svg)
+
+Sugiyama-style DAG layout: nodes may have several parents — declared by name — and each rank aligns into a column. Full pipeline: network-simplex ranks and coordinates, weighted-median + transpose crossing minimization, dummy-routed long edges.
+
+**Source:** [`examples/layout-layered.ts`](../../examples/layout-layered.ts)
+
+### Dependency graph — build pipeline
+
+![Dependency graph — build pipeline](img/dependency-graph.svg)
+
+A build pipeline as a DAG: multi-parent milestones (test, package) and a config→publish edge spanning four ranks, routed as a straight dummy chain by the network-simplex coordinate assignment.
+
+**Source:** [`examples/dependency-graph.ts`](../../examples/dependency-graph.ts)
+
+### Class hierarchy with interfaces
+
+![Class hierarchy with interfaces](img/class-hierarchy.svg)
+
+Interfaces with multiple implementers — a DAG a tree layout cannot express. Weighted-median + transpose sweeps untangle the implements-edges; interfaces are dashed by name convention.
+
+**Source:** [`examples/class-hierarchy.ts`](../../examples/class-hierarchy.ts)
+
 ### rectFit — TikZ fit library
 
 ![rectFit — TikZ fit library](img/fit-library.svg)

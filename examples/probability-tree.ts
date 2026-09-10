@@ -2,7 +2,13 @@ import { picture, tree, point } from 'jikz'
 
 export default function render(container: HTMLElement) {
   // tree() computes the layout; nodes come back named by their text
-  const t = tree({ at: point(60, 120), grow: 'right', levelDistance: 115, siblingDistance: 34 })
+  const t = tree({
+    at: point(60, 120),
+    grow: 'right',
+    levelDistance: 40, // edge-to-edge gap (was 115 center-to-center)
+    siblingDistance: 34,
+    nodeOptions: { shape: 'circle', minWidth: 36, minHeight: 36 },
+  })
     .root('start')
       .child('H').children(['HH', 'HT']).parent()
       .parent()

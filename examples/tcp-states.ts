@@ -16,7 +16,7 @@ export default function render(container: HTMLElement) {
   pic.edge('EST', 'FIN',       { arrowEnd: 'stealth', label: 'close / FIN',  bendAngle: 15 }, { style: es })
   pic.edge('FIN', 'CLOSED',    { arrowEnd: 'stealth', label: 'ACK / timeout', bendAngle: 15 }, { style: es })
   pic.edge('CLOSED', 'LISTEN', { arrowEnd: 'stealth', label: 'passive open' },               { style: es })
-  pic.edge('EST', 'EST',       { out: 240, in: 300, looseness: 5, label: 'data' },           { style: { stroke: '#2563eb', strokeWidth: 1.2 } })
+  pic.edge('EST', 'EST',       { loop: 'above', label: 'data' },                             { style: { stroke: '#2563eb', strokeWidth: 1.2 } })
 
   pic.mount(container, { width: 500, height: 320 })
 }

@@ -1,3 +1,7 @@
+// Shared
+// (LayoutGrowth is the canonical growth type; TreeGrowth aliases it.)
+export type { LayoutGrowth } from './shared'
+
 // Chain
 export {
   chain,
@@ -34,3 +38,15 @@ export type {
   TreeNodeBuilder,
   TreeBuilder,
 } from './Tree'
+
+// Layered
+export {
+  layered,
+} from './Layered'
+export type {
+  LayeredOptions,
+  LayeredNodeSpec,
+  LayeredEdgeSpec,
+  LayeredResult,
+  LayeredBuilder,
+} from './Layered'

@@ -65,7 +65,17 @@ const { nodes, edges } = tree({ at: point(220, 35), grow: 'down' })
 `grow: 'right'` gives horizontal trees — the
 [probability-tree example](../../examples/probability-tree.ts) lays out
 two coin flips this way and hangs branch probabilities on the edges.
-`levelDistance` / `siblingDistance` control the spacing.
+
+The tree measures every node and treats the two spacing options as
+**edge-to-edge gaps**: `levelDistance` is the whitespace between a
+node's far edge and its children's near edges along the growth axis;
+`siblingDistance` is the whitespace between sibling subtrees. So a
+parent with a long label pushes its children further than a short one
+— see the [horizontal-tree example](../../examples/layout-tree-horizontal.ts).
+Override the level gap per node with `.sep(d)` (or `TreeNodeSpec.sep`)
+for spacer/invisible roots. For clean tier columns, pass `align: 'rank'`
+— every depth level then shares one column, with the gap measured
+between the two levels' widest nodes.
 
 Nodes come back **named by their text**, which pairs with picture
 edges:
@@ -74,6 +84,36 @@ edges:
 for (const n of t.nodes) pic.node(n.text, { at: n.center, ... })
 pic.edge('start', 'H', { label: '1/2' })
 ```
+
+## Layered — DAGs
+
+`tree` requires exactly one parent per node. When a node can have
+several parents (a DAG), use `layered` — nodes and edges are declared
+by name, ranks align into columns:
+
+```ts
+import { layered, point } from 'jikz'
+
+const { nodes, edges } = layered({ at: point(20, 20), grow: 'down' })
+  .node('config')
+  .node('db')
+  .node('cache')
+  .node('api')
+  .edge('config', 'db')
+  .edge('config', 'cache')
+  .edge('db', 'api')
+  .edge('cache', 'api')   // two parents
+  .build()
+```
+
+`rankSep` / `nodeSep` are edge-to-edge gaps, exactly like `tree`'s
+`levelDistance` / `siblingDistance`. Ranks come from network simplex
+(Gansner et al. 1993), cycles are handled by reversing back-edges (the
+rendered arrow keeps your original direction), and multi-rank edges bend
+through intermediate points. Within each rank, weighted-median +
+transpose sweeps minimize crossings (edge `weight` counts in the
+comparison), and a second network-simplex pass assigns balanced,
+symmetric coordinates — including straightening long-edge dummy chains.
 
 ## Two utilities that finish the job
 

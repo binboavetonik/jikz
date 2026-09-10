@@ -1,5 +1,253 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **Text measurement is deterministic across environments.** `measureText`
+  used canvas in the browser and a table in Node, so a picture rendered
+  server-side and re-rendered on the client measured differently and the
+  diagram reflowed on hydration — auto-sized nodes, label placement and
+  `{ fit: true }` viewBoxes all depend on it. The default backend is now
+  a built-in per-character width table used identically in Node, workers
+  and the browser.
+
+  Accuracy improved substantially as a side effect. The old model charged
+  every character the same 0.55 em, which over a sample of realistic
+  labels was off by a mean of 42% and up to 148% (`"i"` measured 148% too
+  wide, `"W"` 42% too narrow, `"CEO"` 24% too narrow — that last kind
+  overflowed its own box). Widths now come from the Adobe core-14 AFM
+  metrics: exact for Helvetica, Arial and Liberation Sans, for Times New
+  Roman and Nimbus Roman, and for Courier clones. Bold widens
+  proportional faces by 5%; full-width forms (CJK, kana, Hangul) advance
+  a whole em instead of 0.55.
+
+  Browser-only projects using a webfont with different metrics can opt
+  back in with `setTextMeasurementBackend('canvas')`, at the cost of the
+  SSR agreement. 29 example snapshots moved; auto-sized boxes now contain
+  their text in cases where they previously clipped it.
+
+- **`tree()` packs siblings by contour instead of bounding box.**
+  Reingold–Tilford, via Buchheim et al. 2002's linear-time formulation,
+  generalized for variable node sizes. Previously each subtree reserved
+  its widest level's width at *every* level, so two subtrees whose widest
+  levels sat at different depths could never interleave even when nothing
+  collided — on random trees 74% of drawings carried reclaimable space,
+  a mean of ~4 node widths (worst case ~13). Now they mesh: drawings are
+  15–20% narrower, with `siblingDistance` still honored exactly and no
+  overlaps.
+
+  Two visible changes: layouts are tighter, and a parent now sits midway
+  between its outermost children's *centers* (so its edges are
+  symmetric) rather than at the center of their combined span. Three
+  example snapshots moved accordingly.
+
+- **Network simplex micro-optimizations.** Queue traversals use a head
+  index instead of `Array.shift()`, and `balanceRanks` keeps one rank
+  histogram instead of rebuilding it per vertex (O(V²) → O(V)). Layout
+  output is unchanged; `layered()` builds are ~10% faster at a few
+  hundred nodes. The dominant cost remains the per-pivot low/lim and
+  cut-value recomputation — see `coordinates: 'brandes-koepf'` to avoid
+  it entirely.
+
+### Fixed
+
+- **`layered()` options no longer lose their defaults to an explicit
+  `undefined`.** `layered({ nodeSep: maybeUndefined })` spread the
+  `undefined` over the default, and the option then reached the layout
+  as `NaN`. Undefined entries are now dropped before merging.
+
+- **Self-edges draw a real loop.** `edge('A', 'A')` produced a
+  zero-length path that painted nothing, and `loopEdge` was worse than
+  it looked: `'auto'` anchors resolve along the ray toward the other
+  endpoint, which for a self-edge is `atan2(0, 0)` = 0, so *every* loop
+  started and ended on the node's east boundary whichever way it bulged.
+  Its angle table was wrong too — `loop above` put one control point
+  above the node and the other below it, swinging the curve around the
+  left side instead.
+
+  Both ends now land on the boundary in the out and in directions, so
+  the loop hangs off the named side and scales with the node instead of
+  a fixed nominal chord. A new `loop: 'above' | 'below' | 'left' |
+  'right'` option is TikZ's `to[loop above]`, and a self-edge with no
+  angles given defaults to a loop above rather than painting nothing.
+  Explicit `out`/`in`/`looseness`/anchors still win.
+
+  `LOOP_ANGLES` is exported for the mapping. The three examples using
+  self-loops (`dfa-acceptor`, `tcp-states`, `edge-routing`) had all
+  hand-copied the old broken angles; they now use `loop: 'above'`.
+
+- **`layered()` handles self-edges.** A self-loop used to enter the
+  pipeline as an ordinary edge: it skewed the crossing counts, added a
+  useless vertex to the coordinate simplex, and then rendered as a
+  degenerate zero-length edge. It is now held out of the layout
+  entirely — ranks and coordinates are identical with or without it —
+  and re-attached at render time as a loop, defaulting to the side that
+  does not collide with the rank direction (`'right'` for vertical
+  growth, `'above'` for horizontal). `LayeredEdgeSpec.loop` overrides.
+  `incoming`/`outgoing` report the node as its own neighbour.
+
+- **`layered()` no longer hangs on some node sizes.** The network
+  simplex tested edge tightness with `slack === 0`. Ranks are integers
+  when it assigns ranks, but the coordinate pass feeds it separator
+  edges whose length is `halfWidth + nodeSep + halfWidth` — measured text
+  extents, so arbitrary reals. A slack of 7.1e-15 then made
+  `feasibleTree` spin forever: `tightTree` refused to absorb the edge,
+  `findMinSlackEdge` handed the same edge back, and shifting the tree by
+  7.1e-15 changed nothing. Tightness and cut-value sign now carry a 1e-9
+  tolerance. Latent since the coordinate pass landed; reachable with any
+  font size or node text whose measurement happens to leave that residue.
+
+- **KaTeX labels no longer wrap mid-formula in the browser.** KaTeX
+  emits multiple `.base` spans (e.g. for `$A \cap B$`) and its CSS only
+  applies `white-space: nowrap` per `.base`; the foreignObject's inner
+  div now sets `white-space: nowrap` itself, so a box measured before
+  KaTeX's web fonts load overflows symmetrically around the anchor
+  point instead of wrapping the second base onto its own line.
+
+### Added
+
+- **Clusters — `layered().cluster(name, members, options?)`.** A subgraph
+  box, Graphviz's `subgraph cluster_x`. The result carries each cluster's
+  `bounds`, a ready-made `rect`, its member nodes and its label.
+
+  It is a layout *constraint*, not a bounding box after the fact —
+  `rectFit` already did that. Members are kept contiguous in every rank
+  they occupy (crossing minimization gained an order-preserving group
+  repair), and left/right border vertices go on every rank the cluster
+  spans, including ranks it has no member on, so a foreign edge passing
+  the cluster is pushed clear of the box rather than routed through it.
+  Border vertices carry a per-vertex `gap` that overrides `nodeSep`, so
+  the box hugs its contents; `clusterPadding` defaults to 12 and is
+  overridable per cluster. Both coordinate assigners are supported.
+
+  Two consequences worth knowing: adding a cluster can move nodes,
+  because the border chains give the coordinate pass structure it did not
+  have before; and the box counts as content, so `at` anchors the box
+  rather than the leftmost node.
+
+  **Clusters nest**: a member may be a node or another cluster, which
+  must already be declared. Each entity has at most one direct parent, so
+  the nesting is a tree. Contiguity is enforced at every level — the
+  ordering repair recurses down the nesting path, and `groupPin` applies
+  among a block's own contents, so a cluster's borders end up outside its
+  members *and* outside any nested box. A parent absorbs its children's
+  boxes, so nesting holds even when a child asks for more padding than
+  its parent. Each cluster reports its `depth`, `parent` and `children`,
+  and `nodes` is transitive; paint boxes outermost first.
+
+  **Per-cluster growth direction**: `cluster(name, members, { grow })`
+  gives a cluster its own rank direction — a left-to-right stage inside a
+  top-to-bottom diagram. Such a cluster cannot be an ordering constraint,
+  since two rank directions have no common rank assignment, so it is laid
+  out as a graph in its own right, collapsed to a single placeholder node
+  the size of its box, and the parent laid out around it; the sub-layout
+  is then re-run at the position its placeholder ended up in. Re-running
+  rather than translating keeps every coordinate coming from the layout
+  itself.
+
+  Edges crossing the boundary are given to the parent so it ranks the
+  cluster correctly, then rebuilt against the real endpoints, so they
+  attach to the node they name rather than to the box. Adjacency,
+  `getNode` and `level()` all report real nodes — nothing internal leaks
+  — and the cluster counts as a single rank of the outer graph. It
+  composes in every direction: inside a plain cluster, containing one, or
+  nested in another independently-grown cluster.
+
+  Overlapping clusters throw rather than laying out wrongly.
+  Cluster-to-cluster edges are not supported.
+
+- **`Edge.bounds`.** `Edge` was in the `Renderable` union but had no
+  `bounds`, so `pic.draw(someEdge)` with `{ fit: true }` threw a
+  TypeError inside the bounds walk. Bend points and, on curved edges, the
+  bezier control points are included, so a bent edge or a self-loop is no
+  longer clipped by a fitted viewBox.
+
+- **Scopes — `pic.scope(options, build)`.** TikZ's `\begin{scope}`. The
+  picture's flat item list becomes a tree: a scope holds its own items,
+  cascades a `style` onto the nodes, edges and shapes inside it, and can
+  carry a `transform`/`scale`, `opacity`, `clip`, `className` and `id`
+  as group properties. A scope accepts every verb a picture does,
+  including nested scopes, and returns the container so the chain
+  continues.
+
+  This is mainly a *composition* primitive rather than a styling
+  convenience: until now a picture had exactly one global transform, so
+  the same sub-assembly could not be drawn twice at two positions
+  without recomputing every coordinate by hand. Geometry inside a scope
+  stays in the scope's own coordinates and the transform rides on a
+  `<g>`, so strokes and arrow tips scale with it.
+
+  Node names stay global to the picture, as in TikZ, and resolve into
+  whichever container asks for them — so an edge declared at picture
+  level can join nodes declared in different scopes, and `resolve()`
+  always returns picture space. `{ fit: true }` folds scope transforms
+  into the content bounds.
+
+  Two carve-outs in the cascade, both deliberate: `path()` keeps its
+  invisible baseline (an enclosing `stroke` must not make every `\path`
+  visible), and text is not restyled (a scope `fill` for shapes must not
+  recolor every label). `PictureRenderer` gains optional
+  `beginGroup`/`endGroup`; the style cascade needs neither, so existing
+  four-method backends keep working.
+
+  Purely additive — a picture with no scopes emits byte-identical SVG.
+
+- **`layered({ coordinates: 'brandes-koepf' })`.** A linear-time
+  alternative to the default Gansner auxiliary-graph network simplex for
+  cross-axis coordinate assignment (Brandes & Köpf 2002). Ranks and
+  left-to-right order are unchanged — only the spacing within each rank
+  differs. Long edges stay perfectly straight; spacing is slightly less
+  symmetric than `'gansner'`, which remains the default because it is
+  prettier and fast enough for hand-authored diagrams. On a chain-like
+  DAG the difference is 284 ms → 5 ms at 200 nodes and 12.9 s → 18 ms at
+  1,000; 4,000 nodes lay out in 68 ms where the default is impractical.
+  The block compaction is iterative rather than the paper's recursion, so
+  deep dummy chains cannot overflow the stack.
+- **`tree({ align: 'rank' })`.** Align every depth level to one column
+  (center-aligned tiers) for org-chart/pipeline trees; the inter-level
+  gap is `levelDistance` between the two levels' widest nodes. Default
+  `'parent'` keeps the per-parent tidy-tree behavior.
+- **`layered()` — Sugiyama-style DAG layout.** Nodes and edges declared
+  by name; multi-parent support; DFS cycle removal (back-edges reversed,
+  original direction restored at render), network-simplex rank assignment
+  (Gansner et al. 1993 + TikZ's balance pass), dummy nodes for multi-rank
+  edges. `rankSep` / `nodeSep` are edge-to-edge gaps.
+- **`layered()` crossing minimization.** Weighted-median + transpose
+  sweeps (TikZ `CrossingMinimizationGansnerKNV1993`) with a weighted
+  bilayer cross count (Barth et al., via dagre) and an early-stop
+  keep-best loop. `LayeredEdgeSpec.weight` now genuinely biases the
+  kept order.
+- **`layered()` network-simplex coordinate assignment.** The secondary
+  axis is computed by network simplex on an auxiliary graph (Gansner et
+  al. 1993 §5: edge nodes weighted 8/2/1 by dummy-ness, weight-0
+  separator edges) plus TikZ's left/right balance pass — balanced,
+  symmetric drawings with straight multi-rank dummy chains. The
+  secondary component of `at` now anchors the first box edge.
+- **`Edge` bend points.** `EdgeOptions.bendPoints` renders a polyline
+  path through intermediate points (TikZ `bend_points`), with `'auto'`
+  endpoints aiming at the first/last point; used by `layered()` for
+  multi-rank edges.
+- **Examples: earth-orbit and euler-line use border-aware node
+  labels.** Markers are now small circle nodes with `labels:` entries
+  (measured, `distance`-gapped), so label text can no longer overlap
+  the marker discs. The earth-orbit sun disc no longer overlaps the
+  perihelion Earth dot (smaller radii).
+
+### Changed
+
+- **Size-aware tree layout.** `tree()` now auto-measures every node and
+  treats `levelDistance` as an **edge-to-edge gap** along the growth
+  axis (previously a center-to-center constant). Children align their
+  near edges at the parent's far edge + gap, so horizontal trees with
+  variable-width labels no longer overlap or waste columns.
+- **Per-node `sep`.** `TreeNodeSpec.sep` and `TreeNodeBuilder.sep(d)`
+  override `levelDistance` for a single node's children — e.g. a small
+  gap under an invisible zero-size spacer root.
+- Shared layout primitives extracted to `src/layout/shared.ts`
+  (`measureNode`, `contentToNodeOptions`, axis helpers) for the other
+  builders to consume.
+
 ## 0.5.0
 
 Fluent pen statements, named coordinates, and real arc math.

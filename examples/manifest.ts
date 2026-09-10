@@ -266,6 +266,42 @@ const meta: DemoMeta[] = [
     description: "Hierarchical auto-layout: declare the tree, jikz positions every level.",
   },
   {
+    id: "layout-tree-horizontal",
+    category: "diagram-layout",
+    title: "Horizontal tree — size-aware spacing",
+    description: "grow: 'right' with variable-width labels: each parent pushes its children past its own measured text, so long labels can't overlap the next level. levelDistance is an edge-to-edge gap; per-node sep overrides it.",
+  },
+  {
+    id: "layout-clusters",
+    category: "diagram-layout",
+    title: "Clusters — a box around a subgraph",
+    description: "layered().cluster() groups nodes into a subgraph box, and clusters nest \u2014 name one in another's member list. Members are kept contiguous at every level of nesting, and border vertices go on every rank a cluster spans (including ranks it has no member on), so nothing foreign drifts between the boxes. Here the request\u2192audit log\u2192service path bypasses the gateway and is pushed clear of both boxes rather than routed through them. The nested policy cluster sets grow: 'right', so it is laid out as a graph of its own and collapsed to a box in the parent \u2014 two rank directions in one drawing. Each cluster comes back with bounds, a ready-made rect, its depth and its parent \u2014 paint them outermost first.",
+  },
+  {
+    id: "scope-groups",
+    category: "diagram-layout",
+    title: "Scopes — group transform, style cascade, opacity",
+    description: "One sub-assembly authored around its own origin and instantiated three times: each scope() shifts the whole group and cascades a stroke color onto every node, edge and shape inside it, while each item can still override a single key. Geometry inside a scope stays in the scope's own coordinates \u2014 the transform rides on a <g>, so strokes and arrow tips scale with it. Node names stay global to the picture, so the connecting edges are declared at picture level and resolve across scope boundaries. The strip at the bottom shows group opacity compositing a scope as one unit rather than per item.",
+  },
+  {
+    id: "layout-layered",
+    category: "diagram-layout",
+    title: "Layered (DAG) layout",
+    description: "Sugiyama-style DAG layout: nodes may have several parents — declared by name — and each rank aligns into a column. Full pipeline: network-simplex ranks and coordinates, weighted-median + transpose crossing minimization, dummy-routed long edges.",
+  },
+  {
+    id: "dependency-graph",
+    category: "diagram-layout",
+    title: "Dependency graph — build pipeline",
+    description: "A build pipeline as a DAG: multi-parent milestones (test, package) and a config→publish edge spanning four ranks, routed as a straight dummy chain by the network-simplex coordinate assignment.",
+  },
+  {
+    id: "class-hierarchy",
+    category: "diagram-layout",
+    title: "Class hierarchy with interfaces",
+    description: "Interfaces with multiple implementers — a DAG a tree layout cannot express. Weighted-median + transpose sweeps untangle the implements-edges; interfaces are dashed by name convention.",
+  },
+  {
     id: "katex-math",
     category: "paths-decorations",
     title: "KaTeX math labels",

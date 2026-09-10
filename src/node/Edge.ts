@@ -38,6 +38,43 @@ export type EdgeRouting =
 export type EdgeAnchorSpec = AnchorSpec | 'auto'
 
 /**
+ * Which side of the node a self-loop bulges out on — TikZ's
+ * `loop above` / `loop below` / `loop left` / `loop right`.
+ */
+export type LoopDirection = 'above' | 'below' | 'left' | 'right'
+
+/**
+ * Out/in angles per loop direction, in the library's screen convention
+ * (0° = east, clockwise, so 270° = north).
+ *
+ * These are TikZ's `loop <dir>` angles mapped across the convention
+ * change. TikZ measures counter-clockwise in y-up space, and its `in`
+ * names the direction *outward* from the target, where jikz's `in`
+ * names the direction of travel *into* it — so a TikZ angle θ becomes
+ * `360 − θ` for `out`, and `(360 − θ) + 180` for `in`. TikZ's
+ * `loop above` (out=60, in=120) is therefore out=300, in=60 here.
+ *
+ * The result places both bezier control points on the named side, which
+ * is what makes the loop bulge there.
+ */
+export const LOOP_ANGLES: Record<LoopDirection, { out: number; in: number }> = {
+  above: { out: 300, in: 60 },
+  below: { out: 120, in: 240 },
+  left: { out: 210, in: 330 },
+  right: { out: 30, in: 150 },
+}
+
+/** Default direction for a self-edge that does not name one. */
+const DEFAULT_LOOP: LoopDirection = 'above'
+
+/**
+ * Default looseness for a self-loop. The chord between the two boundary
+ * anchors is short, so the loop needs a much larger multiplier than a
+ * normal edge to clear the node (TikZ's `every loop` uses 8).
+ */
+const DEFAULT_LOOP_LOOSENESS = 5
+
+/**
  * Options for creating an edge
  */
 export interface EdgeOptions {
@@ -67,6 +104,15 @@ export interface EdgeOptions {
   routing?: EdgeRouting
 
   /**
+   * Intermediate points for a polyline path (`straight` routing only).
+   * The path runs start → points → end; arrowheads stay at the real
+   * endpoints and the `'auto'` endpoint anchors aim at the first/last
+   * point. This is TikZ's `bend_points` (used by layered dummy-node
+   * edges).
+   */
+  bendPoints?: PointLike[]
+
+  /**
    * Bend angle for curved paths in degrees.
    * Positive bends to the **left** of the travel direction (TikZ
    * `bend left`); negative bends right. Shortcut that sets symmetric
@@ -89,6 +135,17 @@ export interface EdgeOptions {
    * Same screen convention as `out`. Overrides bendAngle if specified.
    */
   in?: number
+
+  /**
+   * TikZ's `loop above` / `loop below` / `loop left` / `loop right`:
+   * shorthand for the out/in angles that make a self-edge bulge out on
+   * the named side. Sets `looseness` too, unless you pass your own.
+   *
+   * A self-edge with no `loop`, `out` or `in` defaults to `'above'`, so
+   * `edge('A', 'A')` draws a visible loop rather than a zero-length
+   * path. Explicit `out`/`in` always win.
+   */
+  loop?: LoopDirection
 
   /**
    * Looseness for bezier curves (default: 1)
@@ -153,6 +210,7 @@ const DEFAULT_EDGE_OPTIONS = {
   arrowEnd: 'stealth' as ArrowTip,
   routing: 'straight' as EdgeRouting,
   bendAngle: 0,
+  loop: undefined as LoopDirection | undefined,
   out: undefined as number | undefined,
   in: undefined as number | undefined,
   looseness: 1,
@@ -163,6 +221,25 @@ const DEFAULT_EDGE_OPTIONS = {
   label: '',
   labelPos: 0.5,
   labelOffset: 5,
+}
+
+/**
+ * Whether both endpoints denote the same place — the same object, or
+ * two Anchorables sitting on the same centre. Either way there is no
+ * chord to route along, so the edge has to become a loop.
+ */
+function isSameEndpoint(
+  from: PointLike | Anchorable,
+  to: PointLike | Anchorable
+): boolean {
+  if (from === to) return true
+  if ('anchor' in from && 'anchor' in to) {
+    return (
+      Math.abs(from.center.x - to.center.x) < EPSILON &&
+      Math.abs(from.center.y - to.center.y) < EPSILON
+    )
+  }
+  return false
 }
 
 /**
@@ -188,6 +265,7 @@ export class Edge {
   readonly label: string
   readonly labelPos: number
   readonly labelOffset: number
+  readonly bendPoints: Point[]
 
   // Control points for bezier curves
   private _controlPoints?: [Point, Point]
@@ -199,21 +277,59 @@ export class Edge {
   ) {
     const opts = { ...DEFAULT_EDGE_OPTIONS, ...options }
 
-    // Resolve from point
+    // A self-edge has no chord to aim along, so the loop's out/in
+    // angles have to be settled BEFORE the anchors are resolved — they
+    // are what 'auto' aims at. `edge('A', 'A')` with nothing else said
+    // becomes a loop above rather than a zero-length path.
+    const selfEdge = isSameEndpoint(from, to)
+    if (selfEdge) {
+      const named = opts.loop ?? (opts.out === undefined && opts.in === undefined
+        ? DEFAULT_LOOP
+        : undefined)
+      if (named) {
+        const angles = LOOP_ANGLES[named]
+        opts.out = opts.out ?? angles.out
+        opts.in = opts.in ?? angles.in
+      }
+      if (options.looseness === undefined) opts.looseness = DEFAULT_LOOP_LOOSENESS
+    } else if (opts.loop) {
+      const angles = LOOP_ANGLES[opts.loop]
+      opts.out = opts.out ?? angles.out
+      opts.in = opts.in ?? angles.in
+      if (options.looseness === undefined) opts.looseness = DEFAULT_LOOP_LOOSENESS
+    }
+
+    // Resolve intermediate bend points (polyline routing).
+    this.bendPoints = (opts.bendPoints ?? []).map((p) => point(p.x, p.y))
+    const firstBend = this.bendPoints[0]
+    const lastBend = this.bendPoints[this.bendPoints.length - 1]
+
+    // Resolve from point — 'auto' aims at the first bend point if any.
+    // On a self-edge there is no other endpoint to aim at, so 'auto'
+    // takes the boundary point in the direction the path leaves.
     if ('anchor' in from) {
       // It's an Anchorable (Node)
       this.fromAnchor = opts.fromAnchor
-      this.from = this.resolveAnchor(from, to, opts.fromAnchor)
+      this.from =
+        selfEdge && opts.fromAnchor === 'auto' && opts.out !== undefined
+          ? from.anchor(opts.out)
+          : this.resolveAnchor(from, firstBend ?? to, opts.fromAnchor)
     } else {
       this.fromAnchor = 'center'
       this.from = point(from.x, from.y)
     }
 
-    // Resolve to point
+    // Resolve to point — 'auto' aims at the last bend point if any.
+    // On a self-edge it takes the boundary point the path comes back
+    // to: `in` is the direction of travel inward, so the anchor sits
+    // 180° round from it.
     if ('anchor' in to) {
       // It's an Anchorable (Node)
       this.toAnchor = opts.toAnchor
-      this.to = this.resolveAnchor(to, from, opts.toAnchor)
+      this.to =
+        selfEdge && opts.toAnchor === 'auto' && opts.in !== undefined
+          ? to.anchor(opts.in + 180)
+          : this.resolveAnchor(to, lastBend ?? from, opts.toAnchor)
     } else {
       this.toAnchor = 'center'
       this.to = point(to.x, to.y)
@@ -335,6 +451,31 @@ export class Edge {
   }
 
   /**
+   * Bounding box as [minX, minY, maxX, maxY].
+   *
+   * Includes the bend points and, on a curved edge, the bezier control
+   * points — a bent edge or a loop bulges well past its endpoints, and a
+   * box that ignored that would clip it. Control points bound the curve
+   * conservatively (the curve lies inside their hull), so the box is
+   * never too small. Stroke width and arrow tips are not included.
+   */
+  get bounds(): [number, number, number, number] {
+    const pts: Point[] = [this.from, this.to, ...this.bendPoints]
+    if (this.routing === 'bezier') pts.push(...this.controlPoints)
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
+    for (const p of pts) {
+      minX = Math.min(minX, p.x)
+      minY = Math.min(minY, p.y)
+      maxX = Math.max(maxX, p.x)
+      maxY = Math.max(maxY, p.y)
+    }
+    return [minX, minY, maxX, maxY]
+  }
+
+  /**
    * Control points for bezier routing
    */
   get controlPoints(): [Point, Point] {
@@ -453,8 +594,28 @@ export class Edge {
       }
 
       case 'straight':
-      default:
-        return this.start.toward(this.end, t)
+      default: {
+        if (this.bendPoints.length === 0) {
+          return this.start.toward(this.end, t)
+        }
+        const pts = [this.start, ...this.bendPoints, this.end]
+        const segLens: number[] = []
+        let total = 0
+        for (let i = 0; i < pts.length - 1; i++) {
+          const seg = pts[i]!.distanceTo(pts[i + 1]!)
+          segLens.push(seg)
+          total += seg
+        }
+        let target = t * total
+        for (let i = 0; i < segLens.length; i++) {
+          const seg = segLens[i]!
+          if (target <= seg || i === segLens.length - 1) {
+            return pts[i]!.toward(pts[i + 1]!, seg > 0 ? target / seg : 0)
+          }
+          target -= seg
+        }
+        return pts[pts.length - 1]!
+      }
     }
   }
 
@@ -503,7 +664,9 @@ export class Edge {
 
       case 'straight':
       default:
-        return [this.start, this.end]
+        return this.bendPoints.length > 0
+          ? [this.start, ...this.bendPoints, this.end]
+          : [this.start, this.end]
     }
   }
 
@@ -532,8 +695,15 @@ export class Edge {
       }
 
       case 'straight':
-      default:
-        return `M ${this.start.x} ${this.start.y} L ${this.end.x} ${this.end.y}`
+      default: {
+        if (this.bendPoints.length === 0) {
+          return `M ${this.start.x} ${this.start.y} L ${this.end.x} ${this.end.y}`
+        }
+        const pts = [this.start, ...this.bendPoints, this.end]
+        return pts
+          .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`)
+          .join(' ')
+      }
     }
   }
 
@@ -683,7 +853,12 @@ export function bendRight(
 }
 
 /**
- * Create a self-loop edge (for connecting a node to itself)
+ * Create a self-loop edge — TikZ's `\draw (A) to[loop above] (A);`
+ *
+ * Sugar for `edge(node, node, { loop: direction })`. On an
+ * {@link Anchorable} the two endpoints land on the node's boundary in
+ * the out and in directions, so the loop hangs off the named side; on a
+ * bare point they coincide and `looseness` alone sets the size.
  *
  * @param node - The node to create a loop on
  * @param direction - Direction of the loop: 'above', 'below', 'left', 'right' (default: 'above')
@@ -691,17 +866,8 @@ export function bendRight(
  */
 export function loopEdge(
   node: PointLike | Anchorable,
-  direction: 'above' | 'below' | 'left' | 'right' = 'above',
-  options: Omit<EdgeOptions, 'out' | 'in' | 'routing' | 'looseness'> = {}
+  direction: LoopDirection = 'above',
+  options: Omit<EdgeOptions, 'out' | 'in' | 'routing' | 'loop'> = {}
 ): Edge {
-  // Screen convention: up = 270°, down = 90°. The loop leaves and
-  // returns on the named side of the node.
-  const angles = {
-    above: { out: 240, in: 300 },
-    below: { out: 120, in: 60 },
-    left: { out: 210, in: 150 },
-    right: { out: 330, in: 30 },
-  }
-  const { out, in: inAngle } = angles[direction]
-  return new Edge(node, node, { ...options, out, in: inAngle, looseness: 5 })
+  return new Edge(node, node, { ...options, loop: direction })
 }

@@ -230,6 +230,168 @@ describe('Tree', () => {
     })
   })
 
+  describe('size-aware spacing', () => {
+    it('places children edge-to-edge along the growth axis', () => {
+      const result = tree({ at: point(0, 0), grow: 'right', levelDistance: 30 })
+        .root({ text: 'P', name: 'P', width: 40, height: 20 })
+          .child({ text: 'C', name: 'C', width: 20, height: 20 })
+        .build()
+
+      const child = result.getNode('C')!
+      // parent.half (20) + gap (30) + child.half (10)
+      expect(child.center.x - result.root.center.x).toBe(60)
+      expect(child.center.y).toBe(result.root.center.y)
+    })
+
+    it('uses node heights for vertical growth', () => {
+      const result = tree({ at: point(0, 0), grow: 'down', levelDistance: 30 })
+        .root({ text: 'P', name: 'P', width: 50, height: 40 })
+          .child({ text: 'C', name: 'C', width: 20, height: 30 })
+        .build()
+
+      const child = result.getNode('C')!
+      // parent.half (20) + gap (30) + child.half (15)
+      expect(child.center.y - result.root.center.y).toBe(65)
+    })
+
+    it('supports per-node sep via the builder', () => {
+      const result = tree({ at: point(0, 0), grow: 'down', levelDistance: 30 })
+        .root({ text: 'P', name: 'P', width: 20, height: 20 })
+          .sep(80)
+          .child({ text: 'C', name: 'C', width: 20, height: 20 })
+        .build()
+
+      // parent.half (10) + sep (80) + child.half (10)
+      expect(result.getNode('C')!.center.y - result.root.center.y).toBe(100)
+    })
+
+    it('supports per-node sep via treeFromSpec', () => {
+      const result = treeFromSpec({
+        content: { text: 'P', name: 'P', width: 20, height: 20 },
+        sep: 80,
+        children: [{ content: { text: 'C', name: 'C', width: 20, height: 20 } }],
+      }, { at: point(0, 0), grow: 'down', levelDistance: 30 })
+
+      expect(result.getNode('C')!.center.y - result.root.center.y).toBe(100)
+    })
+
+    it('supports an invisible zero-size root with a small sep', () => {
+      const result = tree({ at: point(0, 0), grow: 'right', levelDistance: 50 })
+        .root({ text: '', name: 'root', width: 0, height: 0, minWidth: 0, minHeight: 0 })
+          .sep(20)
+          .child({ text: 'A', name: 'A', width: 20, height: 20 })
+        .build()
+
+      // root.half (0) + sep (20) + child.half (10)
+      expect(result.getNode('A')!.center.x - result.root.center.x).toBe(30)
+    })
+
+    it('advances a wide parent further than a narrow parent', () => {
+      const short = tree({ at: point(0, 0), grow: 'right' })
+        .root('1.e4').child('2.Nf3').build()
+      const long = tree({ at: point(0, 0), grow: 'right' })
+        .root('6.Bg5 e6 Nf3 d5').child('7...').build()
+
+      const shortAdvance = short.getNode('2.Nf3')!.center.x - short.root.center.x
+      const longAdvance = long.getNode('7...')!.center.x - long.root.center.x
+      expect(longAdvance).toBeGreaterThan(shortAdvance)
+    })
+
+    it('aligns sibling near edges under a parent', () => {
+      const result = tree({ at: point(0, 0), grow: 'right', levelDistance: 30 })
+        .root({ text: 'P', name: 'P', width: 40, height: 20 })
+          .children([
+            { text: 'A', name: 'A', width: 20, height: 20 },
+            { text: 'Wide', name: 'Wide', width: 80, height: 20 },
+          ])
+        .build()
+
+      const a = result.getNode('A')!
+      const wide = result.getNode('Wide')!
+      // parent far edge (20) + gap (30) = 50 from parent center
+      expect(a.center.x - a.width / 2).toBe(50)
+      expect(wide.center.x - wide.width / 2).toBe(50)
+      expect(wide.center.x).toBeGreaterThan(a.center.x)
+    })
+
+    it('does not overlap a long parent label', () => {
+      const result = tree({ at: point(0, 0), grow: 'right', levelDistance: 20 })
+        .root('6.Bg5 e6 Nf3 d5').child('7...').build()
+
+      const child = result.getNode('7...')!
+      const parentFar = result.root.center.x + result.root.width / 2
+      const childNear = child.center.x - child.width / 2
+      expect(childNear).toBeGreaterThanOrEqual(parentFar + 20)
+    })
+  })
+
+  describe('rank alignment', () => {
+    it('aligns every level to one column (grow right)', () => {
+      const result = tree({ at: point(0, 0), grow: 'right', align: 'rank', levelDistance: 50 })
+        .root({ text: 'P', name: 'P', width: 40, height: 20 })
+          .children([
+            { text: 'A', name: 'A', width: 20, height: 20 },
+            { text: 'Wide', name: 'Wide', width: 80, height: 20 },
+          ])
+        .build()
+
+      const a = result.getNode('A')!
+      const wide = result.getNode('Wide')!
+      // Same column (centers aligned, unlike parent mode's near edges)
+      expect(a.center.x).toBe(wide.center.x)
+      // root.half (20) + gap (50) + level-1 max half (40)
+      expect(a.center.x).toBe(110)
+      // Level box near edge sits at the root's far edge + gap
+      expect(wide.center.x - wide.width / 2).toBe(70)
+    })
+
+    it('aligns every level to one column (grow down)', () => {
+      const result = tree({ at: point(0, 0), grow: 'down', align: 'rank', levelDistance: 50 })
+        .root({ text: 'P', name: 'P', width: 20, height: 40 })
+          .children([
+            { text: 'A', name: 'A', width: 20, height: 20 },
+            { text: 'Tall', name: 'Tall', width: 20, height: 80 },
+          ])
+        .build()
+
+      const a = result.getNode('A')!
+      const tall = result.getNode('Tall')!
+      expect(a.center.y).toBe(tall.center.y)
+      // root.half (20) + gap (50) + level-1 max half (40)
+      expect(a.center.y).toBe(110)
+    })
+
+    it('keeps per-parent drift by default', () => {
+      const result = tree({ at: point(0, 0), grow: 'right', levelDistance: 50 })
+        .root({ text: 'P', name: 'P', width: 40, height: 20 })
+          .children([
+            { text: 'A', name: 'A', width: 20, height: 20 },
+            { text: 'Wide', name: 'Wide', width: 80, height: 20 },
+          ])
+        .build()
+
+      const a = result.getNode('A')!
+      const wide = result.getNode('Wide')!
+      expect(a.center.x).not.toBe(wide.center.x)
+      // Parent mode aligns near edges
+      expect(a.center.x - a.width / 2).toBe(wide.center.x - wide.width / 2)
+    })
+
+    it('ignores per-node sep in rank mode', () => {
+      const withSep = tree({ at: point(0, 0), grow: 'right', align: 'rank', levelDistance: 50 })
+        .root({ text: 'P', name: 'P', width: 40, height: 20 })
+          .sep(200)
+          .child({ text: 'A', name: 'A', width: 20, height: 20 })
+        .build()
+      const withoutSep = tree({ at: point(0, 0), grow: 'right', align: 'rank', levelDistance: 50 })
+        .root({ text: 'P', name: 'P', width: 40, height: 20 })
+          .child({ text: 'A', name: 'A', width: 20, height: 20 })
+        .build()
+
+      expect(withSep.getNode('A')!.center.x).toBe(withoutSep.getNode('A')!.center.x)
+    })
+  })
+
   describe('edge options', () => {
     it('applies global edge options', () => {
       const result = tree({
@@ -430,6 +592,177 @@ describe('Tree', () => {
 
       expect(result.root.shape.type).toBe('ellipse')
       expect(result.getNode('A')!.shape.type).toBe('circle')
+    })
+  })
+
+  describe('contour packing', () => {
+    const N = (name: string, width = 40) => ({ name, text: name, width, height: 20 })
+    const GAP = 20
+
+    /** Every node's box, grouped by depth (cross axis = x when growing down). */
+    function rows(result: ReturnType<typeof treeFromSpec>) {
+      const byY = new Map<number, { name: string; lo: number; hi: number }[]>()
+      for (const n of result.nodes) {
+        const row = byY.get(n.center.y) ?? []
+        row.push({ name: n.name!, lo: n.center.x - n.width / 2, hi: n.center.x + n.width / 2 })
+        byY.set(n.center.y, row)
+      }
+      for (const row of byY.values()) row.sort((a, b) => a.lo - b.lo)
+      return byY
+    }
+
+    function tightestGap(result: ReturnType<typeof treeFromSpec>): number {
+      let tightest = Infinity
+      for (const row of rows(result).values()) {
+        for (let i = 1; i < row.length; i++) {
+          tightest = Math.min(tightest, row[i]!.lo - row[i - 1]!.hi)
+        }
+      }
+      return tightest
+    }
+
+    it('nests a leaf beside a sibling that is only wide deeper down', () => {
+      // The bbox of B's subtree is 3 nodes wide, but at C's own depth B is
+      // a single node. Bounding-box packing reserved the full 3-node width
+      // and pushed C clear of it; contour packing lets C sit next to B.
+      const result = treeFromSpec(
+        {
+          content: N('root'),
+          children: [
+            { content: N('B'), children: [{ content: N('b1') }, { content: N('b2') }, { content: N('b3') }] },
+            { content: N('C') },
+          ],
+        },
+        { at: point(0, 0), grow: 'down', siblingDistance: GAP }
+      )
+
+      const B = result.getNode('B')!
+      const C = result.getNode('C')!
+      // Adjacent at their shared depth, at exactly the requested gap.
+      expect(C.center.x - C.width / 2 - (B.center.x + B.width / 2)).toBeCloseTo(GAP, 6)
+      // Bounding-box packing would have needed 3 node widths + 2 gaps
+      // between the two subtree centers; contour packing needs far less.
+      const bboxSeparation = (3 * 40 + 2 * GAP) / 2 + GAP + 40 / 2
+      expect(C.center.x - B.center.x).toBeLessThan(bboxSeparation)
+    })
+
+    it('centers a parent between its outermost children', () => {
+      const result = treeFromSpec(
+        {
+          content: N('root'),
+          children: [
+            { content: N('L'), children: [{ content: N('l1') }, { content: N('l2') }] },
+            { content: N('R', 120) },
+          ],
+        },
+        { at: point(0, 0), grow: 'down', siblingDistance: GAP }
+      )
+      const root = result.root
+      const L = result.getNode('L')!
+      const R = result.getNode('R')!
+      expect(root.center.x).toBeCloseTo((L.center.x + R.center.x) / 2, 6)
+    })
+
+    it('keeps the root at `at` on the cross axis', () => {
+      const result = treeFromSpec(
+        { content: N('root'), children: [{ content: N('a') }, { content: N('b') }, { content: N('c') }] },
+        { at: point(137, 11), grow: 'down', siblingDistance: GAP }
+      )
+      expect(result.root.center.x).toBeCloseTo(137, 6)
+      expect(result.root.center.y).toBeCloseTo(11, 6)
+    })
+
+    it('respects siblingDistance with mixed node widths', () => {
+      const result = treeFromSpec(
+        {
+          content: N('root'),
+          children: [
+            { content: N('wide', 140), children: [{ content: N('w1', 20) }] },
+            { content: N('thin', 20), children: [{ content: N('t1', 140) }] },
+            { content: N('mid', 60) },
+          ],
+        },
+        { at: point(0, 0), grow: 'down', siblingDistance: GAP }
+      )
+      expect(tightestGap(result)).toBeGreaterThanOrEqual(GAP - 1e-9)
+    })
+
+    it('clears a non-adjacent earlier sibling (contour threading)', () => {
+      // The third child must clear the first child's deep-right subtree,
+      // not merely its immediate left neighbor. Threads are what carry
+      // that contour across the intervening sibling.
+      const result = treeFromSpec(
+        {
+          content: N('root'),
+          children: [
+            {
+              content: N('A'),
+              children: [
+                { content: N('a1') },
+                { content: N('a2'), children: [{ content: N('a2a') }, { content: N('a2b') }] },
+              ],
+            },
+            { content: N('B') },
+            { content: N('C'), children: [{ content: N('c1') }, { content: N('c2') }] },
+          ],
+        },
+        { at: point(0, 0), grow: 'down', siblingDistance: GAP }
+      )
+      expect(tightestGap(result)).toBeGreaterThanOrEqual(GAP - 1e-9)
+    })
+
+    it('never overlaps and always honors siblingDistance, over many shapes', () => {
+      const mulberry = (a: number) => () => {
+        a |= 0
+        a = (a + 0x6d2b79f5) | 0
+        let t = Math.imul(a ^ (a >>> 15), 1 | a)
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+      }
+      let counter = 0
+      type Spec = Parameters<typeof treeFromSpec>[0]
+      const rand = (depth: number, rnd: () => number): Spec => {
+        const self: Spec = { content: N('n' + counter++, 20 + (counter % 5) * 30) }
+        if (depth >= 4 || rnd() < 0.3) return self
+        self.children = Array.from({ length: 1 + Math.floor(rnd() * 3) }, () => rand(depth + 1, rnd))
+        return self
+      }
+
+      for (let seed = 0; seed < 60; seed++) {
+        counter = 0
+        const result = treeFromSpec(rand(0, mulberry(seed)), {
+          at: point(0, 0),
+          grow: 'down',
+          siblingDistance: GAP,
+        })
+        expect(tightestGap(result)).toBeGreaterThanOrEqual(GAP - 1e-9)
+      }
+    })
+
+    it('lays out a deep chain without drift', () => {
+      let spec: Parameters<typeof treeFromSpec>[0] = { content: N('leaf') }
+      for (let i = 0; i < 500; i++) spec = { content: N('n' + i), children: [spec] }
+      const result = treeFromSpec(spec, { at: point(50, 0), grow: 'down', siblingDistance: GAP })
+      // A pure chain has no siblings to separate: one straight column.
+      const xs = new Set(result.nodes.map((n) => n.center.x))
+      expect(xs).toEqual(new Set([50]))
+    })
+
+    it('grows sideways with the same guarantees', () => {
+      const result = treeFromSpec(
+        {
+          content: N('root'),
+          children: [
+            { content: N('B'), children: [{ content: N('b1') }, { content: N('b2') }, { content: N('b3') }] },
+            { content: N('C') },
+          ],
+        },
+        { at: point(0, 0), grow: 'right', siblingDistance: GAP }
+      )
+      const B = result.getNode('B')!
+      const C = result.getNode('C')!
+      // Cross axis is y when growing right.
+      expect(C.center.y - C.height / 2 - (B.center.y + B.height / 2)).toBeCloseTo(GAP, 6)
     })
   })
 })

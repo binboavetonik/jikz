@@ -69,7 +69,7 @@ import {
   isLaTeX,
   extractLaTeX,
 } from './MathRenderer'
-import type { PictureRenderer } from '../picture/Picture'
+import type { GroupRenderOptions, PictureRenderer } from '../picture/Picture'
 
 // Re-export SVGBuilder so existing imports of the old SVGBuilder type
 // that expected `createSVGRenderer(SVG().addTo(...))` can migrate by
@@ -135,6 +135,8 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
   private draw: SVGBuilder
   private sceneRoot: SVGBuilder
   private currentGroup: SVGBuilder | null = null
+  /** Open scope groups, innermost last — see beginGroup/endGroup. */
+  private readonly groupStack: (SVGBuilder | null)[] = []
   private defaultStyle: RenderStyle
   private clipPathCounter: number = 0
 
@@ -822,10 +824,18 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
           y: position.y - h / 2, // Center vertically
           overflow: 'visible',
         })
+        // white-space:nowrap is essential: KaTeX emits MULTIPLE `.base`
+        // spans (e.g. for `A \\cap B`), and katex.css applies nowrap only
+        // per `.base` — without a container-level nowrap the second base
+        // can wrap under the first whenever the measured box is even 1px
+        // narrow (e.g. when measure() ran before KaTeX's web fonts
+        // loaded). With nowrap, an undersized box simply overflows
+        // symmetrically (justify-content:center + overflow:visible) and
+        // the formula stays centered on the intended point.
         fo.raw(
           `<div xmlns="http://www.w3.org/1999/xhtml" style="display:flex;` +
           `justify-content:center;align-items:center;width:100%;height:100%;` +
-          `font-size:${options?.fontSize ?? 14}px">${html}</div>`
+          `white-space:nowrap;font-size:${options?.fontSize ?? 14}px">${html}</div>`
         )
         return this.applyOptions(fo, options)
       }
@@ -878,6 +888,36 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
 
   setGroup(group: SVGBuilder): void {
     this.currentGroup = group
+  }
+
+  /**
+   * Open a `<g>` for a {@link Scope} and make it the target for
+   * everything drawn until the matching {@link endGroup}.
+   *
+   * Geometry inside a scope stays in the scope's own coordinates — the
+   * transform rides on the group, so strokes and arrow tips scale with
+   * it, matching the picture-level canvas transform.
+   */
+  beginGroup(options: GroupRenderOptions): SVGBuilder {
+    const g = this.getTarget().group()
+
+    if (options.transform) g.attr({ transform: options.transform.toSVGMatrix() })
+    if (options.opacity !== undefined) g.attr({ opacity: options.opacity })
+    if (options.className) g.addClass(options.className)
+    if (options.id) g.id(options.id)
+    if (options.clip) g.attr({ 'clip-path': this.ensureClipPath(options.clip) })
+
+    this.groupStack.push(this.currentGroup)
+    this.currentGroup = g
+    return g
+  }
+
+  /** Close the most recent {@link beginGroup}. */
+  endGroup(): void {
+    if (this.groupStack.length === 0) {
+      throw new Error('SVGRenderer.endGroup: no group is open')
+    }
+    this.currentGroup = this.groupStack.pop() ?? null
   }
 
   clearGroup(): void {

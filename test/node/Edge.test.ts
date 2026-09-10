@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { Edge, edge, arrow, biEdge, bentEdge, toEdge, bendLeft, bendRight, loopEdge } from '../../src/node/Edge'
+import { Edge, edge, arrow, biEdge, bentEdge, toEdge, bendLeft, bendRight, loopEdge, LOOP_ANGLES } from '../../src/node/Edge'
 import { node, rectNode } from '../../src/node/Node'
 import { point } from '../../src/core/Point'
 import { SVGRenderer } from '../../src/render/SVGRenderer'
@@ -364,35 +364,157 @@ describe('Edge', () => {
   })
 
   describe('loopEdge', () => {
-    it('creates self-loop with high looseness', () => {
+    const A = node({ at: point(100, 100), shape: 'circle', width: 40, height: 40 })
+
+    it('creates a self-loop with loop looseness', () => {
       const e = loopEdge(point(50, 50), 'above')
       expect(e.looseness).toBe(5)
+      // A bare point has no boundary, so both ends coincide.
       expect(e.from.x).toBe(e.to.x)
       expect(e.from.y).toBe(e.to.y)
     })
 
-    it('loop above goes out left-up and in right-up', () => {
-      const e = loopEdge(point(50, 50), 'above')
-      expect(e.outAngle).toBe(240)
-      expect(e.inAngle).toBe(300)
+    // Angles are TikZ's `loop <dir>` mapped into the screen convention
+    // (0° = east, clockwise). Both control points must land on the named
+    // side — that is what makes the loop bulge there.
+    it.each([
+      ['above', 300, 60],
+      ['below', 120, 240],
+      ['left', 210, 330],
+      ['right', 30, 150],
+    ] as const)('loop %s uses out=%i, in=%i', (dir, out, inAngle) => {
+      const e = loopEdge(A, dir)
+      expect(e.outAngle).toBe(out)
+      expect(e.inAngle).toBe(inAngle)
     })
 
-    it('loop below goes out left-down and in right-down', () => {
-      const e = loopEdge(point(50, 50), 'below')
-      expect(e.outAngle).toBe(120)
-      expect(e.inAngle).toBe(60)
+    it.each([
+      ['above', (p: { x: number; y: number }) => p.y < 100],
+      ['below', (p: { x: number; y: number }) => p.y > 100],
+      ['left', (p: { x: number; y: number }) => p.x < 100],
+      ['right', (p: { x: number; y: number }) => p.x > 100],
+    ] as const)('loop %s puts both control points on that side', (dir, onSide) => {
+      const [c1, c2] = loopEdge(A, dir).controlPoints
+      expect(onSide(c1)).toBe(true)
+      expect(onSide(c2)).toBe(true)
     })
 
-    it('loop left goes out up-left and in down-left', () => {
-      const e = loopEdge(point(50, 50), 'left')
-      expect(e.outAngle).toBe(210)
-      expect(e.inAngle).toBe(150)
+    it('anchors both ends on the node boundary, not at one fixed point', () => {
+      // The regression: 'auto' resolved via the ray toward the other
+      // endpoint, which for a self-edge is atan2(0, 0) = 0 — so every
+      // loop started AND ended on the east boundary whichever way it
+      // bulged.
+      const e = loopEdge(A, 'above')
+      expect(e.from.x).not.toBeCloseTo(e.to.x)
+      for (const p of [e.from, e.to]) {
+        expect(Math.hypot(p.x - 100, p.y - 100)).toBeCloseTo(20, 6) // on the circle
+        expect(p.y).toBeLessThan(100) // on the top half
+      }
     })
 
-    it('loop right goes out up-right and in down-right', () => {
-      const e = loopEdge(point(50, 50), 'right')
-      expect(e.outAngle).toBe(330)
-      expect(e.inAngle).toBe(30)
+    it('never dips inside the node it loops on', () => {
+      for (const dir of ['above', 'below', 'left', 'right'] as const) {
+        const e = loopEdge(A, dir)
+        const [c1, c2] = e.controlPoints
+        let min = Infinity
+        for (let i = 0; i <= 100; i++) {
+          const t = i / 100
+          const u = 1 - t
+          const x = u ** 3 * e.from.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t ** 3 * e.to.x
+          const y = u ** 3 * e.from.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t ** 3 * e.to.y
+          min = Math.min(min, Math.hypot(x - 100, y - 100))
+        }
+        expect(min).toBeGreaterThanOrEqual(20 - 1e-6)
+      }
+    })
+  })
+
+  describe('self-edges', () => {
+    const A = node({ at: point(100, 100), shape: 'circle', width: 40, height: 40 })
+
+    it('draws a visible loop instead of a zero-length path', () => {
+      const e = new Edge(A, A)
+      expect(e.routing).toBe('bezier')
+      expect(e.length).toBeGreaterThan(0)
+      expect(e.outAngle).toBe(LOOP_ANGLES.above.out)
+      expect(e.inAngle).toBe(LOOP_ANGLES.above.in)
+    })
+
+    it('honors an explicit loop direction', () => {
+      const e = new Edge(A, A, { loop: 'right' })
+      expect(e.outAngle).toBe(LOOP_ANGLES.right.out)
+      expect(e.from.x).toBeGreaterThan(100)
+    })
+
+    it('lets explicit out/in beat the loop default', () => {
+      const e = new Edge(A, A, { out: 10, in: 20 })
+      expect(e.outAngle).toBe(10)
+      expect(e.inAngle).toBe(20)
+    })
+
+    it('lets an explicit looseness beat the loop default', () => {
+      expect(new Edge(A, A, { looseness: 2 }).looseness).toBe(2)
+      expect(new Edge(A, A).looseness).toBe(5)
+    })
+
+    it('treats two distinct nodes on the same centre as a self-edge', () => {
+      const B = node({ at: point(100, 100), shape: 'circle', width: 40, height: 40 })
+      expect(new Edge(A, B).routing).toBe('bezier')
+    })
+
+    it('leaves ordinary edges alone', () => {
+      const B = node({ at: point(200, 100), shape: 'circle', width: 40, height: 40 })
+      const e = new Edge(A, B)
+      expect(e.routing).toBe('straight')
+      expect(e.looseness).toBe(1)
+      expect(e.outAngle).toBeUndefined()
+    })
+
+    it('respects an explicit anchor rather than the loop direction', () => {
+      const e = new Edge(A, A, { loop: 'above', fromAnchor: 'south' })
+      expect(e.from.y).toBeCloseTo(120) // south boundary, not the top
+    })
+  })
+
+  describe('bend points', () => {
+    it('renders a polyline through the bend points', () => {
+      const e = edge(point(0, 0), point(100, 0), {
+        bendPoints: [point(30, 20), point(70, -20)],
+      })
+      expect(e.bendPoints).toHaveLength(2)
+      expect(e.toSVGPath()).toBe('M 0 0 L 30 20 L 70 -20 L 100 0')
+    })
+
+    it('exposes waypoints as start, bends, end', () => {
+      const e = edge(point(0, 0), point(100, 0), {
+        bendPoints: [point(50, 10)],
+      })
+      expect(e.waypoints.map((p) => [p.x, p.y])).toEqual([
+        [0, 0],
+        [50, 10],
+        [100, 0],
+      ])
+    })
+
+    it('computes pointAt along the polyline', () => {
+      const e = edge(point(0, 0), point(100, 0), {
+        bendPoints: [point(50, 100)],
+      })
+      // First segment is √(50²+100²) ≈ 111.8; second equal. Halfway lands
+      // exactly at the bend point.
+      const mid = e.pointAt(0.5)
+      expect(mid.x).toBeCloseTo(50)
+      expect(mid.y).toBeCloseTo(100)
+    })
+
+    it('aims auto endpoints at the first/last bend point', () => {
+      const n1 = rectNode({ at: point(0, 0), width: 20, height: 20 })
+      const n2 = rectNode({ at: point(100, 0), width: 20, height: 20 })
+      const e = edge(n1, n2, { bendPoints: [point(50, 50)] })
+      // from anchor aims at the first bend (down-right), to at the last
+      // bend (down-left relative to n2).
+      expect(e.from.y).toBeGreaterThan(0)
+      expect(e.to.y).toBeGreaterThan(0)
     })
   })
 })

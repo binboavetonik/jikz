@@ -265,6 +265,7 @@
     }
 
     const grid = document.getElementById('grid')
+    const gridParent = grid.parentElement // captured before grid.remove()
     const catbar = document.getElementById('catbar')
 
     // ── Category tab bar + grouped sections ──────────────────────────
@@ -281,7 +282,7 @@
         </div>
         <div class="grid"></div>
       `
-      grid.parentElement.appendChild(section)
+      gridParent.appendChild(section)
       const entry = { section, grid: section.querySelector('.grid') }
       sections.set(key, entry)
       return entry
