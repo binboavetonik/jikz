@@ -25,8 +25,8 @@ export default function render(container: HTMLElement) {
   pic.edge('q1', 'q2', { arrowEnd: 'stealth', label: '1' }, { style: es })
   pic.edge('q1', 'q0', { arrowEnd: 'stealth', label: '1', bendAngle: 40 }, { style: es })
   pic.edge('q2', 'q0', { arrowEnd: 'stealth', label: '0', bendAngle: -35 }, { style: es })
-  pic.edge('q0', 'q0', { arrowEnd: 'stealth', label: '1', out: 240, in: 300, looseness: 6 }, { style: es })
-  pic.edge('q2', 'q2', { arrowEnd: 'stealth', label: '1', out: 240, in: 300, looseness: 6 }, { style: es })
+  pic.edge('q0', 'q0', { arrowEnd: 'stealth', label: '1', loop: 'above' }, { style: es })
+  pic.edge('q2', 'q2', { arrowEnd: 'stealth', label: '1', loop: 'above' }, { style: es })
 
   pic.mount(container, { fit: true, padding: 14 })
 }

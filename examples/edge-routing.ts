@@ -10,7 +10,7 @@ export default function render(container: HTMLElement) {
   pic.edge('A', 'B', { bendAngle: 35, label: 'bend left' }, { style: { stroke: '#2563eb' } })
   pic.edge('B', 'A', { bendAngle: 35 }, { style: { stroke: '#94a3b8', dash: 'dashed' } })
   pic.edge('B', 'C', { out: 315, in: 225, label: 'out 315 / in 225' }, { style: { stroke: '#7c3aed' } })
-  pic.edge('C', 'C', { out: 240, in: 300, looseness: 5 }, { style: { stroke: '#dc2626' } })
+  pic.edge('C', 'C', { loop: 'above' }, { style: { stroke: '#dc2626' } })
 
   pic.mount(container, { width: 420, height: 170 })
 }

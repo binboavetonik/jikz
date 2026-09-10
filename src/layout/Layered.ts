@@ -1,7 +1,7 @@
 import { point } from '../core/Point'
 import type { PointLike } from '../core/types'
 import { Node, type NodeOptions } from '../node/Node'
-import { Edge, edge, type EdgeOptions } from '../node/Edge'
+import { Edge, edge, type EdgeOptions, type LoopDirection } from '../node/Edge'
 import {
   type LayoutGrowth,
   axesToPoint,
@@ -102,6 +102,13 @@ export interface LayeredEdgeSpec {
   minLength?: number
   /** Weight used by crossing minimization (default: 1). */
   weight?: number
+  /**
+   * Which side a self-edge (`from === to`) loops out on. Ignored on
+   * ordinary edges. Defaults to the side that does not collide with the
+   * rank direction: `'right'` for vertical growth, `'above'` for
+   * horizontal.
+   */
+  loop?: LoopDirection
 }
 
 /**
@@ -144,7 +151,7 @@ export interface LayeredBuilder {
   edge(
     from: string,
     to: string,
-    options?: { minLength?: number; weight?: number },
+    options?: { minLength?: number; weight?: number; loop?: LoopDirection },
   ): LayeredBuilder
   build(): LayeredResult
 }
@@ -198,6 +205,13 @@ class LayeredBuilderImpl implements LayeredBuilder {
   private _dummies: InternalVertex[] = []
   private _dummyCounter = 0
   private _unitEdges: InternalEdge[] = []
+  /**
+   * Self-edges, held aside. A loop carries no ranking or ordering
+   * information — it would only skew the crossing counts and add a
+   * useless vertex to the coordinate simplex — so it stays out of the
+   * layout entirely and is re-attached as a loop at render time.
+   */
+  private _selfEdges: { vertex: InternalVertex; loop?: LoopDirection }[] = []
   private _ranks: Map<number, InternalVertex[]> = new Map()
   private _maxRank = 0
 
@@ -234,7 +248,7 @@ class LayeredBuilderImpl implements LayeredBuilder {
   edge(
     from: string,
     to: string,
-    options?: { minLength?: number; weight?: number },
+    options?: { minLength?: number; weight?: number; loop?: LoopDirection },
   ): LayeredBuilder {
     const fromVertex = this._vertices.get(from)
     const toVertex = this._vertices.get(to)
@@ -242,6 +256,10 @@ class LayeredBuilderImpl implements LayeredBuilder {
       throw new Error(
         `layered layout: edge references unknown node "${!fromVertex ? from : to}"`,
       )
+    }
+    if (fromVertex === toVertex) {
+      this._selfEdges.push({ vertex: fromVertex, loop: options?.loop })
+      return this
     }
     const internalEdge: InternalEdge = {
       from: fromVertex,
@@ -262,6 +280,7 @@ class LayeredBuilderImpl implements LayeredBuilder {
     this._dummies = []
     this._dummyCounter = 0
     this._unitEdges = []
+    const selfEdges = this._selfEdges
     const declaredEdges = this._edges
 
     if (this._vertices.size === 0) {
@@ -317,6 +336,19 @@ class LayeredBuilderImpl implements LayeredBuilder {
         e.edge = edgeObj
         edges.push(edgeObj)
       }
+
+      // Self-edges rejoin here, as loops on the side that does not run
+      // into the neighbouring ranks.
+      const defaultLoop: LoopDirection =
+        this._options.grow === 'down' || this._options.grow === 'up'
+          ? 'right'
+          : 'above'
+      for (const self of selfEdges) {
+        const n = vertexToNode.get(self.vertex)!
+        edges.push(
+          edge(n, n, { ...this._options.edgeOptions, loop: self.loop ?? defaultLoop }),
+        )
+      }
     }
 
     const levelNodes = new Map<number, Node[]>()
@@ -346,6 +378,9 @@ class LayeredBuilderImpl implements LayeredBuilder {
         for (const e of declaredEdges) {
           if (e.origTo === v) result.push(e.origFrom!.node!)
         }
+        // A self-edge makes the node its own predecessor. Callers that
+        // walk these lists must guard against the cycle.
+        for (const self of selfEdges) if (self.vertex === v) result.push(node)
         return result
       },
       outgoing(node: Node): Node[] {
@@ -355,6 +390,7 @@ class LayeredBuilderImpl implements LayeredBuilder {
         for (const e of declaredEdges) {
           if (e.origFrom === v) result.push(e.origTo!.node!)
         }
+        for (const self of selfEdges) if (self.vertex === v) result.push(node)
         return result
       },
       bounds,

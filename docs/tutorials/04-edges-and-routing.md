@@ -33,7 +33,8 @@ Tutorial 3 applies verbatim.
 ```ts
 pic.edge('A', 'B', { bendAngle: 35, label: 'bend left' })  // TikZ bend left=35
 pic.edge('B', 'C', { out: 315, in: 225 })                  // absolute depart/arrive angles
-pic.edge('C', 'C', { out: 240, in: 300, looseness: 5 })    // self-loop
+pic.edge('C', 'C', { loop: 'above' })                      // TikZ to[loop above]
+pic.edge('D', 'D')                                         // self-edge → loop above
 ```
 
 - `bendAngle` — positive bends **left of travel** (screen-independent,
@@ -42,6 +43,23 @@ pic.edge('C', 'C', { out: 240, in: 300, looseness: 5 })    // self-loop
   [screen convention](../concepts/coordinate-system.md) (270 = north).
 - `looseness` — multiplies the control-point distance; TikZ's
   `looseness=` key.
+- `loop` — `'above' | 'below' | 'left' | 'right'`, TikZ's
+  `to[loop above]`. Sets `out`/`in` and a larger `looseness`; an
+  explicit `out`, `in` or `looseness` still wins.
+
+### Self-edges
+
+An edge whose endpoints are the same node loops instead of collapsing to
+a zero-length path: `edge('A', 'A')` is a loop above, and `loop` picks a
+different side. Both ends land on the node's boundary in the out and in
+directions, so the loop hangs off that side and scales with the node —
+you do not have to hand-tune `looseness` per node size.
+
+`loopEdge(node, 'above')` is the standalone-object form of the same thing.
+
+In a `layered()` graph a self-edge is held out of the layout — a loop
+carries no ranking or ordering information — and re-attached as a loop at
+render time, on the side that does not run into the neighbouring ranks.
 
 ## Arrow tips
 

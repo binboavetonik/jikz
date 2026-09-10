@@ -289,4 +289,78 @@ describe('Layered', () => {
       expect(heavy.level(1).map((n) => n.name)).toEqual(['S2', 'S3', 'S0', 'S1'])
     })
   })
+
+  describe('self-edges', () => {
+    const graph = (grow: 'down' | 'right', loop?: 'above' | 'below' | 'left' | 'right') =>
+      layered({ at: point(0, 0), grow })
+        .node('A', { width: 40, height: 24 })
+        .node('B', { width: 40, height: 24 })
+        .edge('A', 'B')
+        .edge('A', 'A', loop ? { loop } : undefined)
+        .build()
+
+    it('renders a self-edge as a loop', () => {
+      const r = graph('down')
+      expect(r.edges).toHaveLength(2)
+      const loop = r.edges.find((e) => e.routing === 'bezier')!
+      expect(loop).toBeDefined()
+      expect(loop.length).toBeGreaterThan(0)
+    })
+
+    it('leaves ranks and coordinates untouched', () => {
+      // A loop carries no ranking or ordering information, so it must
+      // not perturb the layout it sits in.
+      const withLoop = graph('down')
+      const without = layered({ at: point(0, 0), grow: 'down' })
+        .node('A', { width: 40, height: 24 })
+        .node('B', { width: 40, height: 24 })
+        .edge('A', 'B')
+        .build()
+
+      expect(withLoop.levelCount).toBe(without.levelCount)
+      for (const name of ['A', 'B']) {
+        expect(withLoop.getNode(name)!.center.x).toBeCloseTo(without.getNode(name)!.center.x)
+        expect(withLoop.getNode(name)!.center.y).toBeCloseTo(without.getNode(name)!.center.y)
+      }
+    })
+
+    it('loops to the side that does not collide with the rank direction', () => {
+      // Vertical growth stacks ranks above and below, so the loop goes
+      // beside the node; horizontal growth is the other way round.
+      const down = graph('down').edges.find((e) => e.routing === 'bezier')!
+      const A = graph('down').getNode('A')!
+      expect(down.from.x).toBeGreaterThan(A.center.x)
+
+      const right = graph('right').edges.find((e) => e.routing === 'bezier')!
+      const A2 = graph('right').getNode('A')!
+      expect(right.from.y).toBeLessThan(A2.center.y)
+    })
+
+    it('honors an explicit loop direction', () => {
+      const r = graph('down', 'below')
+      const loop = r.edges.find((e) => e.routing === 'bezier')!
+      expect(loop.from.y).toBeGreaterThan(r.getNode('A')!.center.y)
+    })
+
+    it('reports the node as its own neighbor', () => {
+      const r = graph('down')
+      const A = r.getNode('A')!
+      expect(r.outgoing(A).map((n) => n.name)).toContain('A')
+      expect(r.incoming(A).map((n) => n.name)).toContain('A')
+    })
+
+    it('lays out a graph made only of self-edges', () => {
+      const r = layered({ at: point(0, 0), grow: 'down' })
+        .node('A', { width: 40, height: 24 })
+        .node('B', { width: 40, height: 24 })
+        .edge('A', 'A')
+        .edge('B', 'B')
+        .build()
+      expect(r.nodes).toHaveLength(2)
+      expect(r.edges).toHaveLength(2)
+      expect(r.levelCount).toBe(1)
+      for (const n of r.nodes) expect(Number.isFinite(n.center.x)).toBe(true)
+    })
+  })
+
 })

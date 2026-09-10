@@ -52,6 +52,36 @@
 
 ### Fixed
 
+- **Self-edges draw a real loop.** `edge('A', 'A')` produced a
+  zero-length path that painted nothing, and `loopEdge` was worse than
+  it looked: `'auto'` anchors resolve along the ray toward the other
+  endpoint, which for a self-edge is `atan2(0, 0)` = 0, so *every* loop
+  started and ended on the node's east boundary whichever way it bulged.
+  Its angle table was wrong too — `loop above` put one control point
+  above the node and the other below it, swinging the curve around the
+  left side instead.
+
+  Both ends now land on the boundary in the out and in directions, so
+  the loop hangs off the named side and scales with the node instead of
+  a fixed nominal chord. A new `loop: 'above' | 'below' | 'left' |
+  'right'` option is TikZ's `to[loop above]`, and a self-edge with no
+  angles given defaults to a loop above rather than painting nothing.
+  Explicit `out`/`in`/`looseness`/anchors still win.
+
+  `LOOP_ANGLES` is exported for the mapping. The three examples using
+  self-loops (`dfa-acceptor`, `tcp-states`, `edge-routing`) had all
+  hand-copied the old broken angles; they now use `loop: 'above'`.
+
+- **`layered()` handles self-edges.** A self-loop used to enter the
+  pipeline as an ordinary edge: it skewed the crossing counts, added a
+  useless vertex to the coordinate simplex, and then rendered as a
+  degenerate zero-length edge. It is now held out of the layout
+  entirely — ranks and coordinates are identical with or without it —
+  and re-attached at render time as a loop, defaulting to the side that
+  does not collide with the rank direction (`'right'` for vertical
+  growth, `'above'` for horizontal). `LayeredEdgeSpec.loop` overrides.
+  `incoming`/`outgoing` report the node as its own neighbour.
+
 - **`layered()` no longer hangs on some node sizes.** The network
   simplex tested edge tightness with `slack === 0`. Ranks are integers
   when it assigns ranks, but the coordinate pass feeds it separator
