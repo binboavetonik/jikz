@@ -275,7 +275,7 @@ const meta: DemoMeta[] = [
     id: "layout-clusters",
     category: "diagram-layout",
     title: "Clusters — a box around a subgraph",
-    description: "layered().cluster() groups nodes into a subgraph box, and clusters nest \u2014 name one in another's member list. Members are kept contiguous at every level of nesting, and border vertices go on every rank a cluster spans (including ranks it has no member on), so nothing foreign drifts between the boxes. Here the request\u2192audit log\u2192service path bypasses the gateway and is pushed clear of both boxes rather than routed through them. Each cluster comes back with bounds, a ready-made rect, its depth and its parent \u2014 paint them outermost first.",
+    description: "layered().cluster() groups nodes into a subgraph box, and clusters nest \u2014 name one in another's member list. Members are kept contiguous at every level of nesting, and border vertices go on every rank a cluster spans (including ranks it has no member on), so nothing foreign drifts between the boxes. Here the request\u2192audit log\u2192service path bypasses the gateway and is pushed clear of both boxes rather than routed through them. The nested policy cluster sets grow: 'right', so it is laid out as a graph of its own and collapsed to a box in the parent \u2014 two rank directions in one drawing. Each cluster comes back with bounds, a ready-made rect, its depth and its parent \u2014 paint them outermost first.",
   },
   {
     id: "scope-groups",

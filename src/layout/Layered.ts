@@ -108,6 +108,23 @@ export interface ClusterOptions {
   padding?: number
   /** Text drawn with the cluster (the caller decides where to put it). */
   label?: string
+  /**
+   * Growth direction for this cluster's own contents, overriding the
+   * layout's `grow` — a top-to-bottom diagram with a left-to-right
+   * stage inside it, say.
+   *
+   * A cluster with its own `grow` cannot be a mere ordering constraint:
+   * two rank directions have no common rank assignment. It is instead
+   * laid out as a graph in its own right and collapsed to a single box
+   * in its parent, which is then laid out normally — so edges crossing
+   * the boundary attach to the nodes they name, but are routed by the
+   * parent as far as the box.
+   *
+   * Ranking, ordering and coordinates inside such a cluster are decided
+   * entirely by its own layout, so `weight` and `minLength` on an edge
+   * that crosses the boundary have no effect on the inside.
+   */
+  grow?: LayoutGrowth
 }
 
 /** A laid-out cluster: its box, in picture coordinates. */
@@ -172,7 +189,13 @@ export interface LayeredResult {
   /** All edges (multi-rank edges carry bend points). */
   edges: Edge[]
 
-  /** Real nodes at a specific rank (0 = first rank). */
+  /**
+   * Real nodes at a specific rank (0 = first rank).
+   *
+   * Ranks describe the outer graph. A cluster given its own `grow` is
+   * ranked internally by its own layout, so it counts as a single rank
+   * here and all of its nodes are reported on it.
+   */
   level(index: number): Node[]
 
   /** Total number of ranks. */
@@ -284,6 +307,15 @@ function commonPrefix(
   return out
 }
 
+/** Name of the stand-in node an independently-grown cluster collapses to. */
+function placeholderName(cluster: string): string {
+  return `__cluster__${cluster}`
+}
+
+function isPlaceholder(name: string | undefined): boolean {
+  return name !== undefined && name.startsWith('__cluster__')
+}
+
 function definedOnly<T extends object>(options: T): Partial<T> {
   const out: Partial<T> = {}
   for (const [k, v] of Object.entries(options) as [keyof T, T[keyof T]][]) {
@@ -390,6 +422,15 @@ class LayeredBuilderImpl implements LayeredBuilder {
     return this
   }
 
+  /** Whether some enclosing cluster grows in its own direction. */
+  private hasIndependentAncestor(name: string): boolean {
+    return this.clusterPath(name)
+      .slice(0, -1)
+      .some(
+        (p) => this._clusters.find((c) => c.name === p)?.options?.grow !== undefined,
+      )
+  }
+
   /** Direct child clusters of `name`, in declaration order. */
   private childClusters(name: string): LayeredClusterSpec[] {
     const spec = this._clusters.find((c) => c.name === name)!
@@ -447,6 +488,294 @@ class LayeredBuilderImpl implements LayeredBuilder {
   }
 
   build(): LayeredResult {
+    // A cluster with its own `grow` cannot be expressed as a constraint
+    // on this graph's ranks, so it is peeled off and laid out separately
+    // (see buildWithSubLayouts). What remains is an ordinary graph.
+    // Only the outermost independently-grown cluster on each branch is
+    // peeled off here; one nested inside another is handled by that
+    // one's own sub-layout, recursively.
+    const independent = this._clusters.filter(
+      (c) => c.options?.grow !== undefined && !this.hasIndependentAncestor(c.name),
+    )
+    if (independent.length > 0) return this.buildWithSubLayouts(independent)
+    return this.buildFlat()
+  }
+
+  /**
+   * Lay out each independently-growing cluster as a graph of its own,
+   * collapse each to a placeholder node the size of its box, lay out
+   * what is left, then re-run each sub-layout at the position its
+   * placeholder ended up in.
+   *
+   * Re-running rather than translating keeps every coordinate produced
+   * by the layout itself: `Node` positions are set at construction, so
+   * moving a finished sub-layout would mean rebuilding every node anyway.
+   * The sizing pass is cheap next to the risk of getting that wrong.
+   */
+  private buildWithSubLayouts(independent: LayeredClusterSpec[]): LayeredResult {
+    const grow = this._options.grow!
+    const swallowed = new Map<string, string>() // node name → its cluster
+    for (const c of independent) {
+      for (const n of this.clusterNodes(c.name)) swallowed.set(n, c.name)
+    }
+
+    // 1. Size each cluster by laying it out at the origin.
+    const sized = new Map<string, { result: LayeredResult; pad: number }>()
+    for (const c of independent) {
+      const pad = c.options?.padding ?? this._options.clusterPadding!
+      sized.set(c.name, { result: this.subLayout(c, { x: 0, y: 0 }), pad })
+    }
+
+    // 2. Parent graph: everything not swallowed, plus one placeholder
+    //    node per independent cluster, sized to its box.
+    const parent = new LayeredBuilderImpl({ ...this._options, grow })
+    for (const [name, v] of this._vertices) {
+      if (!swallowed.has(name)) parent.node(name, v.resolvedOptions)
+    }
+    for (const c of independent) {
+      const { result, pad } = sized.get(c.name)!
+      const [x0, y0, x1, y1] = result.bounds
+      parent.node(placeholderName(c.name), {
+        shape: 'rectangle',
+        text: '',
+        width: x1 - x0 + 2 * pad,
+        height: y1 - y0 + 2 * pad,
+        minWidth: 0,
+        minHeight: 0,
+      })
+    }
+
+    const outer = (name: string): string => {
+      const owner = swallowed.get(name)
+      return owner ? placeholderName(owner) : name
+    }
+
+    // Crossing edges go into the parent so it ranks the cluster
+    // correctly, but their geometry is rebuilt afterwards against the
+    // real endpoints — the parent only ever saw the placeholder. Record
+    // which is which: `build()` emits one edge per declared edge, in
+    // declaration order, so the flags line up by index.
+    const crossesBoundary: boolean[] = []
+    for (const e of this._edges) {
+      const from = outer(e.origFrom!.name)
+      const to = outer(e.origTo!.name)
+      if (from === to) continue // wholly inside one cluster
+      parent.edge(from, to, { minLength: e.minLength, weight: e.weight })
+      crossesBoundary.push(from !== e.origFrom!.name || to !== e.origTo!.name)
+    }
+    for (const self of this._selfEdges) {
+      if (!swallowed.has(self.vertex.name)) {
+        parent.edge(self.vertex.name, self.vertex.name, { loop: self.loop })
+      }
+    }
+    // Constraint clusters that live outside the independent ones carry
+    // over, with any independent child standing in as its placeholder.
+    const peeled = new Set(independent.map((i) => i.name))
+    for (const c of this._clusters) {
+      if (peeled.has(c.name)) continue
+      // A cluster inside a peeled one travels with that sub-layout.
+      if (this.clusterPath(c.name).some((p) => p !== c.name && peeled.has(p))) continue
+      const members = c.members
+        .filter((m) => !swallowed.has(m))
+        .map((m) => (peeled.has(m) ? placeholderName(m) : m))
+      if (members.length > 0) parent.cluster(c.name, members, c.options)
+    }
+
+    const outerResult = parent.build()
+
+    // 3. Re-run each sub-layout inside its placeholder's box.
+    const nodes = outerResult.nodes.filter((n) => !isPlaceholder(n.name))
+    const edges = outerResult.edges.filter((_, i) => !crossesBoundary[i])
+    const clusters = [...outerResult.clusters]
+
+    const placedByCluster = new Map<string, Node[]>()
+    for (const c of independent) {
+      const { result: sizing, pad } = sized.get(c.name)!
+      const box = outerResult.getNode(placeholderName(c.name))!.bounds
+      // `at` is not the bounding box origin, so shift by the offset the
+      // sizing pass produced between the two.
+      const at = {
+        x: box[0] + pad - sizing.bounds[0],
+        y: box[1] + pad - sizing.bounds[1],
+      }
+      const placed = this.subLayout(c, at)
+      placedByCluster.set(placeholderName(c.name), placed.nodes)
+      nodes.push(...placed.nodes)
+      edges.push(...placed.edges)
+      const path = this.clusterPath(c.name)
+      clusters.push(
+        {
+          name: c.name,
+          label: c.options?.label,
+          bounds: [box[0], box[1], box[2], box[3]],
+          rect: new Rectangle(box[0], box[1], box[2] - box[0], box[3] - box[1]),
+          nodes: placed.nodes,
+          parent: path.length > 1 ? path[path.length - 2] : undefined,
+          children: this.childClusters(c.name).map((x) => x.name),
+          depth: path.length - 1,
+        },
+        // Clusters nested inside sit below it, so their depths shift by
+        // however deep this cluster itself is.
+        ...placed.clusters.map((sub) => ({
+          ...sub,
+          parent: sub.parent ?? c.name,
+          depth: sub.depth + path.length,
+        })),
+      )
+    }
+
+    // A cluster that merely contained a collapsed one lists the
+    // placeholder among its nodes; swap in what the placeholder stood for.
+    for (const c of clusters) {
+      if (!c.nodes.some((n) => isPlaceholder(n.name))) continue
+      c.nodes = c.nodes.flatMap((n) =>
+        isPlaceholder(n.name) ? (placedByCluster.get(n.name!) ?? []) : [n],
+      )
+    }
+
+    return this.assembleSubLayouts(
+      outerResult,
+      nodes,
+      edges,
+      clusters,
+      swallowed,
+      placedByCluster,
+    )
+  }
+
+  /** Build one independently-growing cluster as a graph of its own. */
+  private subLayout(spec: LayeredClusterSpec, at: PointLike): LayeredResult {
+    const inside = new Set(this.clusterNodes(spec.name))
+    const sub = new LayeredBuilderImpl({
+      ...this._options,
+      at,
+      grow: spec.options!.grow!,
+    })
+    for (const name of inside) sub.node(name, this._vertices.get(name)!.resolvedOptions)
+    for (const e of this._edges) {
+      if (inside.has(e.origFrom!.name) && inside.has(e.origTo!.name)) {
+        sub.edge(e.origFrom!.name, e.origTo!.name, {
+          minLength: e.minLength,
+          weight: e.weight,
+        })
+      }
+    }
+    for (const self of this._selfEdges) {
+      if (inside.has(self.vertex.name)) {
+        sub.edge(self.vertex.name, self.vertex.name, { loop: self.loop })
+      }
+    }
+    // Clusters strictly inside this one come along, in declaration order
+    // so a nested one is still declared before its parent.
+    for (const c of this._clusters) {
+      const path = this.clusterPath(c.name)
+      if (c.name !== spec.name && path.includes(spec.name)) {
+        sub.cluster(c.name, c.members, c.options)
+      }
+    }
+    return sub.build()
+  }
+
+  /**
+   * Stitch the sub-layouts into the parent's result: edges that cross a
+   * boundary were routed to the placeholder, so re-point them at the
+   * real node they name.
+   */
+  private assembleSubLayouts(
+    outerResult: LayeredResult,
+    nodes: Node[],
+    edges: Edge[],
+    clusters: LayeredCluster[],
+    swallowed: Map<string, string>,
+    placedByCluster: Map<string, Node[]>,
+  ): LayeredResult {
+    const byName = new Map<string, Node>()
+    for (const n of nodes) if (n.name) byName.set(n.name, n)
+
+    const crossing: Edge[] = []
+    for (const e of this._edges) {
+      const fromInside = swallowed.has(e.origFrom!.name)
+      const toInside = swallowed.has(e.origTo!.name)
+      if (fromInside === toInside && (!fromInside || swallowed.get(e.origFrom!.name) === swallowed.get(e.origTo!.name))) {
+        continue // internal to one cluster, or entirely outside
+      }
+      const a = byName.get(e.origFrom!.name)
+      const b = byName.get(e.origTo!.name)
+      if (a && b) crossing.push(edge(a, b, this._options.edgeOptions))
+    }
+
+    // Levels describe the OUTER graph: a cluster with its own growth
+    // direction has ranks of its own that do not map onto its parent's,
+    // so from here it is one rank, and its nodes are reported on the
+    // rank its placeholder occupied.
+    const levelNodes = new Map<number, Node[]>()
+    for (let i = 0; i < outerResult.levelCount; i++) {
+      levelNodes.set(
+        i,
+        outerResult
+          .level(i)
+          .flatMap((n) =>
+            isPlaceholder(n.name) ? (placedByCluster.get(n.name!) ?? []) : [n],
+          ),
+      )
+    }
+    const nodesByName = new Map<string, Node>()
+    for (const n of nodes) if (n.name) nodesByName.set(n.name, n)
+    const clustersByName = new Map(clusters.map((c) => [c.name, c]))
+
+    const all = [...edges, ...crossing]
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
+    for (const n of nodes) {
+      minX = Math.min(minX, n.bounds[0])
+      minY = Math.min(minY, n.bounds[1])
+      maxX = Math.max(maxX, n.bounds[2])
+      maxY = Math.max(maxY, n.bounds[3])
+    }
+    for (const c of clusters) {
+      minX = Math.min(minX, c.bounds[0])
+      minY = Math.min(minY, c.bounds[1])
+      maxX = Math.max(maxX, c.bounds[2])
+      maxY = Math.max(maxY, c.bounds[3])
+    }
+
+    const self = this
+    return {
+      nodes,
+      clusters,
+      getCluster: (name) => clustersByName.get(name),
+      edges: all,
+      levelCount: outerResult.levelCount,
+      level: (i) => levelNodes.get(i) ?? [],
+      getNode: (name) => nodesByName.get(name),
+      incoming(node: Node): Node[] {
+        const out: Node[] = []
+        for (const e of self._edges) {
+          if (e.origTo!.name === node.name) {
+            const n = nodesByName.get(e.origFrom!.name)
+            if (n) out.push(n)
+          }
+        }
+        return out
+      },
+      outgoing(node: Node): Node[] {
+        const out: Node[] = []
+        for (const e of self._edges) {
+          if (e.origFrom!.name === node.name) {
+            const n = nodesByName.get(e.origTo!.name)
+            if (n) out.push(n)
+          }
+        }
+        return out
+      },
+      bounds: [minX, minY, maxX, maxY],
+      toRenderables: () => [...nodes, ...all],
+    }
+  }
+
+  private buildFlat(): LayeredResult {
     this._dummies = []
     this._dummyCounter = 0
     this._unitEdges = []

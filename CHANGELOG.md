@@ -136,8 +136,26 @@
   its parent. Each cluster reports its `depth`, `parent` and `children`,
   and `nodes` is transitive; paint boxes outermost first.
 
-  Overlapping clusters throw rather than laying out wrongly. Per-cluster
-  `rankdir` and cluster-to-cluster edges are not supported.
+  **Per-cluster growth direction**: `cluster(name, members, { grow })`
+  gives a cluster its own rank direction — a left-to-right stage inside a
+  top-to-bottom diagram. Such a cluster cannot be an ordering constraint,
+  since two rank directions have no common rank assignment, so it is laid
+  out as a graph in its own right, collapsed to a single placeholder node
+  the size of its box, and the parent laid out around it; the sub-layout
+  is then re-run at the position its placeholder ended up in. Re-running
+  rather than translating keeps every coordinate coming from the layout
+  itself.
+
+  Edges crossing the boundary are given to the parent so it ranks the
+  cluster correctly, then rebuilt against the real endpoints, so they
+  attach to the node they name rather than to the box. Adjacency,
+  `getNode` and `level()` all report real nodes — nothing internal leaks
+  — and the cluster counts as a single rank of the outer graph. It
+  composes in every direction: inside a plain cluster, containing one, or
+  nested in another independently-grown cluster.
+
+  Overlapping clusters throw rather than laying out wrongly.
+  Cluster-to-cluster edges are not supported.
 
 - **`Edge.bounds`.** `Edge` was in the `Renderable` union but had no
   `bounds`, so `pic.draw(someEdge)` with `{ fit: true }` threw a

@@ -188,9 +188,31 @@ border chains give the coordinate pass structure it did not have before.
 The box also counts as content, so `at` anchors the box rather than the
 leftmost node.
 
+#### `grow` — a cluster with its own direction
+
+```ts
+.cluster('stage', ['a', 'b', 'c'], { grow: 'right' })   // inside a 'down' layout
+```
+
+A cluster given its own `grow` can't be an ordering constraint — two
+rank directions have no common rank assignment. It is instead laid out as
+a graph in its own right, collapsed to a single box in its parent, and
+the parent laid out around it. Consequences worth knowing:
+
+- Ranking, ordering and coordinates inside the cluster are decided by its
+  own layout, so `weight` and `minLength` on an edge that *crosses* the
+  boundary do not reach the inside.
+- Edges crossing the boundary attach to the nodes they name — the parent
+  routes them as far as the box, then they run to the real node.
+- `levelCount` / `level()` describe the outer graph, so the cluster
+  counts as one rank and all of its nodes are reported on it.
+
+It composes with ordinary clusters in both directions: an
+independently-grown cluster may sit inside a plain one, contain one, or
+nest inside another independently-grown cluster.
+
 Not supported: overlapping clusters (a node or cluster in two parents
-throws), per-cluster `rankdir`, and edges attached to a cluster rather
-than to a node in it.
+throws), and edges attached to a cluster rather than to a node in it.
 
 Demos: [`examples/layout-layered.ts`](../../examples/layout-layered.ts),
 [`examples/dependency-graph.ts`](../../examples/dependency-graph.ts),

@@ -332,4 +332,162 @@ describe('layered clusters', () => {
       expect(() => base().cluster('a', ['b'])).toThrow(/collides with a node/)
     })
   })
+
+  describe('per-cluster grow', () => {
+    /** down-flowing pipeline with a right-flowing stage in the middle */
+    const staged = (grow: 'right' | 'up' = 'right') =>
+      layered({ at: point(0, 0), grow: 'down', clusterPadding: 12 })
+        .node('start', { width: 60, height: 24 })
+        .node('a', { width: 50, height: 24 })
+        .node('b', { width: 50, height: 24 })
+        .node('c', { width: 50, height: 24 })
+        .node('done', { width: 60, height: 24 })
+        .edge('start', 'a')
+        .edge('a', 'b')
+        .edge('b', 'c')
+        .edge('c', 'done')
+        .cluster('stage', ['a', 'b', 'c'], { label: 'stage', grow })
+        .build()
+
+    it('lays the cluster out in its own direction', () => {
+      const r = staged()
+      const [a, b, c] = ['a', 'b', 'c'].map((n) => r.getNode(n)!)
+      // Inside: left to right, one row.
+      expect(a.center.y).toBeCloseTo(b.center.y, 6)
+      expect(b.center.y).toBeCloseTo(c.center.y, 6)
+      expect(a.center.x).toBeLessThan(b.center.x)
+      expect(b.center.x).toBeLessThan(c.center.x)
+      // Outside: still top to bottom.
+      expect(r.getNode('start')!.center.y).toBeLessThan(a.center.y)
+      expect(r.getNode('done')!.center.y).toBeGreaterThan(c.center.y)
+    })
+
+    it('boxes the cluster around exactly its own nodes', () => {
+      const r = staged()
+      const box = r.getCluster('stage')!.bounds
+      for (const n of r.nodes) {
+        expect(contains(box, n)).toBe(['a', 'b', 'c'].includes(n.name!))
+      }
+    })
+
+    it('attaches crossing edges to the real nodes, not the placeholder', () => {
+      const r = staged()
+      const near = (p: { x: number; y: number }, n: Node) =>
+        Math.abs(p.x - n.center.x) <= n.width / 2 + 2 &&
+        Math.abs(p.y - n.center.y) <= n.height / 2 + 2
+      const label = (p: { x: number; y: number }) =>
+        r.nodes.find((n) => near(p, n))?.name ?? '?'
+      const pairs = r.edges.map((e) => `${label(e.from)}->${label(e.to)}`).sort()
+      expect(pairs).toEqual(['a->b', 'b->c', 'c->done', 'start->a'])
+    })
+
+    it('reports real adjacency across the boundary', () => {
+      const r = staged()
+      expect(r.outgoing(r.getNode('start')!).map((n) => n.name)).toEqual(['a'])
+      expect(r.incoming(r.getNode('done')!).map((n) => n.name)).toEqual(['c'])
+    })
+
+    it('leaks no internal placeholder into the result', () => {
+      const r = staged()
+      const names = [
+        ...r.nodes.map((n) => n.name),
+        ...r.clusters.flatMap((c) => c.nodes.map((n) => n.name)),
+        ...r.clusters.map((c) => c.name),
+      ]
+      expect(names.filter((n) => n?.startsWith('__'))).toEqual([])
+      expect(r.getNode('__cluster__stage')).toBeUndefined()
+    })
+
+    it('reports the cluster as a single rank of the outer graph', () => {
+      const r = staged()
+      const levels = Array.from({ length: r.levelCount }, (_, i) =>
+        r.level(i).map((n) => n.name).sort()
+      )
+      expect(levels).toContainEqual(['a', 'b', 'c'])
+      expect(levels.every((l) => l.length > 0)).toBe(true)
+    })
+
+    it('honors a direction opposite the outer one', () => {
+      const r = staged('up')
+      const [a, c] = ['a', 'c'].map((n) => r.getNode(n)!)
+      expect(a.center.y).toBeGreaterThan(c.center.y) // 'up' reverses the flow
+      expect(contains(r.getCluster('stage')!.bounds, a)).toBe(true)
+    })
+
+    it('nests inside an ordinary cluster', () => {
+      const r = layered({ at: point(0, 0), grow: 'down' })
+        .node('s', { width: 40, height: 20 })
+        .node('x', { width: 40, height: 20 })
+        .node('y', { width: 40, height: 20 })
+        .node('z', { width: 40, height: 20 })
+        .edge('s', 'x')
+        .edge('x', 'y')
+        .edge('y', 'z')
+        .cluster('inner', ['x', 'y'], { grow: 'right' })
+        .cluster('outer', ['inner', 'z'])
+        .build()
+
+      const inner = r.getCluster('inner')!
+      const outer = r.getCluster('outer')!
+      expect(inner.depth).toBe(1)
+      expect(inner.parent).toBe('outer')
+      expect(encloses(outer.bounds, inner.bounds)).toBe(true)
+      expect(outer.nodes.map((n) => n.name).sort()).toEqual(['x', 'y', 'z'])
+      // The inner direction really took effect.
+      expect(r.getNode('x')!.center.y).toBeCloseTo(r.getNode('y')!.center.y, 6)
+    })
+
+    it('contains an ordinary cluster', () => {
+      const r = layered({ at: point(0, 0), grow: 'down' })
+        .node('s', { width: 40, height: 20 })
+        .node('p', { width: 40, height: 20 })
+        .node('q', { width: 40, height: 20 })
+        .edge('s', 'p')
+        .edge('p', 'q')
+        .cluster('deep', ['p', 'q'])
+        .cluster('band', ['deep'], { grow: 'right' })
+        .build()
+      expect(encloses(r.getCluster('band')!.bounds, r.getCluster('deep')!.bounds)).toBe(true)
+      expect(r.getNode('p')!.center.y).toBeCloseTo(r.getNode('q')!.center.y, 6)
+    })
+
+    it('nests one independently-grown cluster in another', () => {
+      const r = layered({ at: point(0, 0), grow: 'down' })
+        .node('s', { width: 40, height: 20 })
+        .node('m', { width: 40, height: 20 })
+        .node('n', { width: 40, height: 20 })
+        .edge('s', 'm')
+        .edge('m', 'n')
+        .cluster('core', ['m', 'n'], { grow: 'down' })
+        .cluster('band', ['core'], { grow: 'right' })
+        .build()
+      expect(encloses(r.getCluster('band')!.bounds, r.getCluster('core')!.bounds)).toBe(true)
+      // 'core' keeps flowing down inside a right-flowing band.
+      expect(r.getNode('m')!.center.x).toBeCloseTo(r.getNode('n')!.center.x, 6)
+      expect(r.getNode('m')!.center.y).toBeLessThan(r.getNode('n')!.center.y)
+    })
+
+    it('keeps a self-edge inside the cluster', () => {
+      const r = layered({ at: point(0, 0), grow: 'down' })
+        .node('s', { width: 40, height: 20 })
+        .node('p', { width: 40, height: 20 })
+        .edge('s', 'p')
+        .edge('p', 'p')
+        .cluster('band', ['p'], { grow: 'right' })
+        .build()
+      expect(r.edges.some((e) => e.routing === 'bezier')).toBe(true)
+    })
+
+    it('grows the reported bounds to cover the sub-layout', () => {
+      const r = staged()
+      const box = r.getCluster('stage')!.bounds
+      expect(r.bounds[0]).toBeLessThanOrEqual(box[0] + 1e-6)
+      expect(r.bounds[2]).toBeGreaterThanOrEqual(box[2] - 1e-6)
+      for (const n of r.nodes) {
+        expect(r.bounds[0]).toBeLessThanOrEqual(n.bounds[0] + 1e-6)
+        expect(r.bounds[2]).toBeGreaterThanOrEqual(n.bounds[2] - 1e-6)
+      }
+    })
+  })
+
 })
