@@ -151,6 +151,37 @@ children, every position between them is an optimum of Gansner's
 objective, and the balance pass does not break the tie — the parent ends
 up flush with one child. Brandes–Köpf centers it.
 
+### Clusters — `.cluster(name, members, options?)`
+
+Group nodes into a subgraph box, Graphviz's `subgraph cluster_x`:
+
+```ts
+layered({ grow: 'down', clusterPadding: 14 })
+  .node('auth').node('rate').node('route').node('log')
+  .edge('auth', 'rate').edge('rate', 'route')
+  .cluster('gateway', ['auth', 'rate', 'route'], { label: 'gateway' })
+  .build()   // → result.clusters, result.getCluster('gateway')
+```
+
+Each cluster comes back with `bounds`, a ready-made `rect`, its member
+`nodes` and its `label`. Paint the boxes **before** the nodes and edges.
+
+The box is a layout constraint, not a post-hoc bounding box (`rectFit`
+already does that). Members are kept contiguous in every rank they
+occupy, and left/right border vertices are inserted on **every** rank the
+cluster spans — including ranks it has no member on — so a foreign edge
+passing the cluster is pushed clear of the box instead of routed through
+it. `clusterPadding` (default 12) is the gap between the box and its
+contents, overridable per cluster.
+
+Because it constrains the layout, adding a cluster can move nodes: the
+border chains give the coordinate pass structure it did not have before.
+The box also counts as content, so `at` anchors the box rather than the
+leftmost node.
+
+Not supported: nested or overlapping clusters (both throw), per-cluster
+`rankdir`, and edges attached to a cluster rather than to a node in it.
+
 Demos: [`examples/layout-layered.ts`](../../examples/layout-layered.ts),
 [`examples/dependency-graph.ts`](../../examples/dependency-graph.ts),
 [`examples/class-hierarchy.ts`](../../examples/class-hierarchy.ts).

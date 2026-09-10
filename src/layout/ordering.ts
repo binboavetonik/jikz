@@ -21,6 +21,18 @@ export interface OrderingEdge {
 export interface OrderingVertex {
   inEdges: OrderingEdge[]
   outEdges: OrderingEdge[]
+  /**
+   * Optional grouping key (a cluster name). Vertices sharing one are
+   * kept contiguous in every rank — that contiguity is what lets a
+   * cluster be drawn as a single box with nothing foreign inside it.
+   */
+  group?: string
+  /**
+   * Placement within the group: negative pins to the front, positive to
+   * the back, 0 (or absent) floats. Cluster border vertices use ∓1 so
+   * the box edges stay on the outside of their own members.
+   */
+  groupPin?: number
 }
 
 type Direction = 'down' | 'up'
@@ -35,6 +47,17 @@ const MAX_NON_IMPROVING = 4
 export function minimizeCrossings(ranks: OrderingVertex[][]): void {
   if (ranks.length === 0) return
 
+  // Grouped vertices must stay contiguous. Rather than constrain every
+  // reordering step (which would mean a recursive per-subgraph sort),
+  // each pass runs unconstrained and is then repaired — the repair is
+  // order-preserving, so the heuristics still do their work and the
+  // keep-best comparison always sees a legal ordering.
+  const grouped = ranks.some((r) => r.some((v) => v.group !== undefined))
+  const repair = grouped
+    ? (): void => ranks.forEach(enforceGroups)
+    : (): void => {}
+  repair()
+
   const snapshot = (): OrderingVertex[][] => ranks.map((r) => r.slice())
   const restore = (s: OrderingVertex[][]): void => {
     s.forEach((r, i) => {
@@ -48,6 +71,7 @@ export function minimizeCrossings(ranks: OrderingVertex[][]): void {
   let bestCC = crossCount(ranks)
   for (const dir of ['down', 'up'] as Direction[]) {
     initialOrder(ranks, dir)
+    repair()
     const cc = crossCount(ranks)
     if (cc < bestCC) {
       bestCC = cc
@@ -61,6 +85,7 @@ export function minimizeCrossings(ranks: OrderingVertex[][]): void {
     const dir: Direction = i % 2 === 0 ? 'down' : 'up'
     weightedMedian(ranks, dir)
     transpose(ranks, dir)
+    repair()
     const cc = crossCount(ranks)
     if (cc < bestCC) {
       bestCC = cc
@@ -69,6 +94,50 @@ export function minimizeCrossings(ranks: OrderingVertex[][]): void {
     }
   }
   restore(best)
+}
+
+/**
+ * Rebuild one rank so every group occupies a contiguous run.
+ *
+ * Each group is collapsed to a block placed at the mean index of its
+ * members, and ungrouped vertices keep their own index; the two are then
+ * merged by index. Placing a block at its members' mean keeps it where
+ * the crossing heuristics wanted it, so the repair costs little.
+ *
+ * Within a block, `groupPin` orders the border vertices to the outside.
+ */
+export function enforceGroups(rank: OrderingVertex[]): void {
+  const blocks = new Map<string, { members: OrderingVertex[]; sum: number }>()
+  const loose: { v: OrderingVertex; at: number }[] = []
+
+  rank.forEach((v, i) => {
+    if (v.group === undefined) {
+      loose.push({ v, at: i })
+      return
+    }
+    const block = blocks.get(v.group) ?? { members: [], sum: 0 }
+    block.members.push(v)
+    block.sum += i
+    blocks.set(v.group, block)
+  })
+
+  if (blocks.size === 0) return
+
+  const slots: { at: number; run: OrderingVertex[] }[] = loose.map(({ v, at }) => ({
+    at,
+    run: [v],
+  }))
+  for (const block of blocks.values()) {
+    // Stable within the block, with pinned vertices pushed to the ends.
+    const run = block.members
+      .map((v, i) => ({ v, i }))
+      .sort((a, b) => (a.v.groupPin ?? 0) - (b.v.groupPin ?? 0) || a.i - b.i)
+      .map((x) => x.v)
+    slots.push({ at: block.sum / block.members.length, run })
+  }
+
+  slots.sort((a, b) => a.at - b.at)
+  rank.splice(0, rank.length, ...slots.flatMap((s) => s.run))
 }
 
 // ── Initial order ─────────────────────────────────────────────────────────

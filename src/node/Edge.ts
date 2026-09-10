@@ -451,6 +451,31 @@ export class Edge {
   }
 
   /**
+   * Bounding box as [minX, minY, maxX, maxY].
+   *
+   * Includes the bend points and, on a curved edge, the bezier control
+   * points — a bent edge or a loop bulges well past its endpoints, and a
+   * box that ignored that would clip it. Control points bound the curve
+   * conservatively (the curve lies inside their hull), so the box is
+   * never too small. Stroke width and arrow tips are not included.
+   */
+  get bounds(): [number, number, number, number] {
+    const pts: Point[] = [this.from, this.to, ...this.bendPoints]
+    if (this.routing === 'bezier') pts.push(...this.controlPoints)
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
+    for (const p of pts) {
+      minX = Math.min(minX, p.x)
+      minY = Math.min(minY, p.y)
+      maxX = Math.max(maxX, p.x)
+      maxY = Math.max(maxY, p.y)
+    }
+    return [minX, minY, maxX, maxY]
+  }
+
+  /**
    * Control points for bezier routing
    */
   get controlPoints(): [Point, Point] {

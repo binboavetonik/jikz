@@ -456,6 +456,14 @@ grow: 'right' with variable-width labels: each parent pushes its children past i
 
 **Source:** [`examples/layout-tree-horizontal.ts`](../../examples/layout-tree-horizontal.ts)
 
+### Clusters — a box around a subgraph
+
+![Clusters — a box around a subgraph](img/layout-clusters.svg)
+
+layered().cluster() groups nodes into a subgraph box. Members are kept contiguous in every rank they occupy, and border vertices are inserted on every rank the cluster spans — including ranks it has no member on — so nothing foreign drifts inside. Here the request→audit log→service path bypasses the gateway and is pushed clear of the box rather than routed through it. The result carries each cluster's bounds and a ready-made rect; paint them before the nodes.
+
+**Source:** [`examples/layout-clusters.ts`](../../examples/layout-clusters.ts)
+
 ### Scopes — group transform, style cascade, opacity
 
 ![Scopes — group transform, style cascade, opacity](img/scope-groups.svg)

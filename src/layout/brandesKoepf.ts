@@ -40,6 +40,12 @@ export interface BKVertex {
   kind: 'node' | 'dummy'
   /** Half the vertex's extent along the axis being assigned. */
   secondaryHalf: number
+  /**
+   * Gap this vertex wants against its rank neighbours, overriding
+   * `nodeSep`. Cluster border vertices use it so a box hugs its
+   * contents instead of standing a full node gap away.
+   */
+  gap?: number
   /** Output: the assigned coordinate (vertex center on the cross axis). */
   secondary: number
   /** Edges from the previous rank into this vertex. */
@@ -271,7 +277,7 @@ function horizontalCompaction(
 
   /** Required gap between two rank neighbors, edge to edge. */
   const sep = (left: BKVertex, right: BKVertex): number =>
-    left.secondaryHalf + nodeSep + right.secondaryHalf
+    left.secondaryHalf + gapBetween(left, right, nodeSep) + right.secondaryHalf
 
   /** Members of `v`'s block, walking the cyclic align chain from `v`. */
   const members = (v: BKVertex): BKVertex[] => {
@@ -403,6 +409,22 @@ function balance(vertices: BKVertex[], candidates: Candidate[]): void {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
+
+/**
+ * Edge-to-edge gap between two rank neighbours. A vertex asking for its
+ * own `gap` wins over the layout's `nodeSep`; when both ask, the tighter
+ * of the two applies, so a border never gets pushed out by its neighbour.
+ */
+export function gapBetween(
+  left: { gap?: number },
+  right: { gap?: number },
+  nodeSep: number
+): number {
+  if (left.gap === undefined && right.gap === undefined) return nodeSep
+  if (left.gap === undefined) return right.gap!
+  if (right.gap === undefined) return left.gap
+  return Math.min(left.gap, right.gap)
+}
 
 function positionsOf(layer: BKVertex[]): Map<BKVertex, number> {
   const pos = new Map<BKVertex, number>()

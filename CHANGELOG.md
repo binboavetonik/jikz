@@ -52,6 +52,11 @@
 
 ### Fixed
 
+- **`layered()` options no longer lose their defaults to an explicit
+  `undefined`.** `layered({ nodeSep: maybeUndefined })` spread the
+  `undefined` over the default, and the option then reached the layout
+  as `NaN`. Undefined entries are now dropped before merging.
+
 - **Self-edges draw a real loop.** `edge('A', 'A')` produced a
   zero-length path that painted nothing, and `loopEdge` was worse than
   it looked: `'auto'` anchors resolve along the ray toward the other
@@ -101,6 +106,34 @@
   point instead of wrapping the second base onto its own line.
 
 ### Added
+
+- **Clusters — `layered().cluster(name, members, options?)`.** A subgraph
+  box, Graphviz's `subgraph cluster_x`. The result carries each cluster's
+  `bounds`, a ready-made `rect`, its member nodes and its label.
+
+  It is a layout *constraint*, not a bounding box after the fact —
+  `rectFit` already did that. Members are kept contiguous in every rank
+  they occupy (crossing minimization gained an order-preserving group
+  repair), and left/right border vertices go on every rank the cluster
+  spans, including ranks it has no member on, so a foreign edge passing
+  the cluster is pushed clear of the box rather than routed through it.
+  Border vertices carry a per-vertex `gap` that overrides `nodeSep`, so
+  the box hugs its contents; `clusterPadding` defaults to 12 and is
+  overridable per cluster. Both coordinate assigners are supported.
+
+  Two consequences worth knowing: adding a cluster can move nodes,
+  because the border chains give the coordinate pass structure it did not
+  have before; and the box counts as content, so `at` anchors the box
+  rather than the leftmost node.
+
+  Nested and overlapping clusters throw rather than laying out wrongly.
+  Per-cluster `rankdir` and cluster-to-cluster edges are not supported.
+
+- **`Edge.bounds`.** `Edge` was in the `Renderable` union but had no
+  `bounds`, so `pic.draw(someEdge)` with `{ fit: true }` threw a
+  TypeError inside the bounds walk. Bend points and, on curved edges, the
+  bezier control points are included, so a bent edge or a self-loop is no
+  longer clipped by a fitted viewBox.
 
 - **Scopes — `pic.scope(options, build)`.** TikZ's `\begin{scope}`. The
   picture's flat item list becomes a tree: a scope holds its own items,

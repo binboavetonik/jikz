@@ -11,6 +11,8 @@ import {
   primarySign,
   secondaryOf,
 } from './shared'
+import { Rectangle } from '../geometry/Rectangle'
+import { gapBetween } from './brandesKoepf'
 import { NetworkSimplex, networkSimplexRanks, type SimplexEdge, type SimplexVertex } from './networkSimplex'
 import { minimizeCrossings } from './ordering'
 import { assignCoordinatesBK } from './brandesKoepf'
@@ -81,6 +83,39 @@ export interface LayeredOptions {
    * ```
    */
   coordinates?: 'gansner' | 'brandes-koepf'
+
+  /**
+   * Edge-to-edge gap between a cluster's box and the nodes inside it
+   * (default: 12). Also the gap the box keeps from anything outside.
+   */
+  clusterPadding?: number
+}
+
+/** A cluster declaration: a name and the nodes it groups. */
+export interface LayeredClusterSpec {
+  name: string
+  members: readonly string[]
+  options?: ClusterOptions
+}
+
+/** Per-cluster overrides. */
+export interface ClusterOptions {
+  /** Gap between the box and its contents; defaults to `clusterPadding`. */
+  padding?: number
+  /** Text drawn with the cluster (the caller decides where to put it). */
+  label?: string
+}
+
+/** A laid-out cluster: its box, in picture coordinates. */
+export interface LayeredCluster {
+  name: string
+  label?: string
+  /** Bounding box as [minX, minY, maxX, maxY], padding included. */
+  bounds: [number, number, number, number]
+  /** The box as a renderable rectangle. */
+  rect: Rectangle
+  /** The member nodes, in declaration order. */
+  nodes: Node[]
 }
 
 /**
@@ -118,6 +153,12 @@ export interface LayeredResult {
   /** All real nodes, in insertion order. */
   nodes: Node[]
 
+  /** Laid-out clusters, in declaration order. */
+  clusters: LayeredCluster[]
+
+  /** Get a cluster by name. */
+  getCluster(name: string): LayeredCluster | undefined
+
   /** All edges (multi-rank edges carry bend points). */
   edges: Edge[]
 
@@ -148,6 +189,17 @@ export interface LayeredResult {
  */
 export interface LayeredBuilder {
   node(name: string, options?: Omit<NodeOptions, 'at'>): LayeredBuilder
+  /**
+   * Group nodes into a cluster — TikZ's `\begin{scope}[…]` around a
+   * subgraph, or Graphviz's `subgraph cluster_x`. Members are kept
+   * contiguous in every rank they occupy, and the result carries a box
+   * that encloses them and nothing else.
+   */
+  cluster(
+    name: string,
+    members: readonly string[],
+    options?: ClusterOptions,
+  ): LayeredBuilder
   edge(
     from: string,
     to: string,
@@ -159,6 +211,14 @@ export interface LayeredBuilder {
 interface InternalVertex {
   name: string
   kind: 'node' | 'dummy'
+  /** Cluster this vertex belongs to; drives ordering contiguity. */
+  group?: string
+  /** −1 pins to the front of its group, +1 to the back. */
+  groupPin?: number
+  /** Overrides `nodeSep` against rank neighbours (cluster borders). */
+  gap?: number
+  /** Set on the two border chains of a cluster. */
+  border?: { cluster: string; side: 'left' | 'right' }
   resolvedOptions?: Omit<NodeOptions, 'at'>
   node?: Node
   rank: number
@@ -189,6 +249,24 @@ interface InternalEdge {
 
 const DEFAULT_RANK_SEP = 50
 const DEFAULT_NODE_SEP = 30
+const DEFAULT_CLUSTER_PADDING = 12
+
+/**
+ * Weight on the edges chaining a cluster's border vertices rank to rank.
+ * High enough that the coordinate pass straightens each side into a line
+ * rather than letting the box wobble; the omega weights give dummy-to-dummy
+ * edges another ×8 on top.
+ */
+const BORDER_CHAIN_WEIGHT = 16
+
+/** Drop keys whose value is `undefined`, so spreads keep defaults. */
+function definedOnly<T extends object>(options: T): Partial<T> {
+  const out: Partial<T> = {}
+  for (const [k, v] of Object.entries(options) as [keyof T, T[keyof T]][]) {
+    if (v !== undefined) out[k] = v
+  }
+  return out
+}
 
 function resolveNodeOptions(
   name: string,
@@ -212,6 +290,9 @@ class LayeredBuilderImpl implements LayeredBuilder {
    * layout entirely and is re-attached as a loop at render time.
    */
   private _selfEdges: { vertex: InternalVertex; loop?: LoopDirection }[] = []
+  private _clusters: LayeredClusterSpec[] = []
+  /** Border chains built during `build()`, keyed by cluster name. */
+  private _borders = new Map<string, { left: InternalVertex[]; right: InternalVertex[] }>()
   private _ranks: Map<number, InternalVertex[]> = new Map()
   private _maxRank = 0
 
@@ -223,7 +304,11 @@ class LayeredBuilderImpl implements LayeredBuilder {
       nodeSep: DEFAULT_NODE_SEP,
       drawEdges: true,
       coordinates: 'gansner',
-      ...options,
+      clusterPadding: DEFAULT_CLUSTER_PADDING,
+      // Explicit `undefined` must not clobber a default — passing an
+      // optional through (`{ nodeSep: maybeUndefined }`) is ordinary
+      // caller code, and a plain spread would turn it into NaN downstream.
+      ...definedOnly(options),
     }
   }
 
@@ -242,6 +327,30 @@ class LayeredBuilderImpl implements LayeredBuilder {
       inEdges: [],
       outEdges: [],
     })
+    return this
+  }
+
+  cluster(
+    name: string,
+    members: readonly string[],
+    options?: ClusterOptions,
+  ): LayeredBuilder {
+    if (this._clusters.some((c) => c.name === name)) {
+      throw new Error(`layered layout: duplicate cluster name "${name}"`)
+    }
+    for (const m of members) {
+      if (!this._vertices.has(m)) {
+        throw new Error(`layered layout: cluster "${name}" references unknown node "${m}"`)
+      }
+      const owner = this._clusters.find((c) => c.members.includes(m))
+      if (owner) {
+        throw new Error(
+          `layered layout: node "${m}" is already in cluster "${owner.name}" ` +
+            '(nested and overlapping clusters are not supported)',
+        )
+      }
+    }
+    this._clusters.push({ name, members, options })
     return this
   }
 
@@ -292,7 +401,9 @@ class LayeredBuilderImpl implements LayeredBuilder {
     this.rebuildDirection()
     networkSimplexRanks(Array.from(this._vertices.values()), this._edges)
     this.insertDummies()
+    this.tagClusterMembers()
     this.buildRankArrays()
+    this.insertClusterBorders()
     minimizeCrossings(this.rankList())
     this.assignSecondary()
     const columns = this.assignPrimary()
@@ -359,10 +470,16 @@ class LayeredBuilderImpl implements LayeredBuilder {
       )
     }
 
-    const bounds = this.computeBounds(nodes)
+    const clusters = this.buildClusters(nodesByName, columns)
+    const clustersByName = new Map(clusters.map((c) => [c.name, c]))
+    const bounds = this.computeBounds(nodes, clusters)
 
     return {
       nodes,
+      clusters,
+      getCluster(name: string): LayeredCluster | undefined {
+        return clustersByName.get(name)
+      },
       edges,
       levelCount: this._maxRank + 1,
       level(index: number): Node[] {
@@ -403,6 +520,8 @@ class LayeredBuilderImpl implements LayeredBuilder {
   private emptyResult(): LayeredResult {
     return {
       nodes: [],
+      clusters: [],
+      getCluster: () => undefined,
       edges: [],
       levelCount: 0,
       level: () => [],
@@ -521,6 +640,153 @@ class LayeredBuilderImpl implements LayeredBuilder {
     }
   }
 
+  /**
+   * Mark each cluster's members (and the dummies of edges that stay
+   * inside it) so `minimizeCrossings` keeps them contiguous.
+   *
+   * A dummy on an edge between two members belongs to the cluster: if it
+   * were free to wander, an intra-cluster edge could route outside its
+   * own box.
+   */
+  private tagClusterMembers(): void {
+    for (const spec of this._clusters) {
+      for (const name of spec.members) {
+        this._vertices.get(name)!.group = spec.name
+      }
+    }
+    if (this._clusters.length === 0) return
+    for (const e of this._edges) {
+      if (!e.dummies || e.dummies.length === 0) continue
+      const from = e.origFrom!.group
+      if (from !== undefined && from === e.origTo!.group) {
+        for (const d of e.dummies) d.group = from
+      }
+    }
+  }
+
+  /**
+   * Give every cluster a left and a right border vertex on each rank it
+   * spans, chained rank to rank.
+   *
+   * The borders are what turn "contiguous members" into a drawable box.
+   * Pinning them to the ends of their group means ordering places them
+   * outside every member; chaining consecutive ranks with weighted edges
+   * makes the coordinate pass straighten each chain into a line (the
+   * same dummy-straightening that keeps long edges straight), so the two
+   * lines *are* the box sides. Ranks the cluster spans but has no member
+   * on still get borders, so nothing foreign drifts into the box there.
+   */
+  private insertClusterBorders(): void {
+    this._borders = new Map()
+    if (this._clusters.length === 0) return
+
+    const padding = this._options.clusterPadding!
+
+    for (const spec of this._clusters) {
+      const ranksUsed = spec.members.map((m) => this._vertices.get(m)!.rank)
+      const minRank = Math.min(...ranksUsed)
+      const maxRank = Math.max(...ranksUsed)
+      const gap = spec.options?.padding ?? padding
+
+      const left: InternalVertex[] = []
+      const right: InternalVertex[] = []
+
+      for (let r = minRank; r <= maxRank; r++) {
+        for (const side of ['left', 'right'] as const) {
+          const v: InternalVertex = {
+            name: `__border__${spec.name}__${side}__${r}`,
+            kind: 'dummy',
+            rank: r,
+            secondary: 0,
+            primaryHalf: 0,
+            secondaryHalf: 0,
+            inEdges: [],
+            outEdges: [],
+            group: spec.name,
+            groupPin: side === 'left' ? -1 : 1,
+            gap,
+            border: { cluster: spec.name, side },
+          }
+          ;(side === 'left' ? left : right).push(v)
+          this._ranks.get(r)!.push(v)
+          this._dummies.push(v)
+        }
+      }
+
+      // Chain each side so the coordinate pass pulls it straight.
+      for (const chain of [left, right]) {
+        for (let i = 0; i + 1 < chain.length; i++) {
+          const e: InternalEdge = {
+            from: chain[i]!,
+            to: chain[i + 1]!,
+            minLength: 1,
+            weight: BORDER_CHAIN_WEIGHT,
+          }
+          chain[i]!.outEdges.push(e)
+          chain[i + 1]!.inEdges.push(e)
+          this._unitEdges.push(e)
+        }
+      }
+
+      this._borders.set(spec.name, { left, right })
+    }
+  }
+
+  /**
+   * Boxes for every cluster, from the straightened border chains.
+   * The primary axis comes from the member nodes themselves — the
+   * borders are zero-height, so they say nothing about it.
+   */
+  private buildClusters(
+    nodesByName: Map<string, Node>,
+    columns: Map<number, number>,
+  ): LayeredCluster[] {
+    const grow = this._options.grow!
+    const out: LayeredCluster[] = []
+
+    for (const spec of this._clusters) {
+      const border = this._borders.get(spec.name)
+      const members = spec.members.map((m) => nodesByName.get(m)!).filter(Boolean)
+      if (!border || members.length === 0) continue
+
+      const gap = spec.options?.padding ?? this._options.clusterPadding!
+
+      // Cross axis: the two border lines, which already sit `gap` clear
+      // of the outermost members.
+      let lo = Infinity
+      let hi = -Infinity
+      for (const v of border.left) lo = Math.min(lo, v.secondary)
+      for (const v of border.right) hi = Math.max(hi, v.secondary)
+
+      // Growth axis: the members' own extent, padded.
+      let near = Infinity
+      let far = -Infinity
+      for (const m of spec.members) {
+        const v = this._vertices.get(m)!
+        const centre = columns.get(v.rank)!
+        near = Math.min(near, centre - v.primaryHalf - gap)
+        far = Math.max(far, centre + v.primaryHalf + gap)
+      }
+
+      const a = axesToPoint(near, lo, grow)
+      const b = axesToPoint(far, hi, grow)
+      const bounds: [number, number, number, number] = [
+        Math.min(a.x, b.x),
+        Math.min(a.y, b.y),
+        Math.max(a.x, b.x),
+        Math.max(a.y, b.y),
+      ]
+      out.push({
+        name: spec.name,
+        label: spec.options?.label,
+        bounds,
+        rect: new Rectangle(bounds[0], bounds[1], bounds[2] - bounds[0], bounds[3] - bounds[1]),
+        nodes: members,
+      })
+    }
+    return out
+  }
+
   private buildRankArrays(): void {
     this._ranks = new Map()
     this._maxRank = 0
@@ -604,7 +870,7 @@ class LayeredBuilderImpl implements LayeredBuilder {
         auxEdges.push({
           from: auxOf.get(v)!,
           to: auxOf.get(w)!,
-          minLength: v.secondaryHalf + nodeSep + w.secondaryHalf,
+          minLength: v.secondaryHalf + gapBetween(v, w, nodeSep) + w.secondaryHalf,
           weight: 0,
         })
       }
@@ -652,7 +918,10 @@ class LayeredBuilderImpl implements LayeredBuilder {
     return columns
   }
 
-  private computeBounds(nodes: Node[]): [number, number, number, number] {
+  private computeBounds(
+    nodes: Node[],
+    clusters: LayeredCluster[],
+  ): [number, number, number, number] {
     if (nodes.length === 0) return [0, 0, 0, 0]
 
     let minX = Infinity
@@ -660,13 +929,16 @@ class LayeredBuilderImpl implements LayeredBuilder {
     let maxX = -Infinity
     let maxY = -Infinity
 
-    for (const node of nodes) {
-      const [x0, y0, x1, y1] = node.bounds
-      minX = Math.min(minX, x0)
-      minY = Math.min(minY, y0)
-      maxX = Math.max(maxX, x1)
-      maxY = Math.max(maxY, y1)
+    const grow = (b: readonly [number, number, number, number]) => {
+      minX = Math.min(minX, b[0])
+      minY = Math.min(minY, b[1])
+      maxX = Math.max(maxX, b[2])
+      maxY = Math.max(maxY, b[3])
     }
+
+    for (const node of nodes) grow(node.bounds)
+    // Boxes stand outside their members, so they set the bounds.
+    for (const c of clusters) grow(c.bounds)
 
     return [minX, minY, maxX, maxY]
   }

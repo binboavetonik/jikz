@@ -272,6 +272,12 @@ const meta: DemoMeta[] = [
     description: "grow: 'right' with variable-width labels: each parent pushes its children past its own measured text, so long labels can't overlap the next level. levelDistance is an edge-to-edge gap; per-node sep overrides it.",
   },
   {
+    id: "layout-clusters",
+    category: "diagram-layout",
+    title: "Clusters — a box around a subgraph",
+    description: "layered().cluster() groups nodes into a subgraph box. Members are kept contiguous in every rank they occupy, and border vertices are inserted on every rank the cluster spans \u2014 including ranks it has no member on \u2014 so nothing foreign drifts inside. Here the request\u2192audit log\u2192service path bypasses the gateway and is pushed clear of the box rather than routed through it. The result carries each cluster's bounds and a ready-made rect; paint them before the nodes.",
+  },
+  {
     id: "scope-groups",
     category: "diagram-layout",
     title: "Scopes — group transform, style cascade, opacity",
