@@ -490,4 +490,138 @@ describe('layered clusters', () => {
     })
   })
 
+
+  describe('edges to a cluster', () => {
+    /** Whether a point lies on the border of `box`. */
+    const onBorder = (p: { x: number; y: number }, box: readonly number[]) => {
+      const within =
+        p.x >= box[0]! - 1e-6 && p.x <= box[2]! + 1e-6 &&
+        p.y >= box[1]! - 1e-6 && p.y <= box[3]! + 1e-6
+      const touching =
+        Math.abs(p.x - box[0]!) < 1e-6 || Math.abs(p.x - box[2]!) < 1e-6 ||
+        Math.abs(p.y - box[1]!) < 1e-6 || Math.abs(p.y - box[3]!) < 1e-6
+      return within && touching
+    }
+
+    const svc = () =>
+      layered({ at: point(0, 0), grow: 'down', clusterPadding: 12 })
+        .node('client', { width: 60, height: 24 })
+        .node('a', { width: 50, height: 24 })
+        .node('b', { width: 50, height: 24 })
+        .node('db', { width: 50, height: 24 })
+        .edge('a', 'b')
+        .edge('b', 'db')
+        .cluster('svc', ['a', 'b'], { label: 'service' })
+        .edge('client', 'svc')
+        .build()
+
+    it('stops at the box rather than at a member', () => {
+      const r = svc()
+      const box = r.getCluster('svc')!.bounds
+      const e = r.edges[r.edges.length - 1]!
+      expect(onBorder(e.to, box)).toBe(true)
+      // Not the member the layout ranked against.
+      expect(e.to.y).not.toBeCloseTo(r.getNode('a')!.bounds[1], 6)
+    })
+
+    it('ranks the cluster below the node pointing at it', () => {
+      const r = svc()
+      expect(r.getNode('client')!.center.y).toBeLessThan(r.getNode('a')!.center.y)
+    })
+
+    it('leaves ordinary edges out of a member alone', () => {
+      const r = svc()
+      // b → db is a node edge; it must start on b's own boundary.
+      const e = r.edges.find(
+        (x) => Math.abs(x.to.y - r.getNode('db')!.bounds[1]) < 1e-6
+      )!
+      expect(e.from.y).toBeCloseTo(r.getNode('b')!.bounds[3], 6)
+    })
+
+    it('joins two clusters box to box', () => {
+      const r = layered({ at: point(0, 0), grow: 'down' })
+        .node('a', { width: 50, height: 24 })
+        .node('b', { width: 50, height: 24 })
+        .node('x', { width: 50, height: 24 })
+        .node('y', { width: 50, height: 24 })
+        .edge('a', 'b')
+        .edge('x', 'y')
+        .cluster('A', ['a', 'b'])
+        .cluster('X', ['x', 'y'])
+        .edge('A', 'X')
+        .build()
+      const [A, X] = [r.getCluster('A')!, r.getCluster('X')!]
+      const e = r.edges[r.edges.length - 1]!
+      expect(onBorder(e.from, A.bounds)).toBe(true)
+      expect(onBorder(e.to, X.bounds)).toBe(true)
+    })
+
+    it('leaves a cluster with its own grow attached to its box', () => {
+      const r = layered({ at: point(0, 0), grow: 'down' })
+        .node('client', { width: 60, height: 24 })
+        .node('p', { width: 50, height: 24 })
+        .node('q', { width: 50, height: 24 })
+        .edge('p', 'q')
+        .cluster('svc', ['p', 'q'], { grow: 'right' })
+        .edge('client', 'svc')
+        .build()
+
+      const box = r.getCluster('svc')!.bounds
+      const toBox = r.edges.filter((e) => onBorder(e.to, box))
+      expect(toBox).toHaveLength(1)
+      // …and the inner edge is not duplicated by the rebuild pass.
+      expect(r.edges).toHaveLength(2)
+      expect(r.getNode('p')!.center.y).toBeCloseTo(r.getNode('q')!.center.y, 6)
+    })
+
+    it('picks the cluster entry and exit as representatives', () => {
+      const r = layered({ at: point(0, 0), grow: 'down' })
+        .node('top', { width: 40, height: 20 })
+        .node('m1', { width: 40, height: 20 })
+        .node('m2', { width: 40, height: 20 })
+        .node('bot', { width: 40, height: 20 })
+        .edge('m1', 'm2')
+        .cluster('c', ['m1', 'm2'])
+        .edge('top', 'c')
+        .edge('c', 'bot')
+        .build()
+      // Ranked against m1 on the way in and m2 on the way out, so the
+      // whole cluster sits between the two outside nodes.
+      expect(r.getNode('top')!.center.y).toBeLessThan(r.getNode('m1')!.center.y)
+      expect(r.getNode('bot')!.center.y).toBeGreaterThan(r.getNode('m2')!.center.y)
+    })
+
+    describe('validation', () => {
+      const base = () =>
+        layered({ at: point(0, 0) })
+          .node('a', { width: 20, height: 20 })
+          .node('b', { width: 20, height: 20 })
+          .node('out', { width: 20, height: 20 })
+          .cluster('c', ['a', 'b'])
+
+      it('rejects a cluster edging to itself', () => {
+        expect(() => base().edge('c', 'c')).toThrow(/cannot edge to itself/)
+      })
+
+      it('rejects an edge between a cluster and a node inside it', () => {
+        expect(() => base().edge('c', 'a')).toThrow(/which is inside it/)
+      })
+
+      it('rejects an edge between nested clusters', () => {
+        expect(() =>
+          layered({ at: point(0, 0) })
+            .node('a', { width: 20, height: 20 })
+            .node('b', { width: 20, height: 20 })
+            .cluster('inner', ['a'])
+            .cluster('outer', ['inner', 'b'])
+            .edge('outer', 'inner')
+        ).toThrow(/nested clusters/)
+      })
+
+      it('still rejects an unknown node', () => {
+        expect(() => base().edge('c', 'nope')).toThrow(/unknown node "nope"/)
+      })
+    })
+  })
+
 })

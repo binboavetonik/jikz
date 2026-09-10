@@ -273,6 +273,13 @@ interface InternalEdge {
   origTo?: InternalVertex
   /** True when the edge was reversed to break a cycle. */
   reversed?: boolean
+  /**
+   * Set when the caller named a cluster as an endpoint. The layout runs
+   * against a representative member, but the drawn edge stops at the
+   * cluster's box.
+   */
+  fromCluster?: string
+  toCluster?: string
   minLength: number
   weight: number
   edge?: Edge
@@ -422,6 +429,101 @@ class LayeredBuilderImpl implements LayeredBuilder {
     return this
   }
 
+  /**
+   * An edge with a cluster at one or both ends.
+   *
+   * Ranking, ordering and coordinates all need a real vertex, so each
+   * cluster endpoint is stood in for by a representative member: the
+   * cluster's entry point for an edge coming in, its exit for one going
+   * out. Only the drawn geometry uses the box.
+   */
+  private clusterEdge(
+    from: string,
+    to: string,
+    fromIsCluster: boolean,
+    toIsCluster: boolean,
+    options?: { minLength?: number; weight?: number; loop?: LoopDirection },
+  ): LayeredBuilder {
+    if (from === to) {
+      throw new Error(`layered layout: cluster "${from}" cannot edge to itself`)
+    }
+    for (const [name, isCluster, other] of [
+      [from, fromIsCluster, to],
+      [to, toIsCluster, from],
+    ] as const) {
+      if (!isCluster && !this._vertices.has(name)) {
+        throw new Error(`layered layout: edge references unknown node "${name}"`)
+      }
+      // An edge from a box to something already inside it has no
+      // direction that means anything.
+      if (isCluster && this.clusterNodes(name).includes(other)) {
+        throw new Error(
+          `layered layout: edge between cluster "${name}" and "${other}", ` +
+            'which is inside it',
+        )
+      }
+      if (isCluster && this._clusters.some((c) => c.name === other)) {
+        const nested =
+          this.clusterPath(name).includes(other) || this.clusterPath(other).includes(name)
+        if (nested) {
+          throw new Error(
+            `layered layout: edge between nested clusters "${from}" and "${to}"`,
+          )
+        }
+      }
+    }
+
+    const fromName = fromIsCluster ? this.clusterExit(from) : from
+    const toName = toIsCluster ? this.clusterEntry(to) : to
+    const fromVertex = this._vertices.get(fromName)!
+    const toVertex = this._vertices.get(toName)!
+    if (fromVertex === toVertex) {
+      throw new Error(
+        `layered layout: edge "${from}" → "${to}" resolves to a single node`,
+      )
+    }
+
+    const internalEdge: InternalEdge = {
+      from: fromVertex,
+      to: toVertex,
+      origFrom: fromVertex,
+      origTo: toVertex,
+      reversed: false,
+      minLength: options?.minLength ?? 1,
+      weight: options?.weight ?? 1,
+      ...(fromIsCluster ? { fromCluster: from } : {}),
+      ...(toIsCluster ? { toCluster: to } : {}),
+    }
+    fromVertex.outEdges.push(internalEdge)
+    toVertex.inEdges.push(internalEdge)
+    this._edges.push(internalEdge)
+    return this
+  }
+
+  /**
+   * The member an edge into `cluster` should aim at: one with no
+   * incoming edge from inside, i.e. where the subgraph starts. Falls
+   * back to the first declared member when every node has one (a cycle).
+   */
+  private clusterEntry(cluster: string): string {
+    const inside = new Set(this.clusterNodes(cluster))
+    for (const name of inside) {
+      const v = this._vertices.get(name)!
+      if (!v.inEdges.some((e) => inside.has(e.from.name))) return name
+    }
+    return [...inside][0]!
+  }
+
+  /** The member an edge out of `cluster` should leave from — its exit. */
+  private clusterExit(cluster: string): string {
+    const inside = new Set(this.clusterNodes(cluster))
+    for (const name of inside) {
+      const v = this._vertices.get(name)!
+      if (!v.outEdges.some((e) => inside.has(e.to.name))) return name
+    }
+    return [...inside][inside.size - 1]!
+  }
+
   /** Whether some enclosing cluster grows in its own direction. */
   private hasIndependentAncestor(name: string): boolean {
     return this.clusterPath(name)
@@ -461,6 +563,15 @@ class LayeredBuilderImpl implements LayeredBuilder {
     to: string,
     options?: { minLength?: number; weight?: number; loop?: LoopDirection },
   ): LayeredBuilder {
+    // An endpoint may name a cluster. Ranking needs a real vertex, so
+    // the layout runs against a representative member; the drawn edge
+    // stops at the box (see the render step in buildFlat).
+    const fromIsCluster = this._clusters.some((c) => c.name === from)
+    const toIsCluster = this._clusters.some((c) => c.name === to)
+    if (fromIsCluster || toIsCluster) {
+      return this.clusterEdge(from, to, fromIsCluster, toIsCluster, options)
+    }
+
     const fromVertex = this._vertices.get(from)
     const toVertex = this._vertices.get(to)
     if (!fromVertex || !toVertex) {
@@ -561,7 +672,7 @@ class LayeredBuilderImpl implements LayeredBuilder {
       const to = outer(e.origTo!.name)
       if (from === to) continue // wholly inside one cluster
       parent.edge(from, to, { minLength: e.minLength, weight: e.weight })
-      crossesBoundary.push(from !== e.origFrom!.name || to !== e.origTo!.name)
+      crossesBoundary.push(this.needsRebuild(e, swallowed))
     }
     for (const self of this._selfEdges) {
       if (!swallowed.has(self.vertex.name)) {
@@ -643,6 +754,33 @@ class LayeredBuilderImpl implements LayeredBuilder {
     )
   }
 
+  /**
+   * Whether an edge the parent routed to a placeholder has to be rebuilt
+   * against the real endpoints.
+   *
+   * Normally yes — the parent only ever saw the box. But an edge that
+   * *named* the cluster is meant to stop at the box, and the parent's
+   * edge already ends on the placeholder's boundary, which is the box.
+   * Rebuilding it would drag it in to a member node instead.
+   */
+  private needsRebuild(e: InternalEdge, swallowed: Map<string, string>): boolean {
+    const fromOwner = swallowed.get(e.origFrom!.name)
+    const toOwner = swallowed.get(e.origTo!.name)
+    // Both outside, or both inside the same collapsed cluster: the edge
+    // is not the parent's business at all — the sub-layout drew it.
+    if (fromOwner === toOwner) return false
+
+    for (const [owner, declared] of [
+      [fromOwner, e.fromCluster],
+      [toOwner, e.toCluster],
+    ] as const) {
+      if (owner === undefined) continue // this end is outside
+      if (owner === declared) continue // the caller asked for the box
+      return true
+    }
+    return false
+  }
+
   /** Build one independently-growing cluster as a graph of its own. */
   private subLayout(spec: LayeredClusterSpec, at: PointLike): LayeredResult {
     const inside = new Set(this.clusterNodes(spec.name))
@@ -694,11 +832,7 @@ class LayeredBuilderImpl implements LayeredBuilder {
 
     const crossing: Edge[] = []
     for (const e of this._edges) {
-      const fromInside = swallowed.has(e.origFrom!.name)
-      const toInside = swallowed.has(e.origTo!.name)
-      if (fromInside === toInside && (!fromInside || swallowed.get(e.origFrom!.name) === swallowed.get(e.origTo!.name))) {
-        continue // internal to one cluster, or entirely outside
-      }
+      if (!this.needsRebuild(e, swallowed)) continue
       const a = byName.get(e.origFrom!.name)
       const b = byName.get(e.origTo!.name)
       if (a && b) crossing.push(edge(a, b, this._options.edgeOptions))
@@ -816,6 +950,11 @@ class LayeredBuilderImpl implements LayeredBuilder {
       if (node.name) nodesByName.set(node.name, node)
     }
 
+    // Clusters come first: an edge naming one stops at its box, so the
+    // boxes have to exist before the edges are built.
+    const clusters = this.buildClusters(nodesByName, columns)
+    const clustersByName = new Map(clusters.map((c) => [c.name, c]))
+
     // Build edges; collapse dummies into bend points.
     const edges: Edge[] = []
     if (this._options.drawEdges) {
@@ -830,7 +969,16 @@ class LayeredBuilderImpl implements LayeredBuilder {
           // them back for the original from → to rendering.
           bendPoints = e.reversed ? pts.reverse() : pts
         }
-        const edgeObj = edge(vertexToNode.get(e.origFrom!)!, vertexToNode.get(e.origTo!)!, {
+        // A cluster endpoint draws to the box, not to the member the
+        // layout ranked against. Rectangle is Anchorable, so the edge's
+        // usual boundary resolution does the clipping for free.
+        const fromEnd =
+          (e.fromCluster ? clustersByName.get(e.fromCluster)?.rect : undefined) ??
+          vertexToNode.get(e.origFrom!)!
+        const toEnd =
+          (e.toCluster ? clustersByName.get(e.toCluster)?.rect : undefined) ??
+          vertexToNode.get(e.origTo!)!
+        const edgeObj = edge(fromEnd, toEnd, {
           ...this._options.edgeOptions,
           ...(bendPoints ? { bendPoints } : {}),
         })
@@ -860,8 +1008,6 @@ class LayeredBuilderImpl implements LayeredBuilder {
       )
     }
 
-    const clusters = this.buildClusters(nodesByName, columns)
-    const clustersByName = new Map(clusters.map((c) => [c.name, c]))
     const bounds = this.computeBounds(nodes, clusters)
 
     return {

@@ -154,8 +154,21 @@
   composes in every direction: inside a plain cluster, containing one, or
   nested in another independently-grown cluster.
 
+  **Edges may name a cluster**: `edge('client', 'svc')` arrives on the
+  box border rather than on a node inside it, and cluster-to-cluster
+  edges work the same way. Ranking still needs a real vertex, so the
+  layout runs against a representative member — the cluster's entry (a
+  member with no edge from inside) for an edge coming in, its exit for
+  one going out — and only the drawn geometry uses the box. `Rectangle`
+  is `Anchorable`, so the edge's usual boundary resolution does the
+  clipping. For a cluster with its own `grow` the box *is* the
+  placeholder the parent laid out against, so its edge is kept as the
+  parent drew it instead of being rebuilt against a member.
+
+  Ill-defined cases throw: a cluster to itself, a cluster to a node
+  inside it, and one nested cluster to another.
+
   Overlapping clusters throw rather than laying out wrongly.
-  Cluster-to-cluster edges are not supported.
 
 - **`Edge.bounds`.** `Edge` was in the `Renderable` union but had no
   `bounds`, so `pic.draw(someEdge)` with `{ fit: true }` threw a

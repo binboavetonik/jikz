@@ -188,6 +188,27 @@ border chains give the coordinate pass structure it did not have before.
 The box also counts as content, so `at` anchors the box rather than the
 leftmost node.
 
+#### Edges to a cluster
+
+An edge endpoint may name a cluster instead of a node, and the drawn edge
+stops at the box:
+
+```ts
+.cluster('svc', ['a', 'b'])
+.edge('client', 'svc')     // arrives on the box border
+.edge('svc', 'db')         // leaves from it
+.edge('svc', 'cache')      // cluster to cluster works too
+```
+
+Ranking still needs a real vertex, so the layout runs against a
+representative member — the cluster's **entry** (a member with no edge
+from inside) for an edge coming in, its **exit** for one going out — and
+only the drawn geometry uses the box. `Rectangle` is `Anchorable`, so the
+usual boundary resolution does the clipping.
+
+Rejected as ill-defined: a cluster to itself, a cluster to a node inside
+it, and one nested cluster to another.
+
 #### `grow` — a cluster with its own direction
 
 ```ts
@@ -211,8 +232,8 @@ It composes with ordinary clusters in both directions: an
 independently-grown cluster may sit inside a plain one, contain one, or
 nest inside another independently-grown cluster.
 
-Not supported: overlapping clusters (a node or cluster in two parents
-throws), and edges attached to a cluster rather than to a node in it.
+Not supported: overlapping clusters — a node or cluster in two parents
+throws.
 
 Demos: [`examples/layout-layered.ts`](../../examples/layout-layered.ts),
 [`examples/dependency-graph.ts`](../../examples/dependency-graph.ts),

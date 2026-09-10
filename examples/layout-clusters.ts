@@ -14,9 +14,9 @@ export default function render(container: HTMLElement) {
     .edge('route', 'svc')
     .edge('req', 'log') // bypasses the gateway entirely
     .edge('log', 'svc')
-    // Clusters nest: name a cluster in another's member list.
-    // …and a nested cluster may flow in its own direction.
+    // An endpoint may name a cluster: this one stops at the box.
     .cluster('policy', ['auth', 'rate'], { label: 'policy', grow: 'right' })
+    // Clusters nest: name a cluster in another's member list.
     .cluster('gateway', ['policy', 'route'], { label: 'gateway' })
     .build()
 
