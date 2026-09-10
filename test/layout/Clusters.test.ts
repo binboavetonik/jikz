@@ -6,6 +6,16 @@ import type { Node } from '../../src/node/Node'
 type Mode = NonNullable<LayeredOptions['coordinates']>
 const MODES: Mode[] = ['gansner', 'brandes-koepf']
 
+const encloses = (
+  outer: readonly [number, number, number, number],
+  inner: readonly [number, number, number, number],
+  slack = 1e-6
+): boolean =>
+  outer[0] <= inner[0] + slack &&
+  outer[1] <= inner[1] + slack &&
+  outer[2] >= inner[2] - slack &&
+  outer[3] >= inner[3] - slack
+
 const contains = (
   box: readonly [number, number, number, number],
   n: Node,
@@ -110,6 +120,102 @@ describe('layered clusters', () => {
       expect(overlapX > 1e-6 && overlapY > 1e-6).toBe(false)
     })
 
+    it('nests a cluster inside another', () => {
+      const r = layered({ at: point(0, 0), grow: 'down', coordinates: mode, clusterPadding: 10 })
+        .node('in', { width: 50, height: 24 })
+        .node('a', { width: 50, height: 24 })
+        .node('b', { width: 50, height: 24 })
+        .node('c', { width: 50, height: 24 })
+        .node('out', { width: 50, height: 24 })
+        .edge('in', 'a')
+        .edge('a', 'b')
+        .edge('b', 'c')
+        .edge('c', 'out')
+        .edge('in', 'out')
+        .cluster('inner', ['a', 'b'])
+        .cluster('outer', ['inner', 'c'])
+        .build()
+
+      const inner = r.getCluster('inner')!
+      const outer = r.getCluster('outer')!
+
+      expect(inner.depth).toBe(1)
+      expect(inner.parent).toBe('outer')
+      expect(outer.depth).toBe(0)
+      expect(outer.parent).toBeUndefined()
+      expect(outer.children).toEqual(['inner'])
+      // `nodes` is transitive: the outer box owns the inner box's nodes.
+      expect(outer.nodes.map((n) => n.name).sort()).toEqual(['a', 'b', 'c'])
+      expect(inner.nodes.map((n) => n.name).sort()).toEqual(['a', 'b'])
+
+      expect(encloses(outer.bounds, inner.bounds)).toBe(true)
+      expect(contains(inner.bounds, r.getNode('a')!)).toBe(true)
+      expect(contains(inner.bounds, r.getNode('c')!)).toBe(false)
+      expect(contains(outer.bounds, r.getNode('c')!)).toBe(true)
+      for (const outside of ['in', 'out']) {
+        expect(contains(outer.bounds, r.getNode(outside)!)).toBe(false)
+      }
+    })
+
+    it('keeps a bypass edge outside every nested box', () => {
+      const r = layered({ at: point(0, 0), grow: 'down', coordinates: mode, clusterPadding: 10 })
+        .node('in', { width: 50, height: 24 })
+        .node('a', { width: 50, height: 24 })
+        .node('b', { width: 50, height: 24 })
+        .node('c', { width: 50, height: 24 })
+        .node('out', { width: 50, height: 24 })
+        .edge('in', 'a')
+        .edge('a', 'b')
+        .edge('b', 'c')
+        .edge('c', 'out')
+        .edge('in', 'out')
+        .cluster('inner', ['a', 'b'])
+        .cluster('outer', ['inner', 'c'])
+        .build()
+      const long = r.edges.find((e) => e.bendPoints.length > 0)!
+      for (const cl of r.clusters) {
+        for (const p of long.bendPoints) {
+          const inside =
+            p.x > cl.bounds[0] && p.x < cl.bounds[2] && p.y > cl.bounds[1] && p.y < cl.bounds[3]
+          expect(inside).toBe(false)
+        }
+      }
+    })
+
+    it('nests three levels deep', () => {
+      const r = layered({ at: point(0, 0), grow: 'down', coordinates: mode, clusterPadding: 8 })
+        .node('n1', { width: 40, height: 20 })
+        .node('n2', { width: 40, height: 20 })
+        .node('n3', { width: 40, height: 20 })
+        .node('n4', { width: 40, height: 20 })
+        .edge('n1', 'n2')
+        .edge('n2', 'n3')
+        .edge('n3', 'n4')
+        .cluster('L3', ['n2'])
+        .cluster('L2', ['L3', 'n3'])
+        .cluster('L1', ['L2', 'n4'])
+        .build()
+
+      const [L1, L2, L3] = ['L1', 'L2', 'L3'].map((n) => r.getCluster(n)!)
+      expect([L1.depth, L2.depth, L3.depth]).toEqual([0, 1, 2])
+      expect(encloses(L1.bounds, L2.bounds)).toBe(true)
+      expect(encloses(L2.bounds, L3.bounds)).toBe(true)
+      expect(contains(L1.bounds, r.getNode('n1')!)).toBe(false)
+    })
+
+    it('nests even when the inner cluster asks for more padding', () => {
+      // A child with a bigger padding would poke out of its parent if
+      // the parent only measured its own members.
+      const r = layered({ at: point(0, 0), grow: 'down', coordinates: mode, clusterPadding: 4 })
+        .node('a', { width: 40, height: 20 })
+        .node('b', { width: 40, height: 20 })
+        .edge('a', 'b')
+        .cluster('inner', ['a'], { padding: 30 })
+        .cluster('outer', ['inner', 'b'])
+        .build()
+      expect(encloses(r.getCluster('outer')!.bounds, r.getCluster('inner')!.bounds)).toBe(true)
+    })
+
     it('grows sideways with the same guarantees', () => {
       const r = layered({ at: point(0, 0), grow: 'right', coordinates: mode })
         .node('in', { width: 40, height: 24 })
@@ -199,13 +305,31 @@ describe('layered clusters', () => {
     })
 
     it('rejects an unknown member', () => {
-      expect(() => base().cluster('c', ['nope'])).toThrow(/unknown node "nope"/)
+      expect(() => base().cluster('c', ['nope'])).toThrow(
+        /unknown node or cluster "nope"/
+      )
     })
 
     it('rejects a node claimed by two clusters', () => {
       expect(() => base().cluster('c1', ['a']).cluster('c2', ['a'])).toThrow(
         /already in cluster "c1"/
       )
+    })
+
+    it('rejects a cluster nested in two parents', () => {
+      expect(() =>
+        base().cluster('leaf', ['a']).cluster('p1', ['leaf']).cluster('p2', ['leaf'])
+      ).toThrow(/already in cluster "p1"/)
+    })
+
+    it('rejects a forward reference to a cluster', () => {
+      expect(() => base().cluster('outer', ['inner'])).toThrow(
+        /must be declared before/
+      )
+    })
+
+    it('rejects a cluster named like a node', () => {
+      expect(() => base().cluster('a', ['b'])).toThrow(/collides with a node/)
     })
   })
 })

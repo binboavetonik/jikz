@@ -91,7 +91,11 @@ export interface LayeredOptions {
   clusterPadding?: number
 }
 
-/** A cluster declaration: a name and the nodes it groups. */
+/**
+ * A cluster declaration. `members` names nodes, or other clusters to
+ * nest inside this one — a cluster must be declared before it can be
+ * named as a member.
+ */
 export interface LayeredClusterSpec {
   name: string
   members: readonly string[]
@@ -114,8 +118,14 @@ export interface LayeredCluster {
   bounds: [number, number, number, number]
   /** The box as a renderable rectangle. */
   rect: Rectangle
-  /** The member nodes, in declaration order. */
+  /** Every node inside, nested clusters included. */
   nodes: Node[]
+  /** Enclosing cluster's name, when this one is nested. */
+  parent?: string
+  /** Directly nested clusters, in declaration order. */
+  children: string[]
+  /** Nesting level: 0 for a top-level cluster. */
+  depth: number
 }
 
 /**
@@ -211,8 +221,8 @@ export interface LayeredBuilder {
 interface InternalVertex {
   name: string
   kind: 'node' | 'dummy'
-  /** Cluster this vertex belongs to; drives ordering contiguity. */
-  group?: string
+  /** Cluster nesting path this vertex sits in; drives ordering contiguity. */
+  group?: readonly string[]
   /** −1 pins to the front of its group, +1 to the back. */
   groupPin?: number
   /** Overrides `nodeSep` against rank neighbours (cluster borders). */
@@ -260,6 +270,20 @@ const DEFAULT_CLUSTER_PADDING = 12
 const BORDER_CHAIN_WEIGHT = 16
 
 /** Drop keys whose value is `undefined`, so spreads keep defaults. */
+/** Longest shared prefix of two cluster paths. */
+function commonPrefix(
+  a: readonly string[] | undefined,
+  b: readonly string[] | undefined,
+): readonly string[] {
+  if (!a || !b) return []
+  const out: string[] = []
+  for (let i = 0; i < Math.min(a.length, b.length); i++) {
+    if (a[i] !== b[i]) break
+    out.push(a[i]!)
+  }
+  return out
+}
+
 function definedOnly<T extends object>(options: T): Partial<T> {
   const out: Partial<T> = {}
   for (const [k, v] of Object.entries(options) as [keyof T, T[keyof T]][]) {
@@ -338,20 +362,57 @@ class LayeredBuilderImpl implements LayeredBuilder {
     if (this._clusters.some((c) => c.name === name)) {
       throw new Error(`layered layout: duplicate cluster name "${name}"`)
     }
+    if (this._vertices.has(name)) {
+      throw new Error(
+        `layered layout: cluster name "${name}" collides with a node of the same name`,
+      )
+    }
     for (const m of members) {
-      if (!this._vertices.has(m)) {
-        throw new Error(`layered layout: cluster "${name}" references unknown node "${m}"`)
+      const isNode = this._vertices.has(m)
+      const isCluster = this._clusters.some((c) => c.name === m)
+      if (!isNode && !isCluster) {
+        throw new Error(
+          `layered layout: cluster "${name}" references unknown node or cluster "${m}" ` +
+            '(a nested cluster must be declared before the one that contains it)',
+        )
       }
+      // One direct parent per entity: overlapping clusters have no
+      // well-defined box, and two parents would make nesting a DAG.
       const owner = this._clusters.find((c) => c.members.includes(m))
       if (owner) {
         throw new Error(
-          `layered layout: node "${m}" is already in cluster "${owner.name}" ` +
-            '(nested and overlapping clusters are not supported)',
+          `layered layout: "${m}" is already in cluster "${owner.name}" ` +
+            '(a node or cluster may sit in only one cluster)',
         )
       }
     }
     this._clusters.push({ name, members, options })
     return this
+  }
+
+  /** Direct child clusters of `name`, in declaration order. */
+  private childClusters(name: string): LayeredClusterSpec[] {
+    const spec = this._clusters.find((c) => c.name === name)!
+    return spec.members
+      .map((m) => this._clusters.find((c) => c.name === m))
+      .filter((c): c is LayeredClusterSpec => c !== undefined)
+  }
+
+  /** Every node name inside `name`, nested clusters included. */
+  private clusterNodes(name: string): string[] {
+    const spec = this._clusters.find((c) => c.name === name)!
+    const out: string[] = []
+    for (const m of spec.members) {
+      if (this._vertices.has(m)) out.push(m)
+      else out.push(...this.clusterNodes(m))
+    }
+    return out
+  }
+
+  /** Nesting path to `name`, outermost first and including it. */
+  private clusterPath(name: string): string[] {
+    const parent = this._clusters.find((c) => c.members.includes(name))
+    return parent ? [...this.clusterPath(parent.name), name] : [name]
   }
 
   edge(
@@ -649,18 +710,25 @@ class LayeredBuilderImpl implements LayeredBuilder {
    * own box.
    */
   private tagClusterMembers(): void {
+    if (this._clusters.length === 0) return
+
     for (const spec of this._clusters) {
+      const path = this.clusterPath(spec.name)
       for (const name of spec.members) {
-        this._vertices.get(name)!.group = spec.name
+        // Nested clusters carry their own (longer) path; only nodes are
+        // tagged with their direct parent's.
+        if (this._vertices.has(name)) this._vertices.get(name)!.group = path
       }
     }
-    if (this._clusters.length === 0) return
+
+    // A dummy on an edge that stays inside a cluster belongs to it, or
+    // the edge could route outside its own box. For an edge between two
+    // different clusters the dummies take the deepest common ancestor —
+    // the innermost box both endpoints are inside.
     for (const e of this._edges) {
       if (!e.dummies || e.dummies.length === 0) continue
-      const from = e.origFrom!.group
-      if (from !== undefined && from === e.origTo!.group) {
-        for (const d of e.dummies) d.group = from
-      }
+      const shared = commonPrefix(e.origFrom!.group, e.origTo!.group)
+      if (shared.length > 0) for (const d of e.dummies) d.group = shared
     }
   }
 
@@ -683,10 +751,13 @@ class LayeredBuilderImpl implements LayeredBuilder {
     const padding = this._options.clusterPadding!
 
     for (const spec of this._clusters) {
-      const ranksUsed = spec.members.map((m) => this._vertices.get(m)!.rank)
+      const memberNodes = this.clusterNodes(spec.name)
+      if (memberNodes.length === 0) continue
+      const ranksUsed = memberNodes.map((m) => this._vertices.get(m)!.rank)
       const minRank = Math.min(...ranksUsed)
       const maxRank = Math.max(...ranksUsed)
       const gap = spec.options?.padding ?? padding
+      const borderPath = this.clusterPath(spec.name)
 
       const left: InternalVertex[] = []
       const right: InternalVertex[] = []
@@ -702,7 +773,7 @@ class LayeredBuilderImpl implements LayeredBuilder {
             secondaryHalf: 0,
             inEdges: [],
             outEdges: [],
-            group: spec.name,
+            group: borderPath,
             groupPin: side === 'left' ? -1 : 1,
             gap,
             border: { cluster: spec.name, side },
@@ -742,26 +813,34 @@ class LayeredBuilderImpl implements LayeredBuilder {
     columns: Map<number, number>,
   ): LayeredCluster[] {
     const grow = this._options.grow!
-    const out: LayeredCluster[] = []
+    const byName = new Map<string, LayeredCluster>()
 
-    for (const spec of this._clusters) {
+    // Innermost first, so a parent can absorb boxes its children already
+    // produced and be guaranteed to enclose them.
+    const ordered = [...this._clusters].sort(
+      (a, b) => this.clusterPath(b.name).length - this.clusterPath(a.name).length,
+    )
+
+    for (const spec of ordered) {
       const border = this._borders.get(spec.name)
-      const members = spec.members.map((m) => nodesByName.get(m)!).filter(Boolean)
+      const memberNames = this.clusterNodes(spec.name)
+      const members = memberNames.map((m) => nodesByName.get(m)!).filter(Boolean)
       if (!border || members.length === 0) continue
 
       const gap = spec.options?.padding ?? this._options.clusterPadding!
 
       // Cross axis: the two border lines, which already sit `gap` clear
-      // of the outermost members.
+      // of the outermost contents.
       let lo = Infinity
       let hi = -Infinity
       for (const v of border.left) lo = Math.min(lo, v.secondary)
       for (const v of border.right) hi = Math.max(hi, v.secondary)
 
-      // Growth axis: the members' own extent, padded.
+      // Growth axis: the contents' own extent, padded — the borders are
+      // zero-height, so they say nothing about it.
       let near = Infinity
       let far = -Infinity
-      for (const m of spec.members) {
+      for (const m of memberNames) {
         const v = this._vertices.get(m)!
         const centre = columns.get(v.rank)!
         near = Math.min(near, centre - v.primaryHalf - gap)
@@ -776,15 +855,37 @@ class LayeredBuilderImpl implements LayeredBuilder {
         Math.max(a.x, b.x),
         Math.max(a.y, b.y),
       ]
-      out.push({
+
+      // Ordering and separation already keep a child's borders inside
+      // this one's, but a child with a larger `padding` could still poke
+      // out on the growth axis. Absorbing the child boxes makes nesting
+      // hold whatever the paddings are.
+      for (const child of this.childClusters(spec.name)) {
+        const box = byName.get(child.name)
+        if (!box) continue
+        bounds[0] = Math.min(bounds[0], box.bounds[0] - gap)
+        bounds[1] = Math.min(bounds[1], box.bounds[1] - gap)
+        bounds[2] = Math.max(bounds[2], box.bounds[2] + gap)
+        bounds[3] = Math.max(bounds[3], box.bounds[3] + gap)
+      }
+
+      const path = this.clusterPath(spec.name)
+      byName.set(spec.name, {
         name: spec.name,
         label: spec.options?.label,
         bounds,
         rect: new Rectangle(bounds[0], bounds[1], bounds[2] - bounds[0], bounds[3] - bounds[1]),
         nodes: members,
+        parent: path.length > 1 ? path[path.length - 2] : undefined,
+        children: this.childClusters(spec.name).map((c) => c.name),
+        depth: path.length - 1,
       })
     }
-    return out
+
+    // Back to declaration order for a stable, predictable result.
+    return this._clusters
+      .map((c) => byName.get(c.name))
+      .filter((c): c is LayeredCluster => c !== undefined)
   }
 
   private buildRankArrays(): void {

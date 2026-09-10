@@ -22,15 +22,18 @@ export interface OrderingVertex {
   inEdges: OrderingEdge[]
   outEdges: OrderingEdge[]
   /**
-   * Optional grouping key (a cluster name). Vertices sharing one are
-   * kept contiguous in every rank — that contiguity is what lets a
-   * cluster be drawn as a single box with nothing foreign inside it.
+   * Nesting path of cluster names, outermost first, or absent when the
+   * vertex belongs to no cluster. Vertices sharing a prefix are kept
+   * contiguous at that level — contiguity at every level is what lets
+   * nested clusters be drawn as nested boxes with nothing foreign
+   * between them.
    */
-  group?: string
+  group?: readonly string[]
   /**
-   * Placement within the group: negative pins to the front, positive to
-   * the back, 0 (or absent) floats. Cluster border vertices use ∓1 so
-   * the box edges stay on the outside of their own members.
+   * Placement within the innermost group: negative pins to the front,
+   * positive to the back, 0 (or absent) floats. Cluster border vertices
+   * use ∓1 so the box edges stay outside their own contents — including
+   * outside any nested box.
    */
   groupPin?: number
 }
@@ -52,7 +55,7 @@ export function minimizeCrossings(ranks: OrderingVertex[][]): void {
   // each pass runs unconstrained and is then repaired — the repair is
   // order-preserving, so the heuristics still do their work and the
   // keep-best comparison always sees a legal ordering.
-  const grouped = ranks.some((r) => r.some((v) => v.group !== undefined))
+  const grouped = ranks.some((r) => r.some((v) => v.group !== undefined && v.group.length > 0))
   const repair = grouped
     ? (): void => ranks.forEach(enforceGroups)
     : (): void => {}
@@ -97,47 +100,72 @@ export function minimizeCrossings(ranks: OrderingVertex[][]): void {
 }
 
 /**
- * Rebuild one rank so every group occupies a contiguous run.
+ * Rebuild one rank so every group occupies a contiguous run, at every
+ * level of nesting.
  *
  * Each group is collapsed to a block placed at the mean index of its
  * members, and ungrouped vertices keep their own index; the two are then
- * merged by index. Placing a block at its members' mean keeps it where
- * the crossing heuristics wanted it, so the repair costs little.
+ * merged by index and each block is arranged recursively by the next
+ * path element. Placing a block at its members' mean keeps it where the
+ * crossing heuristics wanted it, so the repair costs little.
  *
- * Within a block, `groupPin` orders the border vertices to the outside.
+ * `groupPin` is applied among a block's own contents, so a cluster's
+ * border vertices end up outside its members *and* outside any nested
+ * block.
  */
 export function enforceGroups(rank: OrderingVertex[]): void {
-  const blocks = new Map<string, { members: OrderingVertex[]; sum: number }>()
-  const loose: { v: OrderingVertex; at: number }[] = []
+  const arranged = arrangeGroups(
+    rank.map((v, i) => ({ v, at: i })),
+    0
+  )
+  rank.splice(0, rank.length, ...arranged)
+}
 
-  rank.forEach((v, i) => {
-    if (v.group === undefined) {
-      loose.push({ v, at: i })
-      return
+interface Placed {
+  v: OrderingVertex
+  at: number
+}
+
+/** One run of vertices to be laid down together, with its sort keys. */
+interface Slot {
+  at: number
+  /** −1 pins the run to the front of this level, +1 to the back. */
+  pin: number
+  run: OrderingVertex[]
+}
+
+function arrangeGroups(items: Placed[], depth: number): OrderingVertex[] {
+  const blocks = new Map<string, { members: Placed[]; sum: number }>()
+  const slots: Slot[] = []
+
+  for (const item of items) {
+    const key = item.v.group?.[depth]
+    if (key === undefined) {
+      // Belongs to no deeper group: a run of one, and the only kind of
+      // vertex a pin can apply to at this level.
+      slots.push({ at: item.at, pin: item.v.groupPin ?? 0, run: [item.v] })
+      continue
     }
-    const block = blocks.get(v.group) ?? { members: [], sum: 0 }
-    block.members.push(v)
-    block.sum += i
-    blocks.set(v.group, block)
-  })
-
-  if (blocks.size === 0) return
-
-  const slots: { at: number; run: OrderingVertex[] }[] = loose.map(({ v, at }) => ({
-    at,
-    run: [v],
-  }))
-  for (const block of blocks.values()) {
-    // Stable within the block, with pinned vertices pushed to the ends.
-    const run = block.members
-      .map((v, i) => ({ v, i }))
-      .sort((a, b) => (a.v.groupPin ?? 0) - (b.v.groupPin ?? 0) || a.i - b.i)
-      .map((x) => x.v)
-    slots.push({ at: block.sum / block.members.length, run })
+    const block = blocks.get(key) ?? { members: [], sum: 0 }
+    block.members.push(item)
+    block.sum += item.at
+    blocks.set(key, block)
   }
 
-  slots.sort((a, b) => a.at - b.at)
-  rank.splice(0, rank.length, ...slots.flatMap((s) => s.run))
+  if (blocks.size === 0 && slots.every((s) => s.pin === 0)) {
+    return items.map((i) => i.v)
+  }
+
+  for (const block of blocks.values()) {
+    slots.push({
+      at: block.sum / block.members.length,
+      pin: 0,
+      run: arrangeGroups(block.members, depth + 1),
+    })
+  }
+
+  slots.sort((a, b) => a.pin - b.pin || a.at - b.at)
+  return slots.flatMap((s) => s.run)
 }
 
 // ── Initial order ─────────────────────────────────────────────────────────

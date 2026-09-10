@@ -159,28 +159,38 @@ Group nodes into a subgraph box, Graphviz's `subgraph cluster_x`:
 layered({ grow: 'down', clusterPadding: 14 })
   .node('auth').node('rate').node('route').node('log')
   .edge('auth', 'rate').edge('rate', 'route')
-  .cluster('gateway', ['auth', 'rate', 'route'], { label: 'gateway' })
+  .cluster('policy', ['auth', 'rate'])                  // nested…
+  .cluster('gateway', ['policy', 'route'], { label: 'gateway' })
   .build()   // → result.clusters, result.getCluster('gateway')
 ```
 
-Each cluster comes back with `bounds`, a ready-made `rect`, its member
-`nodes` and its `label`. Paint the boxes **before** the nodes and edges.
+**Clusters nest**: a member may be a node *or* another cluster, which
+must already be declared. Each entity belongs to at most one cluster, so
+the nesting is a tree.
+
+Each cluster comes back with `bounds`, a ready-made `rect`, its `label`,
+its `depth`, its `parent`, its `children`, and `nodes` — every node
+inside it, nested clusters included. Paint the boxes **before** the nodes
+and edges, and **outermost first** (`sort((a, b) => a.depth - b.depth)`)
+so a nested box lands on top of its parent.
 
 The box is a layout constraint, not a post-hoc bounding box (`rectFit`
-already does that). Members are kept contiguous in every rank they
-occupy, and left/right border vertices are inserted on **every** rank the
-cluster spans — including ranks it has no member on — so a foreign edge
+already does that). Members are kept contiguous at **every level of
+nesting**, and left/right border vertices are inserted on **every** rank
+a cluster spans — including ranks it has no member on — so a foreign edge
 passing the cluster is pushed clear of the box instead of routed through
-it. `clusterPadding` (default 12) is the gap between the box and its
-contents, overridable per cluster.
+it. `clusterPadding` (default 12) is the gap between a box and its
+contents, overridable per cluster; a parent always encloses its children
+even when a child asks for more padding than its parent.
 
 Because it constrains the layout, adding a cluster can move nodes: the
 border chains give the coordinate pass structure it did not have before.
 The box also counts as content, so `at` anchors the box rather than the
 leftmost node.
 
-Not supported: nested or overlapping clusters (both throw), per-cluster
-`rankdir`, and edges attached to a cluster rather than to a node in it.
+Not supported: overlapping clusters (a node or cluster in two parents
+throws), per-cluster `rankdir`, and edges attached to a cluster rather
+than to a node in it.
 
 Demos: [`examples/layout-layered.ts`](../../examples/layout-layered.ts),
 [`examples/dependency-graph.ts`](../../examples/dependency-graph.ts),

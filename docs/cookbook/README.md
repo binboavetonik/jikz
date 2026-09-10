@@ -460,7 +460,7 @@ grow: 'right' with variable-width labels: each parent pushes its children past i
 
 ![Clusters — a box around a subgraph](img/layout-clusters.svg)
 
-layered().cluster() groups nodes into a subgraph box. Members are kept contiguous in every rank they occupy, and border vertices are inserted on every rank the cluster spans — including ranks it has no member on — so nothing foreign drifts inside. Here the request→audit log→service path bypasses the gateway and is pushed clear of the box rather than routed through it. The result carries each cluster's bounds and a ready-made rect; paint them before the nodes.
+layered().cluster() groups nodes into a subgraph box, and clusters nest — name one in another's member list. Members are kept contiguous at every level of nesting, and border vertices go on every rank a cluster spans (including ranks it has no member on), so nothing foreign drifts between the boxes. Here the request→audit log→service path bypasses the gateway and is pushed clear of both boxes rather than routed through them. Each cluster comes back with bounds, a ready-made rect, its depth and its parent — paint them outermost first.
 
 **Source:** [`examples/layout-clusters.ts`](../../examples/layout-clusters.ts)
 

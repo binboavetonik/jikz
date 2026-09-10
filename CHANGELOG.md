@@ -126,8 +126,18 @@
   have before; and the box counts as content, so `at` anchors the box
   rather than the leftmost node.
 
-  Nested and overlapping clusters throw rather than laying out wrongly.
-  Per-cluster `rankdir` and cluster-to-cluster edges are not supported.
+  **Clusters nest**: a member may be a node or another cluster, which
+  must already be declared. Each entity has at most one direct parent, so
+  the nesting is a tree. Contiguity is enforced at every level — the
+  ordering repair recurses down the nesting path, and `groupPin` applies
+  among a block's own contents, so a cluster's borders end up outside its
+  members *and* outside any nested box. A parent absorbs its children's
+  boxes, so nesting holds even when a child asks for more padding than
+  its parent. Each cluster reports its `depth`, `parent` and `children`,
+  and `nodes` is transitive; paint boxes outermost first.
+
+  Overlapping clusters throw rather than laying out wrongly. Per-cluster
+  `rankdir` and cluster-to-cluster edges are not supported.
 
 - **`Edge.bounds`.** `Edge` was in the `Renderable` union but had no
   `bounds`, so `pic.draw(someEdge)` with `{ fit: true }` threw a

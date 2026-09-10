@@ -14,22 +14,30 @@ export default function render(container: HTMLElement) {
     .edge('route', 'svc')
     .edge('req', 'log') // bypasses the gateway entirely
     .edge('log', 'svc')
-    .cluster('gateway', ['auth', 'rate', 'route'], { label: 'gateway' })
+    // Clusters nest: name a cluster in another's member list.
+    .cluster('policy', ['auth', 'rate'], { label: 'policy' })
+    .cluster('gateway', ['policy', 'route'], { label: 'gateway' })
     .build()
 
   const pic = picture()
 
-  // Boxes first, so nodes and edges paint on top of them.
-  for (const c of g.clusters) {
+  // Boxes first, outermost first, so nested boxes paint on top of their
+  // parents and the nodes on top of everything.
+  for (const c of [...g.clusters].sort((a, b) => a.depth - b.depth)) {
     const [x0, y0, x1, y1] = c.bounds
     pic.filldraw(rect(x0, y0, x1 - x0, y1 - y0), {
-      style: { stroke: '#94a3b8', fill: '#f1f5f9', dash: 'dashed', borderRadius: 6 },
+      style: {
+        stroke: c.depth === 0 ? '#94a3b8' : '#c4b5fd',
+        fill: c.depth === 0 ? '#f1f5f9' : '#faf5ff',
+        dash: 'dashed',
+        borderRadius: 6,
+      },
     })
     if (c.label) {
       pic.text(point(x0 + 6, y0 - 8), c.label, {
         fontSize: 10,
         textAnchor: 'start',
-        style: { fill: '#64748b' },
+        style: { fill: c.depth === 0 ? '#64748b' : '#7c3aed' },
       })
     }
   }
