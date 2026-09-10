@@ -1,6 +1,6 @@
 {
   "name": "@ozan.e/jikz",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "TikZ-inspired coordinate and drawing library for JavaScript/TypeScript",
   "type": "module",
   "main": "./dist/jikz.umd.cjs",

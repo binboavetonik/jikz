@@ -254,6 +254,24 @@ const meta: DemoMeta[] = [
     description: "Chains position successive nodes and wire the edges for you.",
   },
   {
+    id: "pan-zoom",
+    category: "diagram-layout",
+    title: "Pan & zoom",
+    description: "mount({ panZoom: true }): wheel zooms to the cursor, drag pans, pinch zooms, double-click refits. One viewport group's transform attribute is all that changes — the picture never re-renders.",
+  },
+  {
+    id: "animation",
+    category: "paths-decorations",
+    title: "SMIL animation",
+    description: "Declarative `animate` on any render call emits <animate>/<animateTransform> children — a radar pulse that survives even toSVG() serialization.",
+  },
+  {
+    id: "large-tree-collapse",
+    category: "diagram-layout",
+    title: "Large trees — collapse & drill-in",
+    description: "`collapsed: hiddenCount` lays a node out as a leaf and records the withheld descendants; the result's `collapsed` list drives '+N›' markers and click-to-re-root. Expansion state stays app-side.",
+  },
+  {
     id: "layout-matrix",
     category: "diagram-layout",
     title: "Matrix layout",

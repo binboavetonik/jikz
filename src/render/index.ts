@@ -18,6 +18,7 @@ export type {
   RenderOptions,
   TextOptions,
   GroupOptions,
+  SVGAnimation,
 } from './Renderer'
 
 // Style mapping
@@ -107,6 +108,26 @@ export type {
 // SVG Renderer
 export { SVGRenderer, createSVGRenderer } from './SVGRenderer'
 export type { SVGRendererOptions } from './SVGRenderer'
+
+// Pan/zoom interaction for mounted pictures
+export {
+  attachPanZoom,
+  PANZOOM_VIEWPORT_CLASS,
+  IDENTITY_TRANSFORM,
+  meetFit,
+  screenToScene,
+  sceneToScreen,
+  clampScale,
+  zoomAtScreenPoint,
+  panByScreenDelta,
+} from './PanZoom'
+export type {
+  ViewTransform,
+  ViewBoxRect,
+  ViewportSize,
+  PanZoomOptions,
+  PanZoomController,
+} from './PanZoom'
 
 export type { KaTeXOptions } from './SVGRenderer'
 

@@ -486,6 +486,16 @@ export {
   createSVGRenderer,
   SVGBuilder,
   createSVGBuilder,
+  // Pan/zoom interaction for mounted pictures
+  attachPanZoom,
+  PANZOOM_VIEWPORT_CLASS,
+  IDENTITY_TRANSFORM,
+  meetFit,
+  screenToScene,
+  sceneToScreen,
+  clampScale,
+  zoomAtScreenPoint,
+  panByScreenDelta,
   // Renderer collaborators
   DefsManager,
   LayerStack,
@@ -526,6 +536,7 @@ export type {
   PictureOptions,
   PictureTextOptions,
   PictureViewBox,
+  MountOptions,
   DrawOptions,
   DrawLabel,
   ScopeOptions,
@@ -539,6 +550,7 @@ export type {
   RenderOptions,
   TextOptions,
   GroupOptions,
+  SVGAnimation,
   Color,
   LineCap,
   LineJoin,
@@ -567,6 +579,12 @@ export type {
   // Clipping and double lines
   ClipSpec,
   DoubleLineSpec,
+  // Pan/zoom
+  ViewTransform,
+  ViewBoxRect,
+  ViewportSize,
+  PanZoomOptions,
+  PanZoomController,
   // Layers
   LayerName,
   LayerConfig,

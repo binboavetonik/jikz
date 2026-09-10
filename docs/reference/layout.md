@@ -80,6 +80,31 @@ tree({ grow: 'right' })
     .build()
 ```
 
+### Truncation: `collapsed` and `maxDepth`
+
+Large trees are shown in windows. jikz owns the layout semantics —
+"this node is a leaf with N withheld descendants" — while expansion
+state, re-rooting and marker visuals stay in your app:
+
+```ts
+const { nodes, edges, collapsed } = treeFromSpec(
+  {
+    content: 'root',
+    children: [
+      // laid out as a leaf; the +2› marker is your text, sized into width
+      { content: { text: 'branch  +2›', width: 90 }, collapsed: 14 },
+    ],
+  },
+  { grow: 'right' }
+)
+// collapsed → [{ node, hidden: 14 }] — render markers / route clicks
+// against it, then rebuild re-rooted when one is clicked.
+```
+
+`tree({ maxDepth: N })` caps the layout at N levels (root = 0) with no
+markers — pure display truncation. Demos:
+[`examples/large-tree-collapse.ts`](../../examples/large-tree-collapse.ts).
+
 Demos: [`examples/layout-tree.ts`](../../examples/layout-tree.ts),
 [`layout-tree-horizontal.ts`](../../examples/layout-tree-horizontal.ts),
 [probability-tree](../../examples/probability-tree.ts).

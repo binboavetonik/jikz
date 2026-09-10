@@ -1,5 +1,65 @@
 # Changelog
 
+## 0.7.0
+
+### Added
+
+- **First-class pan/zoom for mounted pictures.**
+  `picture().mount(el, { fit: true, panZoom: true })` now returns a
+  `PanZoomController`: wheel zooms to the cursor (exponential factor, so
+  trackpads are smooth and notched wheels match `wheelFactor` per click),
+  pointer-drag pans with a 3px click-safe threshold (pointer capture is
+  taken lazily at the threshold, so a plain click's compatibility event is
+  never retargeted off the scene element under the cursor), two-pointer pinch
+  zooms, and double-click resets to the fitted view. With `panZoom` the
+  root svg fills its container and the browser letterboxes the viewBox, so
+  the fitted view needs no pixel math and hidden (0×0) containers need no
+  refit. All state lives in one `<g class="jikz-viewport">` wrapping the
+  scene — panning mutates a single `transform` attribute, never re-renders.
+  `wasDrag()` separates drags from clicks, `screenToUser()` converts
+  client coordinates for hit-testing, `onTransform` reports every change
+  so views survive remounts, and `destroy()` detaches all listeners.
+
+  The transform math (`meetFit`, `screenToScene`, `sceneToScreen`,
+  `zoomAtScreenPoint`, `panByScreenDelta`, `clampScale`) is exported as
+  pure functions — DOM-free and unit-testable, matching the library's
+  plain-data architecture. Cursor conversion uses viewBox letterbox math
+  rather than `getScreenCTM`, so jsdom tests can stub the rect.
+
+  New `SVGRendererOptions.viewportGroup` wraps the scene in the viewport
+  group without interaction (inside any canvas-transform group), and
+  `attachPanZoom(svg, viewBox, options)` attaches a controller to an
+  already-mounted picture.
+
+- **Declarative SMIL animation.** Every render call — nodes, edges, bare
+  draws, text — accepts `animate: SVGAnimation | SVGAnimation[]`, emitted
+  as `<animate>`/`<animateTransform>` children of the element. Plain data
+  in the SVG tree: it serializes into `toSVG()` output (a saved static
+  file still animates) and mounts unchanged. `SVGAnimation` covers
+  `attributeName`, `values` or `from`/`to`, `dur`, `repeatCount`, `begin`,
+  `keyTimes`, `calcMode`/`keySplines`, `fill`, and `kind: 'animateTransform'`
+  with its `type` (`scale`/`rotate`/…). On nodes the animation lands on
+  the wrapping `<g>`, so shape and label animate together. CSS animation
+  stays available via `className`/`attributes`.
+
+- **Tree truncation: `collapsed` and `maxDepth`.** Large trees can be
+  laid out in windows: `TreeNodeSpec.collapsed: N` (or
+  `.collapsed(N)` on the builder) lays a node out as a leaf and records
+  the N withheld descendants on the result's new `collapsed` list — the
+  bookkeeping that drill-in markers (`+N›`) and click-to-re-root build
+  against. `tree({ maxDepth })` caps the layout at a depth with no
+  markers, for pure display truncation. Expansion state, marker visuals
+  and re-rooting stay app-side; see
+  [`examples/large-tree-collapse.ts`](examples/large-tree-collapse.ts).
+
+### Fixed
+
+- **Elements with both text content and children no longer drop the
+  children.** `SVGBuilder`'s serializer and DOM mounter treated `text`
+  and `children` as mutually exclusive, which would have silently
+  discarded `<animate>` children on `<text>` elements. Text now emits
+  first, children after.
+
 ## 0.6.0
 
 ### Changed

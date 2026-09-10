@@ -1,5 +1,6 @@
 import { Point } from '../core/Point'
 import type { Transform } from '../core/Transform'
+import { PANZOOM_VIEWPORT_CLASS } from './PanZoom'
 import { Path } from '../path/Path'
 import { Line } from '../geometry/Line'
 import { Circle } from '../geometry/Circle'
@@ -122,6 +123,14 @@ export interface SVGRendererOptions {
    * canvas transformations. Strokes and markers scale with the scene.
    */
   transform?: Transform
+  /**
+   * Wrap the scene in a dedicated viewport group
+   * (`<g class="jikz-viewport">`), the element a {@link PanZoomController}
+   * drives. `Picture.mount({ panZoom })` sets this; the group sits INSIDE
+   * any canvas-transform group, so the two compose. Defs stay on the
+   * document root either way.
+   */
+  viewportGroup?: boolean
 }
 
 /**
@@ -153,10 +162,15 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
     this.draw = draw ?? createSVGBuilder()
     this.defaultStyle = mergeStyles(DEFAULT_STYLE, defaultStyle)
     // Canvas transform: scene content (including layers) goes into a
-    // transformed root group; defs stay on the document root.
-    this.sceneRoot = options?.transform
+    // transformed root group; defs stay on the document root. The pan/zoom
+    // viewport group nests inside it, so the controller never clobbers a
+    // canvas transform.
+    const canvas = options?.transform
       ? this.draw.group().attr({ transform: options.transform.toSVGMatrix() })
       : this.draw
+    this.sceneRoot = options?.viewportGroup
+      ? canvas.group().attr({ class: PANZOOM_VIEWPORT_CLASS })
+      : canvas
     this.defsManager = new DefsManager(this.draw)
     this.layerStack = new LayerStack(this.sceneRoot)
     this.mathRenderer = options?.mathRenderer
@@ -458,6 +472,11 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
 
     if (options.attributes) {
       el.attr(options.attributes)
+    }
+
+    if (options.animate) {
+      const list = Array.isArray(options.animate) ? options.animate : [options.animate]
+      for (const spec of list) el.animate(spec)
     }
 
     return el

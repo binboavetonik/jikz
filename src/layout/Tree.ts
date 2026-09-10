@@ -71,6 +71,13 @@ export interface TreeOptions {
    * Whether to draw edges (default: true)
    */
   drawEdges?: boolean
+
+  /**
+   * Depth cap: nodes deeper than `maxDepth` levels (root = 0) are not
+   * laid out. Pure display capping — no markers; for drill-in markers
+   * see {@link TreeNodeSpec.collapsed}.
+   */
+  maxDepth?: number
 }
 
 /**
@@ -94,6 +101,16 @@ export interface TreeNodeSpec {
    * between them. Use small values for invisible/spacer roots.
    */
   sep?: number
+
+  /**
+   * Lay this node out as a leaf, recording how many descendants were
+   * withheld. Any `children` on the spec are not laid out. The entry
+   * appears in {@link TreeResult.collapsed} so the consumer can render a
+   * drill-in marker (e.g. `+3›`) against the laid-out node — size the
+   * `content` width to fit the marker so it participates in spacing and
+   * contour packing. Expansion state and marker visuals stay app-side.
+   */
+  collapsed?: number
 }
 
 /**
@@ -381,6 +398,13 @@ export interface TreeResult {
    * Bounding box of the tree [minX, minY, maxX, maxY]
    */
   bounds: [number, number, number, number]
+
+  /**
+   * Nodes laid out as leaves via {@link TreeNodeSpec.collapsed}, with
+   * their withheld-descendant counts — the bookkeeping drill-in markers
+   * render against.
+   */
+  readonly collapsed: readonly { node: Node; hidden: number }[]
 }
 
 /**
@@ -407,6 +431,13 @@ export interface TreeNodeBuilder {
    * axis (overrides `levelDistance` for this node's children).
    */
   sep(d: number): TreeNodeBuilder
+
+  /**
+   * Mark this node as collapsed: laid out as a leaf, children withheld,
+   * `hidden` recorded on {@link TreeResult.collapsed} for marker
+   * rendering.
+   */
+  collapsed(hidden: number): TreeNodeBuilder
 
   /**
    * Build the tree
@@ -485,6 +516,11 @@ class TreeNodeBuilderImpl implements TreeNodeBuilder {
 
   sep(d: number): TreeNodeBuilder {
     this._spec.sep = d
+    return this
+  }
+
+  collapsed(hidden: number): TreeNodeBuilder {
+    this._spec.collapsed = hidden
     return this
   }
 
@@ -587,10 +623,22 @@ class TreeBuilderImpl implements TreeBuilder {
     // Calculate bounds
     const bounds = this.calculateBounds(nodes)
 
+    // Collapsed bookkeeping: nodes laid out as leaves by truncation,
+    // with their withheld-descendant counts.
+    const collapsed: { node: Node; hidden: number }[] = []
+    const collectCollapsed = (n: InternalTreeNode) => {
+      if (n.spec.collapsed !== undefined && n.node) {
+        collapsed.push({ node: n.node, hidden: n.spec.collapsed })
+      }
+      for (const c of n.children) collectCollapsed(c)
+    }
+    collectCollapsed(internalRoot)
+
     return {
       root: internalRoot.node!,
       nodes,
       edges,
+      collapsed,
       levelCount: maxLevel + 1,
       bounds,
       level(index: number): Node[] {
@@ -634,7 +682,13 @@ class TreeBuilderImpl implements TreeBuilder {
     // The paper's `v.ancestor` defaults to v itself.
     internal.ancestor = internal
 
-    if (spec.children) {
+    // Truncation: collapsed nodes and the maxDepth cut are laid out as
+    // leaves — their children never enter the internal tree.
+    const cut =
+      spec.collapsed !== undefined ||
+      (this._options.maxDepth !== undefined && level >= this._options.maxDepth)
+
+    if (spec.children && !cut) {
       spec.children.forEach((childSpec, i) => {
         internal.children.push(this.buildInternalTree(childSpec, level + 1, internal, i))
       })

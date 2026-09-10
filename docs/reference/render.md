@@ -78,6 +78,28 @@ The bottom of the stack: a DOM-free SVG element tree.
 DOM. `toSVG()`/`mount()` on pictures are thin wrappers over this.
 SVG.js-compatible conveniences (`marker`, `defs`, …) included.
 
+## Animation (SMIL)
+
+Every render call accepts `animate` — declarative SMIL emitted as
+`<animate>`/`<animateTransform>` children of the element. It serializes
+into `toSVG()` output, so even a saved static file animates:
+
+```ts
+pic.draw(circle(p, 5), {
+  animate: { attributeName: 'opacity', values: '1;0.35;1',
+             dur: '1.2s', repeatCount: 'indefinite' },
+})
+```
+
+`SVGAnimation`: `attributeName`, `values` (or `from`/`to`), `dur`,
+`repeatCount`, `begin`, `keyTimes`, `calcMode`/`keySplines`, `fill`, and
+`kind: 'animateTransform'` for transform animation. Pass an array to run
+several on one element. On nodes the animation lands on the wrapping
+`<g>`, so shape and label pulse together. For app-controlled CSS
+animation use `className`/`attributes` instead.
+
+See [`examples/animation.ts`](../../examples/animation.ts).
+
 ## MathRenderer
 
 The pluggable text renderer seam: `katexAdapter(katex)` turns `$...$`

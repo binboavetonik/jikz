@@ -14,6 +14,8 @@
  * methods unchanged.
  */
 
+import type { SVGAnimation } from './Renderer'
+
 export type Attrs = Record<string, unknown>
 
 /**
@@ -63,6 +65,26 @@ export class SVGElement {
 
   id(value: string): this {
     this.node.attrs.id = value
+    return this
+  }
+
+  /**
+   * Append a SMIL `<animate>`/`<animateTransform>` child. Plain data —
+   * serializes via toString() and mounts via createDOM like any child.
+   */
+  animate(spec: SVGAnimation): this {
+    const attrs: Attrs = { attributeName: spec.attributeName, dur: spec.dur }
+    if (spec.values !== undefined) attrs.values = spec.values
+    if (spec.from !== undefined) attrs.from = spec.from
+    if (spec.to !== undefined) attrs.to = spec.to
+    if (spec.repeatCount !== undefined) attrs.repeatCount = spec.repeatCount
+    if (spec.begin !== undefined) attrs.begin = spec.begin
+    if (spec.keyTimes !== undefined) attrs.keyTimes = spec.keyTimes
+    if (spec.calcMode !== undefined) attrs.calcMode = spec.calcMode
+    if (spec.keySplines !== undefined) attrs.keySplines = spec.keySplines
+    if (spec.fill !== undefined) attrs.fill = spec.fill
+    if (spec.type !== undefined) attrs.type = spec.type
+    this.node.children.push({ tag: spec.kind ?? 'animate', attrs, children: [] })
     return this
   }
 
@@ -347,15 +369,16 @@ function serialize(el: SVGNode): string {
     .map(([k, v]) => `${k}="${escape(String(v))}"`)
   const open = [el.tag, ...attrPairs].join(' ')
 
-  if (el.text !== undefined) {
+  // Text content and children (e.g. <animate>) coexist: text first.
+  if (el.text !== undefined && el.children.length === 0) {
     return `<${open}>${escape(el.text)}</${el.tag}>`
   }
-  if (el.children.length === 0) {
+  if (el.text === undefined && el.children.length === 0) {
     return `<${open}/>`
   }
-  const inner = el.children
-    .map((c) => ('raw' in c ? c.raw : serialize(c)))
-    .join('')
+  const inner =
+    (el.text !== undefined ? escape(el.text) : '') +
+    el.children.map((c) => ('raw' in c ? c.raw : serialize(c))).join('')
   return `<${open}>${inner}</${el.tag}>`
 }
 
@@ -379,37 +402,38 @@ function createDOM(node: SVGNode): globalThis.Element {
   for (const [k, v] of Object.entries(node.attrs)) {
     if (v !== undefined && v !== null) el.setAttribute(k, String(v))
   }
+  // Text first (a text node — assigning textContent would wipe children),
+  // then children such as <animate>.
   if (node.text !== undefined) {
-    el.textContent = node.text
-  } else {
-    for (const child of node.children) {
-      if ('raw' in child) {
-        // Parse the raw XML string and append its top-level elements.
-        // Using innerHTML on a temporary SVG root handles the parse.
-        const tmp = document.createElementNS(SVG_NS, 'g')
-        tmp.innerHTML = child.raw
-        while (tmp.firstChild) el.appendChild(tmp.firstChild)
-      } else if (child.tag === 'foreignObject') {
-        // foreignObject content lives in the XHTML namespace. Default to
-        // SVG namespace for children; callers using .raw() in XHTML
-        // should emit the xmlns explicitly.
-        const fo = document.createElementNS(SVG_NS, 'foreignObject')
-        for (const [k, v] of Object.entries(child.attrs)) {
-          if (v !== undefined && v !== null) fo.setAttribute(k, String(v))
-        }
-        for (const sub of child.children) {
-          if ('raw' in sub) {
-            const tmp = document.createElementNS(XHTML_NS, 'div')
-            tmp.innerHTML = sub.raw
-            while (tmp.firstChild) fo.appendChild(tmp.firstChild)
-          } else {
-            fo.appendChild(createDOM(sub))
-          }
-        }
-        el.appendChild(fo)
-      } else {
-        el.appendChild(createDOM(child))
+    el.appendChild(document.createTextNode(node.text))
+  }
+  for (const child of node.children) {
+    if ('raw' in child) {
+      // Parse the raw XML string and append its top-level elements.
+      // Using innerHTML on a temporary SVG root handles the parse.
+      const tmp = document.createElementNS(SVG_NS, 'g')
+      tmp.innerHTML = child.raw
+      while (tmp.firstChild) el.appendChild(tmp.firstChild)
+    } else if (child.tag === 'foreignObject') {
+      // foreignObject content lives in the XHTML namespace. Default to
+      // SVG namespace for children; callers using .raw() in XHTML
+      // should emit the xmlns explicitly.
+      const fo = document.createElementNS(SVG_NS, 'foreignObject')
+      for (const [k, v] of Object.entries(child.attrs)) {
+        if (v !== undefined && v !== null) fo.setAttribute(k, String(v))
       }
+      for (const sub of child.children) {
+        if ('raw' in sub) {
+          const tmp = document.createElementNS(XHTML_NS, 'div')
+          tmp.innerHTML = sub.raw
+          while (tmp.firstChild) fo.appendChild(tmp.firstChild)
+        } else {
+          fo.appendChild(createDOM(sub))
+        }
+      }
+      el.appendChild(fo)
+    } else {
+      el.appendChild(createDOM(child))
     }
   }
   return el

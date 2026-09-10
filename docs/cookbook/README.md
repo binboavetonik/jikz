@@ -432,6 +432,22 @@ Chains position successive nodes and wire the edges for you.
 
 **Source:** [`examples/layout-chain.ts`](../../examples/layout-chain.ts)
 
+### Pan & zoom
+
+![Pan & zoom](img/pan-zoom.svg)
+
+mount({ panZoom: true }): wheel zooms to the cursor, drag pans, pinch zooms, double-click refits. One viewport group's transform attribute is all that changes — the picture never re-renders.
+
+**Source:** [`examples/pan-zoom.ts`](../../examples/pan-zoom.ts)
+
+### Large trees — collapse & drill-in
+
+![Large trees — collapse & drill-in](img/large-tree-collapse.svg)
+
+`collapsed: hiddenCount` lays a node out as a leaf and records the withheld descendants; the result's `collapsed` list drives '+N›' markers and click-to-re-root. Expansion state stays app-side.
+
+**Source:** [`examples/large-tree-collapse.ts`](../../examples/large-tree-collapse.ts)
+
 ### Matrix layout
 
 ![Matrix layout](img/layout-matrix.svg)
@@ -647,6 +663,14 @@ User-supplied `style` overrides the path-mode baseline. Linear gradients, dashed
 Double-stroked paths (TikZ `double`) and z-order control via named layers.
 
 **Source:** [`examples/double-layers.ts`](../../examples/double-layers.ts)
+
+### SMIL animation
+
+![SMIL animation](img/animation.svg)
+
+Declarative `animate` on any render call emits <animate>/<animateTransform> children — a radar pulse that survives even toSVG() serialization.
+
+**Source:** [`examples/animation.ts`](../../examples/animation.ts)
 
 ### KaTeX math labels
 

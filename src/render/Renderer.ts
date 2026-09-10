@@ -69,6 +69,49 @@ export interface RenderOptions {
    * Custom attributes
    */
   attributes?: Record<string, string | number>
+
+  /**
+   * SMIL animation(s) emitted as `<animate>`/`<animateTransform>` children
+   * of the rendered element. Declarative and DOM-free: they serialize into
+   * `toSVG()` output (a static file that animates) and mount unchanged.
+   * For app-controlled CSS animation, use `className`/`attributes` instead.
+   */
+  animate?: SVGAnimation | SVGAnimation[]
+}
+
+/**
+ * A declarative SMIL animation. Emitted as an `<animate>` (default) or
+ * `<animateTransform>` child of the element it is attached to.
+ *
+ *     // pulsing opacity, the "frontier" idiom:
+ *     { attributeName: 'opacity', values: '1;0.35;1', dur: '1.2s', repeatCount: 'indefinite' }
+ */
+export interface SVGAnimation {
+  /** Attribute to animate (e.g. `'opacity'`, `'fill'`). */
+  attributeName: string
+  /** Semicolon-separated values over the duration (`'1;0.35;1'`). */
+  values?: string
+  /** Single from/to pair (alternative to `values`). */
+  from?: string
+  to?: string
+  /** Duration, e.g. `'1.2s'` or `'800ms'`. */
+  dur: string
+  /** `'indefinite'` or a repeat count (default: play once). */
+  repeatCount?: string
+  /** Begin time (default: `'0s'`). */
+  begin?: string
+  /** Semicolon-separated fractions matching `values`. */
+  keyTimes?: string
+  /** Interpolation mode. */
+  calcMode?: 'linear' | 'discrete' | 'paced' | 'spline'
+  /** Spline control points when `calcMode: 'spline'`. */
+  keySplines?: string
+  /** Whether the end state persists (`'freeze'`) or reverts (`'remove'`). */
+  fill?: 'freeze' | 'remove'
+  /** Emit `<animateTransform>` instead of `<animate>`. */
+  kind?: 'animate' | 'animateTransform'
+  /** Transform type — required by SMIL for `kind: 'animateTransform'`. */
+  type?: 'translate' | 'scale' | 'rotate' | 'skewX' | 'skewY'
 }
 
 /**

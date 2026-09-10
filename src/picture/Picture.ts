@@ -7,6 +7,11 @@ import type { Renderable, RenderOptions, TextOptions } from '../render/Renderer'
 import type { RenderStyle } from '../render/StyleMapper'
 import { SVGRenderer } from '../render/SVGRenderer'
 import type { ViewBoxSpec } from '../render/SVGBuilder'
+import {
+  attachPanZoom,
+  type PanZoomController,
+  type PanZoomOptions,
+} from '../render/PanZoom'
 import { placeText } from '../text/placeText'
 import {
   ItemContainer,
@@ -58,6 +63,17 @@ export interface PictureViewBox {
   fit?: boolean
   /** Padding around the content when `fit` is set, px. Default: 4. */
   padding?: number
+}
+
+/**
+ * Options for {@link Picture.mount}. With `panZoom` set, the scene is
+ * wrapped in a viewport group, the root svg fills its container
+ * (`width`/`height: 100%`) and lets the browser letterbox the viewBox, and
+ * mount returns a {@link PanZoomController} instead of the bare element.
+ */
+export interface MountOptions extends PictureViewBox {
+  /** Enable first-class pan/zoom interaction (see {@link PanZoomOptions}). */
+  panZoom?: boolean | PanZoomOptions
 }
 
 /**
@@ -284,16 +300,34 @@ export class Picture extends ItemContainer implements ContainerRoot {
 
   /**
    * Compile and attach a live SVG element to `container` (browser only).
+   * With {@link MountOptions.panZoom} the scene gets a viewport group and
+   * the return value is a {@link PanZoomController} owning its transform.
    */
+  mount(container: Element, options: MountOptions & { panZoom: boolean | PanZoomOptions }): PanZoomController
+  mount(container: Element, viewBox?: PictureViewBox): ReturnType<SVGRenderer['builder']['mount']>
   mount(
     container: Element,
-    viewBox?: PictureViewBox
-  ): ReturnType<SVGRenderer['builder']['mount']> {
+    viewBox?: MountOptions
+  ): ReturnType<SVGRenderer['builder']['mount']> | PanZoomController {
+    const panZoom = viewBox?.panZoom
     const renderer = new SVGRenderer(undefined, undefined, {
       transform: this.canvasTransform(),
+      viewportGroup: !!panZoom,
     })
     this.renderWith(renderer)
-    return renderer.builder.mount(container, this.resolveViewBox(viewBox))
+    const spec = this.resolveViewBox(viewBox)
+    const svg = renderer.builder.mount(container, spec)
+    if (!panZoom) return svg
+    if (!spec) {
+      throw new Error(
+        'Picture.mount: panZoom requires a viewBox — pass { fit: true } or { width, height }.'
+      )
+    }
+    return attachPanZoom(
+      svg,
+      { x: spec.x ?? 0, y: spec.y ?? 0, width: spec.width, height: spec.height },
+      panZoom === true ? {} : panZoom
+    )
   }
 
   /**

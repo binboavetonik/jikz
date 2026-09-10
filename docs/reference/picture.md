@@ -115,6 +115,35 @@ pic.mount(element, sameOptions)     // browser: live DOM tree
 Both are lazy: statements compile at output time, in registration
 order. See [ViewBox, sizing & fit](../concepts/viewbox-and-fit.md).
 
+### Pan & zoom
+
+`mount` accepts `panZoom` for first-class interaction — wheel zooms to
+the cursor, pointer-drag pans, two-pointer pinch zooms, double-click
+resets:
+
+```ts
+const ctl = pic.mount(element, {
+  fit: true,
+  panZoom: { minScale: 0.15, maxScale: 4 },
+})
+
+ctl.transform          // { tx, ty, scale }
+ctl.setTransform({ tx: 20 })
+ctl.resetToFit()       // back to the fitted view
+ctl.wasDrag()          // true after a pan — guard your click handlers
+ctl.screenToUser(clientX, clientY)  // client px → scene coordinates
+ctl.destroy()          // detach listeners (call on unmount)
+```
+
+With `panZoom` the root svg fills its container (`width`/`height: 100%`)
+and the browser letterboxes the viewBox, so the fitted view needs no
+pixel math — and a temporarily hidden (0×0) container needs no refit.
+All interaction state lives in one `<g class="jikz-viewport">` wrapping
+the scene; the controller mutates only its `transform` attribute, so
+panning never re-renders the picture. `onTransform(t)` in the options
+fires after every change — stash it and reapply with `setTransform`
+to preserve the view across remounts.
+
 ## Examples
 
 Nearly every card in [examples/](../../examples/) — start with
