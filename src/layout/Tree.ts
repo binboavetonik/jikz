@@ -1,4 +1,4 @@
-import { Point, point } from '../core/Point'
+import { point } from '../core/Point'
 import type { PointLike } from '../core/types'
 import { Node, type NodeOptions } from '../node/Node'
 import { Edge, edge, type EdgeOptions } from '../node/Edge'
@@ -129,220 +129,204 @@ interface InternalTreeNode {
   /** 0-based position among its siblings. */
   siblingIndex: number
 
-  // ── Contour-layout scratch (Buchheim et al. 2002) ──────────────────────
-  /** Preliminary cross-axis coordinate, relative to the parent. */
-  prelim: number
-  /** Offset applied to this node's whole subtree during the second walk. */
-  mod: number
-  /** Pending shift for this node and its right siblings. */
-  shift: number
-  /** Per-subtree share of a shift, accumulated right to left. */
-  change: number
-  /** Contour thread: the next contour node when this one has no children. */
-  thread?: InternalTreeNode
-  /** Greatest distinct ancestor used for shift attribution. */
-  ancestor?: InternalTreeNode
+  // ── Contour-layout scratch ─────────────────────────────────────────────
+  /** Centre coordinate along the growth axis, NORMALIZED to the growth
+   *  direction (multiplied by the direction sign): children always advance
+   *  toward +primary, so their shared parent-facing edge is always the
+   *  interval's min end and the contour machinery is direction-agnostic.
+   *  Convert back with the direction sign when materializing positions. */
+  primaryCenter: number
+  /** Cross-axis coordinate relative to the parent's centre. */
+  rel: number
   /** Absolute cross-axis coordinate, set by the second walk. */
   cross: number
+  /** Subtree's left contour: cross-min per primary interval, relative to
+   *  this node's cross. */
+  left: ContourSeg[]
+  /** Subtree's right contour: cross-max per primary interval. */
+  right: ContourSeg[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Contour packing — Reingold–Tilford by way of Buchheim, Jünger & Leipert
-// 2002, "Improving Walker's Algorithm to Run in Linear Time".
+// Contour packing — tidy trees with variable node sizes, after Atze van der
+// Ploeg, "Drawing Non-Layered Tidy Trees in Linear Time" (Comput. J. 2014).
 // ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * One segment of a subtree contour: over the primary-axis interval
+ * [start, end], the subtree's extreme cross-axis coordinate is `cross`
+ * (relative to the subtree root's cross). Segments are sorted by `start`
+ * and non-overlapping; gaps are primary intervals the subtree doesn't
+ * cover (the whitespace between a node's far edge and its children's
+ * near edges).
+ */
+interface ContourSeg {
+  start: number
+  end: number
+  cross: number
+}
 
 /**
  * Place every node on the cross axis so sibling subtrees nest as tightly
  * as their *contours* allow, then shift the tree so the root sits at
  * `rootCross`.
  *
- * This replaced bounding-box packing, where each subtree reserved its
- * widest level's width at every level. Two subtrees whose widest levels sit
- * at different depths could then never interleave even though nothing
- * actually collided; on random trees that wasted a mean of ~4 node widths
- * per drawing (worst case ~13). Walking the facing contours lets them mesh.
+ * This replaced the Buchheim–Jünger–Leipert walk. That walk descends the
+ * two facing contours in level lockstep and separates each pair on the
+ * cross axis only — correct when the primary coordinate is a function of
+ * tree depth (uniform nodes, or rank alignment's shared columns), but the
+ * default parent alignment places each child right after its own parent's
+ * far edge, so with variable node sizes a shallow-but-wide node in one
+ * branch can reach past the near edge of a deeper node in a neighbouring
+ * branch. The lockstep walk never compares that pair, and the branches
+ * overlapped.
  *
- * Linear time comes from two tricks: `thread` pointers stitch a subtree's
- * contour into a traversable chain so each contour node is visited once,
- * and `shift`/`change` accumulate the space a shifted subtree owes its
- * smaller left siblings so `executeShifts` can settle them all in one
- * right-to-left pass instead of moving each individually.
+ * Here contours are piecewise functions of the *primary* axis: placing a
+ * child merge-scans its left contour against the aggregate right contour
+ * of the siblings already placed, and only primary intervals that
+ * actually overlap demand separation — so a deep descendant is pushed
+ * clear of a wide uncle whose primary range it shares, while subtrees
+ * whose primary ranges never meet are allowed to interleave freely on
+ * the cross axis (which is what keeps the drawing compact).
  *
- * Node sizes vary here, so {@link separation} is the two nodes' half-extents
- * plus `siblingDistance` rather than the paper's constant.
+ * Aesthetic choices, matching the previous engine: children are packed
+ * as tight as the contours allow (no even-distribution redistribution),
+ * and a parent is centred over its outermost children.
+ *
+ * Contours are rebuilt per node, so a pathological deep chain costs
+ * quadratic segment copies; fine for diagram-sized trees, and typical
+ * contours stay within a handful of segments.
  */
 function contourLayout(
   root: InternalTreeNode,
   siblingDistance: number,
   rootCross: number
 ): void {
-  firstWalk(root, siblingDistance)
-  secondWalk(root, rootCross - root.prelim)
+  layoutContours(root, siblingDistance)
+  assignCross(root, rootCross)
 }
 
-/** Center-to-center distance two same-level neighbors must keep. */
-function separation(
-  left: InternalTreeNode,
-  right: InternalTreeNode,
-  siblingDistance: number
-): number {
-  return left.secondaryHalf + siblingDistance + right.secondaryHalf
-}
-
-function leftSibling(v: InternalTreeNode): InternalTreeNode | undefined {
-  if (!v.parent || v.siblingIndex === 0) return undefined
-  return v.parent.children[v.siblingIndex - 1]
-}
-
-/** Next node along the left contour: first child, else the thread. */
-function nextLeft(v: InternalTreeNode): InternalTreeNode | undefined {
-  return v.children.length > 0 ? v.children[0] : v.thread
-}
-
-/** Next node along the right contour: last child, else the thread. */
-function nextRight(v: InternalTreeNode): InternalTreeNode | undefined {
-  return v.children.length > 0 ? v.children[v.children.length - 1] : v.thread
+/** Turn relative cross coordinates into absolute ones. */
+function assignCross(v: InternalTreeNode, cross: number): void {
+  v.cross = cross
+  for (const child of v.children) {
+    assignCross(child, cross + child.rel)
+  }
 }
 
 /**
- * Assign preliminary coordinates bottom-up. A leaf goes just right of its
- * left sibling; an interior node is centered over its outermost children,
- * after `apportion` has pushed its subtree clear of everything to the left.
+ * Lay out `v`'s subtree on the cross axis (post-order): children are
+ * placed left to right, each as tight against the already-placed
+ * siblings' aggregate right contour as `siblingDistance` allows; `v`
+ * centres over its outermost children. Afterwards `child.rel` holds each
+ * child's cross relative to `v`, and `v.left`/`v.right` hold the
+ * subtree's contours relative to `v`'s cross.
  */
-function firstWalk(v: InternalTreeNode, siblingDistance: number): void {
+function layoutContours(v: InternalTreeNode, dist: number): void {
+  const near = v.primaryCenter - v.primaryHalf
+  const far = v.primaryCenter + v.primaryHalf
+
   if (v.children.length === 0) {
-    const w = leftSibling(v)
-    v.prelim = w ? w.prelim + separation(w, v, siblingDistance) : 0
+    v.left = [{ start: near, end: far, cross: -v.secondaryHalf }]
+    v.right = [{ start: near, end: far, cross: v.secondaryHalf }]
+    v.rel = 0
     return
   }
 
-  let defaultAncestor = v.children[0]!
   for (const child of v.children) {
-    firstWalk(child, siblingDistance)
-    defaultAncestor = apportion(child, defaultAncestor, siblingDistance)
+    layoutContours(child, dist)
   }
-  executeShifts(v)
 
-  const first = v.children[0]!
-  const last = v.children[v.children.length - 1]!
-  const midpoint = (first.prelim + last.prelim) / 2
+  // Working frame: children accumulate at their final cross relative to
+  // an origin that recentres onto v once the outermost children are known.
+  let unionLeft: ContourSeg[] = []
+  let unionRight: ContourSeg[] = []
 
-  const w = leftSibling(v)
-  if (w) {
-    v.prelim = w.prelim + separation(w, v, siblingDistance)
-    v.mod = v.prelim - midpoint
-  } else {
-    v.prelim = midpoint
+  for (const child of v.children) {
+    const shift = requiredShift(unionRight, child.left, dist)
+    child.rel = shift
+    unionLeft = extendUnion(unionLeft, child.left, shift)
+    unionRight = replaceUnion(unionRight, child.right, shift)
   }
+
+  const first = v.children[0]!.rel
+  const last = v.children[v.children.length - 1]!.rel
+  const mid = (first + last) / 2
+  for (const child of v.children) {
+    child.rel -= mid
+  }
+
+  v.left = [
+    { start: near, end: far, cross: -v.secondaryHalf },
+    ...offsetContours(unionLeft, -mid),
+  ]
+  v.right = [
+    { start: near, end: far, cross: v.secondaryHalf },
+    ...offsetContours(unionRight, -mid),
+  ]
 }
 
 /**
- * Walk the right contour of everything left of `v` against `v`'s left
- * contour, and shift `v` right by the largest overlap found. Threads make
- * each step O(1), so the whole pass is linear rather than the quadratic
- * re-scan of the original Reingold–Tilford.
+ * The smallest cross-axis position for a newcomer whose left contour is
+ * `contour` such that it stays `dist` clear of the aggregate right
+ * contour `agg`, considering only primary intervals both actually cover.
+ * Merge-scan: both lists are sorted and disjoint, so this is linear in
+ * their combined length.
  */
-function apportion(
-  v: InternalTreeNode,
-  defaultAncestor: InternalTreeNode,
-  siblingDistance: number
-): InternalTreeNode {
-  const w = leftSibling(v)
-  if (!w) return defaultAncestor
-
-  // Inside/outside contour cursors: `i` = inner, `o` = outer;
-  // `p` = v's side (plus), `m` = the left siblings' side (minus).
-  let vip = v
-  let vop = v
-  let vim = w
-  let vom = v.parent!.children[0]!
-  let sip = vip.mod
-  let sop = vop.mod
-  let sim = vim.mod
-  let som = vom.mod
-
-  while (nextRight(vim) && nextLeft(vip)) {
-    vim = nextRight(vim)!
-    vip = nextLeft(vip)!
-    vom = nextLeft(vom)!
-    vop = nextRight(vop)!
-    vop.ancestor = v
-
-    const shift = vim.prelim + sim - (vip.prelim + sip) + separation(vim, vip, siblingDistance)
-    if (shift > 0) {
-      moveSubtree(resolveAncestor(vim, v, defaultAncestor), v, shift)
-      sip += shift
-      sop += shift
-    }
-
-    sim += vim.mod
-    sip += vip.mod
-    som += vom.mod
-    sop += vop.mod
-  }
-
-  // Thread the shorter contour onto the longer one so later siblings can
-  // keep walking past the end of this subtree.
-  if (nextRight(vim) && !nextRight(vop)) {
-    vop.thread = nextRight(vim)
-    vop.mod += sim - sop
-  }
-  if (nextLeft(vip) && !nextLeft(vom)) {
-    vom.thread = nextLeft(vip)
-    vom.mod += sip - som
-    defaultAncestor = v
-  }
-
-  return defaultAncestor
-}
-
-/**
- * `wm` and `wp` are siblings; move `wp`'s subtree right by `shift` and
- * record the share owed to each sibling between them, for
- * {@link executeShifts} to distribute.
- */
-function moveSubtree(wm: InternalTreeNode, wp: InternalTreeNode, shift: number): void {
-  const subtrees = wp.siblingIndex - wm.siblingIndex
-  if (subtrees === 0) return
-  wp.change -= shift / subtrees
-  wp.shift += shift
-  wm.change += shift / subtrees
-  wp.prelim += shift
-  wp.mod += shift
-}
-
-/** Settle the shifts `moveSubtree` recorded, right to left, in one pass. */
-function executeShifts(v: InternalTreeNode): void {
+function requiredShift(agg: ContourSeg[], contour: ContourSeg[], dist: number): number {
   let shift = 0
-  let change = 0
-  for (let i = v.children.length - 1; i >= 0; i--) {
-    const w = v.children[i]!
-    w.prelim += shift
-    w.mod += shift
-    change += w.change
-    shift += w.shift + change
+  let i = 0
+  let j = 0
+  while (i < agg.length && j < contour.length) {
+    const r = agg[i]!
+    const l = contour[j]!
+    if (r.end <= l.start) { i++; continue }
+    if (l.end <= r.start) { j++; continue }
+    shift = Math.max(shift, r.cross + dist - l.cross)
+    if (r.end < l.end) i++
+    else if (l.end < r.end) j++
+    else { i++; j++ }
   }
+  return shift
 }
 
 /**
- * The sibling of `v` whose subtree `vim` belongs to, when that is known;
- * otherwise the leftmost sibling touched so far.
+ * Extend the running LEFT contour (the cross-min per primary interval)
+ * with a newly placed child's left contour at cross offset `off`.
+ * Children are placed in increasing cross order, so over primary already
+ * covered the minimum stays with an earlier sibling; the new child only
+ * wins past everything placed so far.
  */
-function resolveAncestor(
-  vim: InternalTreeNode,
-  v: InternalTreeNode,
-  defaultAncestor: InternalTreeNode
-): InternalTreeNode {
-  const candidate = vim.ancestor
-  return candidate && candidate.parent === v.parent ? candidate : defaultAncestor
+function extendUnion(union: ContourSeg[], contour: ContourSeg[], off: number): ContourSeg[] {
+  const base = union.length ? union[union.length - 1]!.end : -Infinity
+  const out = union.slice()
+  for (const seg of contour) {
+    if (seg.end <= base) continue
+    out.push({ start: Math.max(seg.start, base), end: seg.end, cross: seg.cross + off })
+  }
+  return out
 }
 
-/** Turn preliminary coordinates into absolute ones, accumulating modifiers. */
-function secondWalk(v: InternalTreeNode, m: number): void {
-  v.cross = v.prelim + m
-  for (const child of v.children) {
-    secondWalk(child, m + v.mod)
+/**
+ * Extend the running RIGHT contour (the cross-max per primary interval)
+ * with a newly placed child's right contour at cross offset `off`.
+ * Children are placed in increasing cross order, so the new child wins
+ * over every primary interval it covers; earlier siblings only survive
+ * past its far edge.
+ */
+function replaceUnion(union: ContourSeg[], contour: ContourSeg[], off: number): ContourSeg[] {
+  const maxEnd = contour[contour.length - 1]!.end
+  const out = contour.map((seg) => ({ ...seg, cross: seg.cross + off }))
+  for (const seg of union) {
+    if (seg.end <= maxEnd) continue
+    out.push({ start: Math.max(seg.start, maxEnd), end: seg.end, cross: seg.cross })
   }
+  return out
+}
+
+/** Shift a contour's cross values into a new frame. */
+function offsetContours(contour: ContourSeg[], off: number): ContourSeg[] {
+  return contour.map((seg) => ({ ...seg, cross: seg.cross + off }))
 }
 
 /**
@@ -576,26 +560,33 @@ class TreeBuilderImpl implements TreeBuilder {
     // Build internal tree structure
     const internalRoot = this.buildInternalTree(rootSpec, 0)
 
-    // Measure both axes (post-order), then place on the cross axis with
-    // contour packing.
+    // Measure both axes (post-order).
     this.measureTree(internalRoot)
+
+    // Primary axis first: in parent mode a node's growth-axis coordinate
+    // depends only on its ancestors' extents; in rank mode it is the
+    // level's shared column. Either way it is independent of the cross
+    // axis, and the contour packing below needs it to know which nodes'
+    // primary ranges actually overlap.
+    this.rankColumns = undefined
+    const sign = primarySign(this._options.grow!)
+    const rootPrimary = sign * primaryOf(point(this._options.at!.x, this._options.at!.y), this._options.grow!)
+    if (this._options.align === 'rank') {
+      this.rankColumns = this.computeRankColumns(internalRoot)
+      this.assignRankPrimary(internalRoot)
+    } else {
+      this.computeParentPrimary(internalRoot, rootPrimary)
+    }
+
+    // Cross axis: contour packing against the primary ranges just computed.
     contourLayout(
       internalRoot,
       this._options.siblingDistance!,
       secondaryOf(point(this._options.at!.x, this._options.at!.y), this._options.grow!)
     )
 
-    // Rank alignment: compute the shared column per level before
-    // positioning — nodes' primary coordinate then comes from the column,
-    // not from their parent's advance.
-    this.rankColumns = undefined
-    if (this._options.align === 'rank') {
-      this.rankColumns = this.computeRankColumns(internalRoot)
-    }
-
     // Position nodes (pre-order)
-    const rootPos = point(this._options.at!.x, this._options.at!.y)
-    this.positionNodes(internalRoot, rootPos)
+    this.positionNodes(internalRoot)
 
     // Collect results
     const nodes: Node[] = []
@@ -673,14 +664,12 @@ class TreeBuilderImpl implements TreeBuilder {
       secondaryHalf: 0,
       level,
       siblingIndex,
-      prelim: 0,
-      mod: 0,
-      shift: 0,
-      change: 0,
+      primaryCenter: 0,
+      rel: 0,
       cross: 0,
+      left: [],
+      right: [],
     }
-    // The paper's `v.ancestor` defaults to v itself.
-    internal.ancestor = internal
 
     // Truncation: collapsed nodes and the maxDepth cut are laid out as
     // leaves — their children never enter the internal tree.
@@ -712,35 +701,43 @@ class TreeBuilderImpl implements TreeBuilder {
     }
   }
 
-  private positionNodes(node: InternalTreeNode, position: Point): void {
-    // Create the actual node at this position
-    const nodeOpts = contentToNodeOptions(node.spec.content, this._options.nodeOptions)
-    node.node = new Node({ ...nodeOpts, at: position })
-
+  /**
+   * Parent alignment: each child's centre is `levelDistance` (or the
+   * parent's `sep`) past the parent's far edge — edge-to-edge advance
+   * along the growth axis. Coordinates are normalized to the growth
+   * direction, so the advance is always positive.
+   */
+  private computeParentPrimary(node: InternalTreeNode, center: number): void {
+    node.primaryCenter = center
     for (const child of node.children) {
-      const childPos = this.calculateChildPosition(position, node, child)
-      this.positionNodes(child, childPos)
+      const gap = node.spec.sep ?? this._options.levelDistance!
+      const advance = node.primaryHalf + gap + child.primaryHalf
+      this.computeParentPrimary(child, center + advance)
     }
   }
 
-  private calculateChildPosition(
-    parentPos: Point,
-    parent: InternalTreeNode,
-    child: InternalTreeNode,
-  ): Point {
-    // Cross-axis coordinate is absolute, decided by the contour pass.
-    const secondary = child.cross
-
-    let primary: number
-    if (this.rankColumns) {
-      primary = this.rankColumns.get(child.level) ?? primaryOf(parentPos, this._options.grow!)
-    } else {
-      const gap = parent.spec.sep ?? this._options.levelDistance!
-      const advance = parent.primaryHalf + gap + child.primaryHalf
-      primary = primaryOf(parentPos, this._options.grow!) + primarySign(this._options.grow!) * advance
+  /** Rank alignment: every level sits on its shared column. Columns are
+   *  computed in screen coordinates; normalize to the growth direction. */
+  private assignRankPrimary(node: InternalTreeNode): void {
+    const sign = primarySign(this._options.grow!)
+    node.primaryCenter = sign * this.rankColumns!.get(node.level)!
+    for (const child of node.children) {
+      this.assignRankPrimary(child)
     }
+  }
 
-    return axesToPoint(primary, secondary, this._options.grow!)
+  /** Materialize the Node objects from the two computed coordinates. */
+  private positionNodes(node: InternalTreeNode): void {
+    const nodeOpts = contentToNodeOptions(node.spec.content, this._options.nodeOptions)
+    const sign = primarySign(this._options.grow!)
+    node.node = new Node({
+      ...nodeOpts,
+      at: axesToPoint(sign * node.primaryCenter, node.cross, this._options.grow!),
+    })
+
+    for (const child of node.children) {
+      this.positionNodes(child)
+    }
   }
 
   private computeRankColumns(root: InternalTreeNode): Map<number, number> {

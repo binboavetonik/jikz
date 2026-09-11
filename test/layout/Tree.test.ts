@@ -765,4 +765,155 @@ describe('Tree', () => {
       expect(C.center.y - C.height / 2 - (B.center.y + B.height / 2)).toBeCloseTo(GAP, 6)
     })
   })
+
+  describe('non-overlap with variable node sizes (parent align)', () => {
+    // Parent alignment places each child right after its own parent's far
+    // edge, so with variable node sizes nodes at different depths can
+    // share primary-axis ranges. Cross-axis contour separation must then
+    // compare contours as functions of the primary axis — a level-lockstep
+    // walk never compares a deep descendant against a wide uncle whose
+    // primary range it slides back into, and the branches overlapped.
+    interface Box { name: string; x0: number; y0: number; x1: number; y1: number }
+
+    function boxes(result: ReturnType<typeof treeFromSpec>): Box[] {
+      return result.nodes.map((n) => ({
+        name: n.name!,
+        x0: n.center.x - n.width / 2, x1: n.center.x + n.width / 2,
+        y0: n.center.y - n.height / 2, y1: n.center.y + n.height / 2,
+      }))
+    }
+
+    function overlappingPairs(result: ReturnType<typeof treeFromSpec>): [string, string][] {
+      const bs = boxes(result)
+      const out: [string, string][] = []
+      for (let i = 0; i < bs.length; i++) {
+        for (let j = i + 1; j < bs.length; j++) {
+          const a = bs[i]!, b = bs[j]!
+          if (a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1) {
+            out.push([a.name, b.name])
+          }
+        }
+      }
+      return out
+    }
+
+    const spec = (name: string, w: number, h = 15) =>
+      ({ name, text: '', shape: 'rectangle' as const, width: w, height: h, innerSep: 0, minWidth: 0, minHeight: 0 })
+
+    it('pushes a deep child clear of a wide uncle in a neighbouring branch, in all four growth directions', () => {
+      // A is a long row whose short children end early; B's branch is
+      // narrow, so B1's children start at a primary position still covered
+      // by A's extent. A level-lockstep contour walk ends once B1's left
+      // contour runs out and never compares B1a/B1b against A's subtree.
+      // 'up'/'left' run the primary math with a -1 sign; the overlap check
+      // works on screen boxes, so the same scenario stresses all
+      // directions. The long nodes must be long ALONG THE GROWTH AXIS:
+      // width for right/left, height for down/up (the primary extent).
+      for (const grow of ['right', 'down', 'left', 'up'] as const) {
+        const horiz = grow === 'right' || grow === 'left'
+        const longA = horiz ? [160, 15] : [15, 160]
+        const longB = horiz ? [148, 15] : [15, 148]
+        const result = treeFromSpec({
+          content: spec('root', 20, 20),
+          children: [
+            { content: spec('A-long-row', longA[0], longA[1]), children: [{ content: spec('A1', 40) }, { content: spec('A2', 40) }] },
+            {
+              content: spec('B', 30),
+              children: [
+                { content: spec('B1', 30), children: [{ content: spec('B1a', longB[0], longB[1]) }, { content: spec('B1b', longB[0], longB[1]) }] },
+              ],
+            },
+          ],
+        }, { at: point(0, 0), grow, levelDistance: 26, siblingDistance: 10 })
+
+        // Sanity: the scenario really is set up — B1a's primary range
+        // reaches back into A-long-row's primary span (interval overlap
+        // on the primary axis; sign-agnostic, works for all four grows).
+        const a = result.getNode('A-long-row')!
+        const b1a = result.getNode('B1a')!
+        const aC = horiz ? a.center.x : a.center.y
+        const aHalf = (horiz ? a.width : a.height) / 2
+        const bC = horiz ? b1a.center.x : b1a.center.y
+        const bHalf = (horiz ? b1a.width : b1a.height) / 2
+        expect(Math.max(aC - aHalf, bC - bHalf)).toBeLessThan(Math.min(aC + aHalf, bC + bHalf))
+
+        expect(overlappingPairs(result)).toEqual([])
+      }
+    })
+
+    it('never overlaps, over many random branchy shapes, all growth directions and both align modes', () => {
+      const mulberry = (a: number) => () => {
+        a |= 0
+        a = (a + 0x6d2b79f5) | 0
+        let t = Math.imul(a ^ (a >>> 15), 1 | a)
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+      }
+      let counter = 0
+      type Spec = Parameters<typeof treeFromSpec>[0]
+      const rand = (depth: number, rnd: () => number): Spec => {
+        // Widths vary as wildly as collapsed move-chain rows do — and
+        // heights too: for down/up growth the HEIGHT is the primary
+        // extent, so varying only widths would leave vertical-growth
+        // trees with uniform primary bands and never stress the bug.
+        const self: Spec = {
+          content: spec('n' + counter++, 30 + Math.floor(rnd() * 140), 10 + Math.floor(rnd() * 40)),
+        }
+        if (depth >= 5) return self
+        const kids = depth === 0 ? 3 : Math.floor(rnd() * 3)
+        if (kids > 0) self.children = Array.from({ length: kids }, () => rand(depth + 1, rnd))
+        return self
+      }
+
+      for (let seed = 0; seed < 60; seed++) {
+        for (const grow of ['right', 'down', 'left', 'up'] as const) {
+          for (const align of ['parent', 'rank'] as const) {
+            for (const siblingDistance of [10, 0]) {
+              counter = 0
+              const result = treeFromSpec(rand(0, mulberry(seed)), {
+                at: point(0, 0), grow, align, levelDistance: 26, siblingDistance,
+              })
+              // Strict inequality: with siblingDistance 0 boxes may touch,
+              // and touching edges are not an overlap.
+              expect(overlappingPairs(result)).toEqual([])
+            }
+          }
+        }
+      }
+    })
+
+    it('still packs tightly: no phantom separation where primary ranges never meet', () => {
+      // B1a is narrow enough that its primary range ends before A's
+      // children begin: it must slide back up to exactly siblingDistance
+      // below A's own row — only true primary overlaps may force
+      // separation, or the layout degenerates to bounding-box packing.
+      // Runs both growth signs: 'left' mirrors the primary axis of
+      // 'right', which must not change the cross-axis packing.
+      for (const grow of ['right', 'left'] as const) {
+        const result = treeFromSpec({
+          content: spec('root', 20),
+          children: [
+            { content: spec('A-long-row', 160), children: [{ content: spec('A1', 40) }, { content: spec('A2', 40) }] },
+            {
+              content: spec('B', 30),
+              children: [{ content: spec('B1', 30), children: [{ content: spec('B1a', 40) }] }],
+            },
+          ],
+        }, { at: point(0, 0), grow, levelDistance: 26, siblingDistance: 10 })
+
+        // Sanity: B1a's x-range really is disjoint from A1/A2's.
+        const a1 = result.getNode('A1')!
+        const b1a = result.getNode('B1a')!
+        if (grow === 'right') {
+          expect(b1a.center.x + b1a.width / 2).toBeLessThanOrEqual(a1.center.x - a1.width / 2)
+        } else {
+          expect(b1a.center.x - b1a.width / 2).toBeGreaterThanOrEqual(a1.center.x + a1.width / 2)
+        }
+
+        const a = result.getNode('A-long-row')!
+        const gap = b1a.center.y - b1a.height / 2 - (a.center.y + a.height / 2)
+        expect(gap).toBeCloseTo(10, 6)
+      }
+    })
+  })
 })

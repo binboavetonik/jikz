@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **`tree()` no longer overlaps branches with variable node sizes in
+  parent alignment.** The contour packing walked the facing contours in
+  level lockstep and separated each pair on the cross axis only — correct
+  when the growth-axis coordinate is a function of tree depth (uniform
+  nodes, or `align: 'rank'`'s shared columns), but parent alignment
+  places each child right after its own parent's far edge, so a
+  shallow-but-wide node in one branch could reach past the near edge of a
+  deeper node in a neighbouring branch. The lockstep walk never compared
+  that pair and the branches' boxes overlapped.
+
+  The layout engine now follows van der Ploeg, *"Drawing Non-Layered
+  Tidy Trees in Linear Time"*: growth-axis positions are computed first
+  (they are independent of the cross axis in both align modes), and each
+  subtree carries its left/right contour as a piecewise function of the
+  growth axis. Placing a sibling merge-scans those segments, so only
+  nodes whose growth-axis ranges actually overlap demand separation —
+  deep descendants are pushed clear of wide uncles, while subtrees whose
+  ranges never meet still interleave on the cross axis (no degeneration
+  to bounding-box packing). One engine now serves both `align` modes; the
+  Buchheim lockstep walk, threads and shift/change machinery are gone.
+  Children pack as tight as the contours allow (the previous engine's
+  even-distribution redistribution is dropped) and parents still centre
+  over their outermost children.
+
 ## 0.7.0
 
 ### Added
