@@ -205,6 +205,33 @@ describe('Picture', () => {
         .toSVG({ width: 100, height: 100 })
       expect(svg).toContain('fill="#ff00ff"')
     })
+
+    it('shade() renders a gradient fill (TikZ \\shade)', () => {
+      const svg = picture()
+        .shade(circle(point(50, 50), 20), { leftColor: '#2563eb', rightColor: '#7c3aed' })
+        .toSVG({ width: 100, height: 100 })
+      expect(svg).toContain('<linearGradient')
+      expect(svg).toContain('fill="url(#jikz-gradient-linear')
+      expect(svg).toContain('stroke="none"')
+    })
+
+    it('shade() supports ballColor and radial shadings', () => {
+      const svg = picture()
+        .shade(circle(point(50, 50), 20), { ballColor: '#dc2626' })
+        .toSVG({ width: 100, height: 100 })
+      expect(svg).toContain('<radialGradient')
+      expect(svg).toContain('fx="35%"')
+      expect(svg).toContain('fill="url(#jikz-gradient-radial')
+    })
+
+    it('shade() accepts an explicit gradient spec', () => {
+      const svg = picture()
+        .shade(circle(point(50, 50), 20), {
+          gradient: { type: 'radial', stops: [{ offset: 0, color: '#fff' }, { offset: 1, color: '#000' }] },
+        })
+        .toSVG({ width: 100, height: 100 })
+      expect(svg).toContain('<radialGradient')
+    })
   })
 
   describe('toSVG() — end-to-end', () => {

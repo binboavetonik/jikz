@@ -134,6 +134,12 @@ const meta: DemoMeta[] = [
     description: "The statistics-textbook figure: P(X > 1.5) as a closed plot on [1.5, 3.5] — sample the density, close the path, and the fill lands between curve and axis with no polygon stitching.",
   },
   {
+    id: "scatter-marks",
+    category: "statistics-data",
+    title: "Plot marks — scatter markers",
+    description: "Noisy samples as a scatter of circleFilled markers over the curve they come from, with an asterisk mark every 15th sample — marks.every thins the markers without thinning the curve. Marks inherit the plot's stroke color.",
+  },
+  {
     id: "polar-roses",
     category: "statistics-data",
     title: "Polar rose gallery",
@@ -191,7 +197,7 @@ const meta: DemoMeta[] = [
     id: "arrow-tips",
     category: "nodes-edges",
     title: "Arrow tips & TikZ specs",
-    description: "stealth, latex, to, bar — plus the TikZ spellings ->, <-, <->. Arrowheads always take the edge's stroke color.",
+    description: "stealth, latex, to, bar — plus the TikZ spellings ->, <-, <->, ||, *, o — and the geometric tips circle, square, diamond, roundCap. Arrowheads always take the edge's stroke color.",
   },
   {
     id: "path-builder",
@@ -240,6 +246,12 @@ const meta: DemoMeta[] = [
     category: "paths-decorations",
     title: "Gradient, dash, shadow",
     description: "User-supplied `style` overrides the path-mode baseline. Linear gradients, dashed strokes, and drop shadows all flow through the builder's string pipeline — no DOM dependency.",
+  },
+  {
+    id: "shadings",
+    category: "paths-decorations",
+    title: "TikZ shadings — shade() & ball color",
+    description: "pic.shade() fills a shape with a gradient spanning its bounding box: left/right and top/bottom axis shadings, radial inner/outer, and the ball shading with its offset highlight — each from one TikZ-style key list.",
   },
   {
     id: "double-layers",
@@ -384,6 +396,12 @@ const meta: DemoMeta[] = [
     category: "graphs-networks",
     title: "Complete graph K5 — nodeCircle",
     description: "Graph theory: nodeCircle lays the vertices on a ring, then every pair gets an edge referenced by name. Boundary anchoring means the chords clip at the node rims for free.",
+  },
+  {
+    id: "force-graph",
+    category: "graphs-networks",
+    title: "Force-directed graph — arbitrary graphs",
+    description: "A cycle with chords: no hierarchy, no DAG — the case the layered/tree engines can't express. graph().force() runs a seeded Fruchterman–Reingold spring embedder, so the layout is reproducible and needs zero structural assumptions.",
   },
   {
     id: "riemann",
@@ -618,6 +636,12 @@ const meta: DemoMeta[] = [
     category: "physics-engineering",
     title: "Circuit symbol gallery — ext/circuits",
     description: "The circuits extension (jikz's \\usetikzlibrary{circuits.ee} analogue) ships symbols built ONLY on public seams: registerShape, port anchors, rotate. registerCircuits() registers the names at runtime, while a ShapeRegistry augmentation makes them known to the IDE — shape names autocomplete and misspellings are compile errors. The circuit.* builders used below are the fully-typed route: variants autocomplete too. Every symbol has an intrinsic size and never stretches to fit text.",
+  },
+  {
+    id: "logic-gates",
+    category: "physics-engineering",
+    title: "Logic gates — ext/gates",
+    description: "A half adder from the logic-gate extension (TikZ's shapes.gates.logic): XOR for the sum, AND for the carry. Gates expose typed ports (in1/in2/out) and rotate with node({ rotate }); negated gates draw their bubble. Built on the same registerShape seam as ext/circuits.",
   },
   {
     id: "circuit-typed-api",

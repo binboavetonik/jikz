@@ -616,7 +616,10 @@ export class Path {
     const newSegments = this._segments.map((seg) => ({
       ...seg,
       points: seg.points.map((p) => p.rotateAround(centerPt, angle)),
-      rotation: seg.rotation !== undefined ? seg.rotation + angle : undefined,
+      rotation:
+        seg.rotation !== undefined
+          ? (((seg.rotation + angle) % 360) + 360) % 360
+          : undefined,
     }))
     return new Path(newSegments)
   }
@@ -678,41 +681,51 @@ export class Path {
   // ─────────────────────────────────────────────────────────────────────────────
 
   /**
-   * Convert to SVG path data string
+   * Convert to SVG path data string.
+   *
+   * Pass `precision` (decimal places) to round coordinates — useful for
+   * compact, deterministic output (collapses float noise like
+   * `cos(90°) ≈ 6e-17`). Omitted, coordinates emit at full precision.
    */
-  toSVGPath(): string {
+  toSVGPath(precision?: number): string {
+    const f = (n: number): string => {
+      if (precision === undefined) return String(n)
+      const factor = 10 ** precision
+      return String(Math.round(n * factor) / factor)
+    }
+
     const parts: string[] = []
 
     for (const seg of this._segments) {
       switch (seg.type) {
         case 'M':
           if (seg.points[0]) {
-            parts.push(`M ${seg.points[0].x} ${seg.points[0].y}`)
+            parts.push(`M ${f(seg.points[0].x)} ${f(seg.points[0].y)}`)
           }
           break
         case 'L':
           if (seg.points[0]) {
-            parts.push(`L ${seg.points[0].x} ${seg.points[0].y}`)
+            parts.push(`L ${f(seg.points[0].x)} ${f(seg.points[0].y)}`)
           }
           break
         case 'C':
           if (seg.points.length >= 3) {
             parts.push(
-              `C ${seg.points[0]!.x} ${seg.points[0]!.y}, ${seg.points[1]!.x} ${seg.points[1]!.y}, ${seg.points[2]!.x} ${seg.points[2]!.y}`
+              `C ${f(seg.points[0]!.x)} ${f(seg.points[0]!.y)}, ${f(seg.points[1]!.x)} ${f(seg.points[1]!.y)}, ${f(seg.points[2]!.x)} ${f(seg.points[2]!.y)}`
             )
           }
           break
         case 'Q':
           if (seg.points.length >= 2) {
             parts.push(
-              `Q ${seg.points[0]!.x} ${seg.points[0]!.y}, ${seg.points[1]!.x} ${seg.points[1]!.y}`
+              `Q ${f(seg.points[0]!.x)} ${f(seg.points[0]!.y)}, ${f(seg.points[1]!.x)} ${f(seg.points[1]!.y)}`
             )
           }
           break
         case 'A':
           if (seg.points[0] && seg.rx !== undefined && seg.ry !== undefined) {
             parts.push(
-              `A ${seg.rx} ${seg.ry} ${seg.rotation ?? 0} ${seg.largeArc ? 1 : 0} ${seg.sweep ? 1 : 0} ${seg.points[0].x} ${seg.points[0].y}`
+              `A ${f(seg.rx)} ${f(seg.ry)} ${f(seg.rotation ?? 0)} ${seg.largeArc ? 1 : 0} ${seg.sweep ? 1 : 0} ${f(seg.points[0].x)} ${f(seg.points[0].y)}`
             )
           }
           break

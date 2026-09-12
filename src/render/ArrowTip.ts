@@ -14,12 +14,12 @@
  * Register your own tips with {@link registerArrowTip}:
  *
  * ```ts
- * registerArrowTip('diamond', {
+ * registerArrowTip('pennant', {
  *   filled: true,
- *   end:   { d: 'M 0 5 L 5 0 L 10 5 L 5 10 z', refX: 9 },
- *   start: { d: 'M 10 5 L 5 0 L 0 5 L 5 10 z', refX: 1 },
+ *   end:   { d: 'M 0 0 L 10 5 L 0 5 Z', refX: 9 },
+ *   start: { d: 'M 10 0 L 0 5 L 10 5 Z', refX: 1 },
  * })
- * edge(a, b, { arrowEnd: 'diamond' })
+ * edge(a, b, { arrowEnd: 'pennant' })
  * ```
  */
 
@@ -85,6 +85,9 @@ export function registeredArrowTips(): readonly string[] {
 export function resolveArrowTipKind(arrowType: string): string {
   if (arrowType === '>' || arrowType === '->' || arrowType === '<-' || arrowType === '<->') return 'to'
   if (arrowType === '|') return 'bar'
+  if (arrowType === '||') return 'doubleBar'
+  if (arrowType === '*') return 'circle'
+  if (arrowType === 'o') return 'openCircle'
   return arrowType
 }
 
@@ -117,4 +120,51 @@ registerArrowTip('bar', {
   strokeWidth: 2,
   end: { d: 'M 5 0 L 5 10', refX: 5 },
   start: { d: 'M 5 0 L 5 10', refX: 5 },
+})
+
+// Double bar — two parallel stops (TikZ `||`).
+registerArrowTip('doubleBar', {
+  filled: false,
+  strokeWidth: 2,
+  end: { d: 'M 4 0 L 4 10 M 6 0 L 6 10', refX: 5 },
+  start: { d: 'M 4 0 L 4 10 M 6 0 L 6 10', refX: 5 },
+})
+
+// Filled circle, centered on the path endpoint (TikZ `Circle` / `*`).
+// Two 180° arcs (same sweep) close into a full circle around (5, 5).
+const CIRCLE_D = 'M 7.5 5 A 2.5 2.5 0 0 0 2.5 5 A 2.5 2.5 0 0 0 7.5 5 Z'
+
+registerArrowTip('circle', {
+  filled: true,
+  end: { d: CIRCLE_D, refX: 5 },
+  start: { d: CIRCLE_D, refX: 5 },
+})
+
+// Hollow circle — the `o` open-dot tip (TikZ `Circle[open]`).
+registerArrowTip('openCircle', {
+  filled: false,
+  strokeWidth: 1.5,
+  end: { d: CIRCLE_D, refX: 5 },
+  start: { d: CIRCLE_D, refX: 5 },
+})
+
+// Filled square, centered on the path endpoint (TikZ `Square`).
+registerArrowTip('square', {
+  filled: true,
+  end: { d: 'M 2.5 2.5 L 7.5 2.5 L 7.5 7.5 L 2.5 7.5 Z', refX: 5 },
+  start: { d: 'M 2.5 2.5 L 7.5 2.5 L 7.5 7.5 L 2.5 7.5 Z', refX: 5 },
+})
+
+// Filled diamond with the long axis along the path (TikZ `Diamond`).
+registerArrowTip('diamond', {
+  filled: true,
+  end: { d: 'M 0 5 L 5 0 L 10 5 L 5 10 Z', refX: 9 },
+  start: { d: 'M 10 5 L 5 0 L 0 5 L 5 10 Z', refX: 1 },
+})
+
+// Filled round cap — a half-disc bulging forward (TikZ `Round Cap`).
+registerArrowTip('roundCap', {
+  filled: true,
+  end: { d: 'M 5 2.5 A 2.5 2.5 0 0 1 5 7.5 Z', refX: 5 },
+  start: { d: 'M 5 2.5 A 2.5 2.5 0 0 0 5 7.5 Z', refX: 5 },
 })

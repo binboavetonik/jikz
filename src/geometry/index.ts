@@ -67,6 +67,9 @@ export {
 } from './Plot'
 export type { PlotOptions, ParametricPlotOptions, PolarPlotOptions } from './Plot'
 
+export { PLOT_MARK_NAMES, plotMarkPath, plotMarkFilled } from './PlotMark'
+export type { PlotMark, PlotMarkSpec } from './PlotMark'
+
 // Polygons
 export {
   Polygon,

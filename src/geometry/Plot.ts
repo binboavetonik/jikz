@@ -1,4 +1,5 @@
 import { Point, point } from '../core/Point'
+import type { PlotMarkSpec } from './PlotMark'
 
 /**
  * Options for function plotting
@@ -20,6 +21,8 @@ export interface PlotOptions {
   xOffset?: number
   /** Offset for y coordinates */
   yOffset?: number
+  /** Scatter markers to draw at each sampled point. */
+  marks?: PlotMarkSpec
 }
 
 /**
@@ -36,6 +39,8 @@ export interface ParametricPlotOptions {
   xOffset?: number
   /** Offset for y coordinates */
   yOffset?: number
+  /** Scatter markers to draw at each sampled point. */
+  marks?: PlotMarkSpec
 }
 
 /**
@@ -50,6 +55,8 @@ export interface PolarPlotOptions {
   center?: { x: number; y: number }
   /** Scale factor for radius */
   scale?: number
+  /** Scatter markers to draw at each sampled point. */
+  marks?: PlotMarkSpec
 }
 
 /**
@@ -58,10 +65,13 @@ export interface PolarPlotOptions {
 export class Plot {
   readonly points: Point[]
   readonly closed: boolean
+  /** Scatter markers drawn at each (or every Nth) point. */
+  readonly marks?: PlotMarkSpec
 
-  constructor(points: Point[], closed = false) {
+  constructor(points: Point[], closed = false, marks?: PlotMarkSpec) {
     this.points = points
     this.closed = closed
+    this.marks = marks
   }
 
   /**
@@ -105,7 +115,8 @@ export class Plot {
   translate(dx: number, dy: number): Plot {
     return new Plot(
       this.points.map(p => p.add(dx, dy)),
-      this.closed
+      this.closed,
+      this.marks
     )
   }
 
@@ -115,7 +126,8 @@ export class Plot {
   scale(factor: number): Plot {
     return new Plot(
       this.points.map(p => p.scale(factor)),
-      this.closed
+      this.closed,
+      this.marks
     )
   }
 
@@ -125,7 +137,8 @@ export class Plot {
   scaleXY(sx: number, sy: number): Plot {
     return new Plot(
       this.points.map(p => point(p.x * sx, p.y * sy)),
-      this.closed
+      this.closed,
+      this.marks
     )
   }
 
@@ -135,7 +148,8 @@ export class Plot {
   flipY(yAxis = 0): Plot {
     return new Plot(
       this.points.map(p => point(p.x, 2 * yAxis - p.y)),
-      this.closed
+      this.closed,
+      this.marks
     )
   }
 
@@ -209,7 +223,7 @@ export class Plot {
       newPoints.push(this.points[this.points.length - 1]!)
     }
 
-    return new Plot(newPoints, this.closed)
+    return new Plot(newPoints, this.closed, this.marks)
   }
 
   toString(): string {
@@ -238,6 +252,7 @@ export function plot(fn: (x: number) => number, options: PlotOptions): Plot {
     yScale = 1,
     xOffset = 0,
     yOffset = 0,
+    marks,
   } = options
 
   const [xMin, xMax] = domain
@@ -263,7 +278,7 @@ export function plot(fn: (x: number) => number, options: PlotOptions): Plot {
     ))
   }
 
-  return new Plot(points, closed)
+  return new Plot(points, closed, marks)
 }
 
 /**
@@ -282,6 +297,7 @@ export function plotParametric(
     scale = 1,
     xOffset = 0,
     yOffset = 0,
+    marks,
   } = options
 
   const [tMin, tMax] = domain
@@ -301,7 +317,7 @@ export function plotParametric(
     ))
   }
 
-  return new Plot(points)
+  return new Plot(points, false, marks)
 }
 
 /**
@@ -319,6 +335,7 @@ export function plotPolar(
     samples = 100,
     center = { x: 0, y: 0 },
     scale = 1,
+    marks,
   } = options
 
   const [thetaMin, thetaMax] = domain
@@ -339,21 +356,21 @@ export function plotPolar(
     points.push(point(x, y))
   }
 
-  return new Plot(points)
+  return new Plot(points, false, marks)
 }
 
 /**
  * Create a plot from an array of coordinates
  */
-export function plotFromCoords(coords: [number, number][], closed = false): Plot {
-  return new Plot(coords.map(([x, y]) => point(x, y)), closed)
+export function plotFromCoords(coords: [number, number][], closed = false, marks?: PlotMarkSpec): Plot {
+  return new Plot(coords.map(([x, y]) => point(x, y)), closed, marks)
 }
 
 /**
  * Create a plot from an array of points
  */
-export function plotFromPoints(points: Point[], closed = false): Plot {
-  return new Plot([...points], closed)
+export function plotFromPoints(points: Point[], closed = false, marks?: PlotMarkSpec): Plot {
+  return new Plot([...points], closed, marks)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -36,6 +36,7 @@ export {
 export type {
   DrawLabel,
   DrawOptions,
+  ShadeOptions,
   GroupRenderOptions,
   PathMode,
   PictureEndpoint,

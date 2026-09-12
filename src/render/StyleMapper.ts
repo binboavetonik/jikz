@@ -268,6 +268,16 @@ export type StyleSpec =
   | ReadonlyArray<Partial<RenderStyle>>
 
 /**
+ * A style definition for {@link registerStyle} — like {@link StyleSpec},
+ * but array items may also be string names (registered or built-in),
+ * resolved eagerly at registration. This is TikZ's `.style={a, b, …}`
+ * composition: a recipe may reference other named styles.
+ */
+export type StyleRecipe =
+  | Partial<RenderStyle>
+  | ReadonlyArray<Partial<RenderStyle> | string>
+
+/**
  * Merge multiple styles together
  */
 export function mergeStyles(
@@ -309,6 +319,86 @@ function normalizeOpacityAliases(
   return out
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Named style registry (TikZ \tikzset)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * User-registered named styles. Built-in presets live in
+ * {@link STYLE_PRESETS}; this Map is the extensible namespace — TikZ's
+ * `\tikzset`. Keys are case-sensitive; `parseStyleString` lowercases its
+ * input, so use lowercase names to reach them from the string path.
+ */
+const styleRegistry = new Map<string, Readonly<Partial<RenderStyle>>>()
+
+/**
+ * Resolve one name to a style: registered styles first (so they can
+ * shadow built-ins), then built-in presets. Undefined when unknown.
+ */
+function resolveStyleName(name: string): Partial<RenderStyle> | undefined {
+  const registered = styleRegistry.get(name)
+  if (registered) return registered
+  return name in STYLE_PRESETS ? STYLE_PRESETS[name as StylePreset] : undefined
+}
+
+/**
+ * Flatten a {@link StyleSpec}, resolving any string names (registered or
+ * built-in) into their styles. Unknown names are dropped with a warning.
+ * The name-aware counterpart of {@link mergeStyles}, which only folds
+ * object partials.
+ */
+export function resolveStyle(recipe: StyleRecipe): RenderStyle {
+  const parts = Array.isArray(recipe) ? recipe : [recipe]
+  const resolved: Partial<RenderStyle>[] = []
+  for (const part of parts) {
+    if (typeof part === 'string') {
+      const style = resolveStyleName(part)
+      if (!style) {
+        console.warn(`jikz: unknown style "${part}" — ignored`)
+        continue
+      }
+      resolved.push(style)
+    } else {
+      resolved.push(part)
+    }
+  }
+  return mergeStyles(...resolved)
+}
+
+/**
+ * Register a named style — TikZ `\tikzset{name/.style=…}`.
+ *
+ * Returns a frozen preset object usable in the array form, so one
+ * registration serves both the typed path and the string path:
+ *
+ * ```ts
+ * const brand = registerStyle('brand', { stroke: '#2563eb', strokeWidth: 2 })
+ * pic.draw(c, { style: [brand, dashed] })                // typed
+ * pic.draw(c, { style: parseStyleString('brand, dashed') })
+ * ```
+ *
+ * The body may reference other names (`['other', { … }]`), resolved
+ * eagerly at registration time. Re-registering a name replaces it.
+ */
+export function registerStyle(
+  name: string,
+  recipe: StyleRecipe
+): Readonly<Partial<RenderStyle>> {
+  const resolved = Object.freeze(resolveStyle(recipe))
+  styleRegistry.set(name, resolved)
+  return resolved
+}
+
+/** Whether a name is known — registered or built-in. */
+export function hasStyle(name: string): boolean {
+  return styleRegistry.has(name) || name in STYLE_PRESETS
+}
+
+/** All registered style names (built-ins excluded). */
+export function registeredStyleNames(): readonly string[] {
+  return Array.from(styleRegistry.keys())
+}
+
 /**
  * Apply a preset style by name
  */
@@ -334,17 +424,18 @@ export function applyPresets(...names: StylePreset[]): RenderStyle {
  */
 export function parseStyleString(styleStr: string): RenderStyle {
   const parts = styleStr.split(',').map((s) => s.trim().toLowerCase())
-  const presets: StylePreset[] = []
+  const styles: Partial<RenderStyle>[] = []
 
   for (const part of parts) {
-    if (part in STYLE_PRESETS) {
-      presets.push(part as StylePreset)
-    } else {
+    const style = resolveStyleName(part)
+    if (!style) {
       console.warn(`jikz: unknown style preset "${part}" in "${styleStr}" — ignored`)
+      continue
     }
+    styles.push(style)
   }
 
-  return applyPresets(...presets)
+  return mergeStyles(...styles)
 }
 
 /**

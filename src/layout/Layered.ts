@@ -76,6 +76,9 @@ export interface LayeredOptions {
    *
    * Rule of thumb: keep the default for hand-authored diagrams, switch to
    * `'brandes-koepf'` for generated graphs of more than ~200 nodes.
+   * Cyclic input reaches that threshold sooner: reversed back-edges tend
+   * to span many ranks, and every rank an edge crosses adds a dummy
+   * vertex to the auxiliary graph.
    *
    * @example
    * ```typescript

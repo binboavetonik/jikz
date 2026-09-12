@@ -364,3 +364,49 @@ describe('Layered', () => {
   })
 
 })
+
+describe('Layered on cyclic input', () => {
+  // Regression (2026-09-12 review): cycle removal turns each 2-cycle into a
+  // pair of parallel edges, which the network simplex could not rank —
+  // build() threw "network simplex: no replacement edge found".
+  it('lays out the 5-node graph that used to throw', () => {
+    const l = layered()
+    for (const n of ['a', 'b', 'c', 'd', 'e']) l.node(n)
+    const edges: [string, string][] = [
+      ['a', 'b'], ['c', 'b'], ['b', 'a'], ['b', 'c'], ['a', 'c'],
+      ['d', 'e'], ['e', 'a'], ['e', 'c'], ['a', 'd'],
+    ]
+    for (const [f, t] of edges) l.edge(f, t)
+    const result = l.build()
+    expect(result.nodes).toHaveLength(5)
+    expect(result.edges).toHaveLength(edges.length)
+    for (const n of result.nodes) {
+      expect(Number.isFinite(n.center.x)).toBe(true)
+      expect(Number.isFinite(n.center.y)).toBe(true)
+    }
+  })
+
+  it('never throws on seeded random cyclic graphs', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      let s = seed
+      const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647
+      const n = 3 + (seed % 10)
+      const l = layered()
+      for (let i = 0; i < n; i++) l.node('n' + i)
+      const seen = new Set<string>()
+      let edges = 0
+      let tries = 0
+      while (edges < 2 * n && tries++ < 1000) {
+        const x = Math.floor(rnd() * n)
+        const y = Math.floor(rnd() * n)
+        if (x === y) continue
+        const key = x + '>' + y
+        if (seen.has(key)) continue
+        seen.add(key)
+        l.edge('n' + x, 'n' + y)
+        edges++
+      }
+      expect(() => l.build(), `seed ${seed}`).not.toThrow()
+    }
+  })
+})

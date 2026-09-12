@@ -9,6 +9,8 @@ import { Rectangle } from '../geometry/Rectangle'
 import { Ellipse } from '../geometry/Ellipse'
 import type { Shape } from '../geometry/Shape'
 import { Polygon } from '../geometry/Polygon'
+import { Plot } from '../geometry/Plot'
+import { plotMarkPath, plotMarkFilled } from '../geometry/PlotMark'
 import { Node } from '../node/Node'
 import { Edge } from '../node/Edge'
 import {
@@ -580,6 +582,37 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
     return this.renderPathData(shape.toSVGPath(), options)
   }
 
+  /**
+   * Render a {@link Plot}: the line/curve through its points plus, when
+   * `marks` is set, a scatter marker at each (or every Nth) point.
+   * Marks inherit the plot's resolved stroke color — open marks stroke
+   * it, `*Filled` marks fill with it.
+   */
+  renderPlot(plot: Plot, options?: RenderOptions): SVGElement {
+    const el = this.renderPathData(plot.toSVGPath(), options)
+
+    const marks = plot.marks
+    if (!marks || marks.name === 'none') return el
+
+    const markPath = plotMarkPath(marks.name, marks.size ?? 5)
+    if (!markPath) return el
+
+    const style = this.getStyle(options)
+    const color = style.stroke ?? '#000'
+    const every = Math.max(1, marks.every ?? 1)
+    const markAttrs = plotMarkFilled(marks.name)
+      ? { fill: color, stroke: 'none' }
+      : { fill: 'none', stroke: color, 'stroke-width': 1.5 }
+
+    const target = this.getTarget()
+    for (let i = 0; i < plot.points.length; i += every) {
+      const p = plot.points[i]!
+      target.path(markPath).attr({ ...markAttrs, transform: `translate(${p.x} ${p.y})` })
+    }
+
+    return el
+  }
+
   renderRect(rect: Rectangle, options?: RenderOptions): SVGElement {
     const style = this.getStyle(options)
     const attrs = this.resolveStyleAttributes(style)
@@ -971,6 +1004,9 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
     }
     if (isPolygon(obj)) {
       return this.renderPolygon(obj, options)
+    }
+    if (obj instanceof Plot) {
+      return this.renderPlot(obj, options)
     }
     if (isNode(obj)) {
       return this.renderNode(obj, options)

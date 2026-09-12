@@ -76,7 +76,7 @@ const registry = new Map<string, ShapeRegistration>()
  * @example
  * ```ts
  * registerShape('house', (o) => new House(o))
- * declare module 'jikz' {
+ * declare module '@ozan.e/jikz' {
  *   interface ShapeRegistry { house: {} }
  * }
  * picture().node('H', { shape: 'house', at: point(50, 50), width: 60 })

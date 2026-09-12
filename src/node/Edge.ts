@@ -2,6 +2,7 @@ import { Point, point } from '../core/Point'
 import type { PointLike } from '../core/types'
 import { degToRad, EPSILON } from '../utils/math'
 import type { AnchorSpec, Anchorable } from '../core/Anchor'
+import { bezierControlPoints } from '../path/bezier'
 
 /**
  * Arrow tip styles. The named members are the built-ins; any name
@@ -18,6 +19,15 @@ export type ArrowTip =
   | '<-'         // Left arrow only
   | '<->'        // Both directions
   | '|'          // Bar/stop
+  | '||'         // Double bar (TikZ `||`)
+  | 'circle'     // Filled circle (TikZ `Circle`)
+  | '*'          // Alias for 'circle'
+  | 'openCircle' // Hollow circle (TikZ `Circle[open]`)
+  | 'o'          // Alias for 'openCircle'
+  | 'square'     // Filled square (TikZ `Square`)
+  | 'diamond'    // Filled diamond (TikZ `Diamond`)
+  | 'roundCap'   // Filled round cap (TikZ `Round Cap`)
+  | 'doubleBar'  // Double bar (TikZ `||`)
   | (string & {})
 
 /**
@@ -481,62 +491,14 @@ export class Edge {
   get controlPoints(): [Point, Point] {
     if (this._controlPoints) return this._controlPoints
 
-    // Self-edges have zero endpoint distance, which would collapse
-    // all control offsets to the point itself (the loop vanishes).
-    // TikZ's loop opens regardless, so use a nominal chord: looseness
-    // alone then drives the loop size.
-    const effectiveLength = this.length < EPSILON ? 40 : this.length
-    const baseDist = effectiveLength * this.looseness * 0.4
-    const baseAngle = this.angle
-
-    // Calculate looseness for each control point
-    const outLoose = this.outLooseness ?? this.looseness
-    const inLoose = this.inLooseness ?? this.looseness
-    const outDist = effectiveLength * outLoose * 0.4
-    const inDist = effectiveLength * inLoose * 0.4
-
-    if (this.outAngle !== undefined || this.inAngle !== undefined) {
-      // TikZ-style out/in angles (absolute angles)
-      // out: angle leaving the start point
-      // in: angle arriving at the end point (we need the opposite direction for control point)
-      const outAng = this.outAngle ?? baseAngle
-      const inAng = this.inAngle !== undefined ? this.inAngle + 180 : baseAngle + 180
-
-      this._controlPoints = [
-        point(
-          this.start.x + outDist * Math.cos(degToRad(outAng)),
-          this.start.y + outDist * Math.sin(degToRad(outAng))
-        ),
-        point(
-          this.end.x + inDist * Math.cos(degToRad(inAng)),
-          this.end.y + inDist * Math.sin(degToRad(inAng))
-        ),
-      ]
-    } else if (this.bendAngle !== 0) {
-      // Bent path (symmetric bend). Positive bendAngle bends LEFT of the
-      // travel direction — counterclockwise on screen — so the outgoing
-      // direction rotates by −bendAngle in our clockwise-positive angle
-      // convention.
-      const outAngle = baseAngle - this.bendAngle
-      const inAngle = baseAngle + 180 + this.bendAngle
-
-      this._controlPoints = [
-        point(
-          this.start.x + baseDist * Math.cos(degToRad(outAngle)),
-          this.start.y + baseDist * Math.sin(degToRad(outAngle))
-        ),
-        point(
-          this.end.x + baseDist * Math.cos(degToRad(inAngle)),
-          this.end.y + baseDist * Math.sin(degToRad(inAngle))
-        ),
-      ]
-    } else {
-      // Straight bezier
-      this._controlPoints = [
-        this.start.toward(this.end, 0.33),
-        this.start.toward(this.end, 0.67),
-      ]
-    }
+    this._controlPoints = bezierControlPoints(this.from, this.to, {
+      out: this.outAngle,
+      in: this.inAngle,
+      bend: this.bendAngle,
+      looseness: this.looseness,
+      outLooseness: this.outLooseness,
+      inLooseness: this.inLooseness,
+    })
 
     return this._controlPoints
   }

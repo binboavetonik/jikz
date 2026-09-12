@@ -87,6 +87,9 @@ pic.pen({ style: { stroke: '#0f172a', strokeWidth: 1.6 } })
 - **Verbs**: `moveTo`/`lineTo`/`to` (`--`), `hvTo`/`vhTo` (`-|`,`|-`),
   `curveTo`/`smoothCurveTo`/`quadraticTo` (`.. controls ..`),
   `through`/`bendTo`, `arcTo`/`circularArcTo`, `close()` (`-- cycle`).
+  `to()` doubles as TikZ's `to` operation: `to('B', { out: 30, in: 150 })`
+  or `to('B', { bend: 'left' })` draw a single Bézier whose control
+  points derive from the angles — `to('B')` with no keys stays `--`.
 - **Labels**: `.label(text, { at, distance })` hangs on the current
   pen position; `{ pos, offset }` rides the operation just drawn by
   arc length (TikZ `node[midway]`) — including curves and both legs of
@@ -132,12 +135,12 @@ pic.pen({ style: { stroke: '#0f172a', strokeWidth: 1.6 } })
 | Area | Contents |
 |---|---|
 | `core` | Immutable `Point` with TikZ operators (`toward` = `(A)!t!(B)`, `horAt`/`verAt` = `-\|`/`\|-`), affine `Transform` |
-| `geometry` | Line, Circle, Arc, Rectangle, Polygon, Triangle, Ellipse, Parabola, Hyperbola, function plotting (Cartesian/parametric/polar), pairwise intersections |
+| `geometry` | Line, Circle, Arc, Rectangle, Polygon, Triangle, Ellipse, Parabola, Hyperbola, function plotting (Cartesian/parametric/polar) with scatter plot marks (`circle`, `square`, `triangle`, `diamond`, `pentagon`, `plus`, `cross`, `asterisk`, `oplus`, `otimes` — open or `*Filled`), pairwise intersections |
 | `node` | `Node` (any shape + text + inner/outer sep + TikZ-style `labels` = `label=<angle>:<text>`), `Edge` (auto boundary anchors, bend/out/in/looseness, labels, arrow tips), **33 shape types** via `SHAPE_TYPES`, TikZ-style positioning (`nodeAbove`, …) |
-| `picture` | Named-node registry, named coordinates (`pic.coordinate('A', p)`), string anchor resolution (`'A.north'`), fluent path statements (`pic.pen()` — TikZ `\draw (a) -- (b) node[right]{x} -- cycle` as a chain, with `pos` labels, named endpoints, mid-statement restyling via `push`), `path`/`draw`/`fill`/`filldraw` verbs with TikZ-style shape labels (`draw(l, { label: { text, at: 'east' } })` = `node[right]` inside a `\draw`), bare `text` with directional placement (`pic.text(p, 'h', { at: 'south east' })` = `\node[below right] at (p) {h}`), `toSVG`/`mount` with fixed or auto-fit viewBox (`{ fit: true }` sizes from content, TikZ-style) |
-| `path` | Chainable path builder, decorations (snake, zigzag, coil, bumps, saw, brace…), operations (offset, double, smooth, join) |
-| `render` | `SVGRenderer` + `SVGBuilder` (string/DOM), 12 TikZ fill patterns, linear/radial gradients, drop shadows, clip paths, double lines, layers, 4 arrow tip kinds (color follows the edge stroke). Every geometry type is renderable — uncommon shapes fall back to their path outline |
-| `layout` | `chain`, `matrix`, `tree` auto-layout builders |
+| `picture` | Named-node registry, named coordinates (`pic.coordinate('A', p)`), string anchor resolution (`'A.north'`), fluent path statements (`pic.pen()` — TikZ `\draw (a) -- (b) node[right]{x} -- cycle` as a chain, with `pos` labels, named endpoints, mid-statement restyling via `push`), `path`/`draw`/`fill`/`filldraw`/`shade` verbs with TikZ-style shape labels (`draw(l, { label: { text, at: 'east' } })` = `node[right]` inside a `\draw`), bare `text` with directional placement (`pic.text(p, 'h', { at: 'south east' })` = `\node[below right] at (p) {h}`), `toSVG`/`mount` with fixed or auto-fit viewBox (`{ fit: true }` sizes from content, TikZ-style) |
+| `path` | Chainable path builder, decorations (snake, zigzag, coil, bumps, saw, brace…), operations (offset, double, smooth, join), SVG path import (`pathFromSVG` parses any `d` string — absolute/relative, `H`/`V`/`S`/`T`, arcs — into a drawable/decoratable/measurable `Path`) |
+| `render` | `SVGRenderer` + `SVGBuilder` (string/DOM), 12 TikZ fill patterns, linear/radial gradients, named shadings (`axis`/`radial`/`ball` + TikZ `left color`/`ball color`/… keys), drop shadows, clip paths, double lines, layers, 10 arrow tip kinds — `stealth`, `latex`, `to`, `bar`, `||`, `circle`, `o`, `square`, `diamond`, `roundCap` — plus TikZ spellings `->`/`<-`/`<->`/`*` (color follows the edge stroke). Every geometry type is renderable — uncommon shapes fall back to their path outline |
+| `layout` | `chain`, `matrix`, `tree`, `layered` (Sugiyama DAG) and `graph` (force-directed Fruchterman–Reingold + circular) auto-layout builders |
 | `text` | `measureText` — deterministic per-character font metrics, identical in Node, workers and the browser (so SSR output doesn't reflow on hydration); powers auto-sized nodes (`node({ text })` with no width/height). Opt into the browser's own canvas measurement with `setTextMeasurementBackend('canvas')`. `placeText` — directional label placement for bare text (same ray math as node labels) |
 
 ## Styling
@@ -158,6 +161,24 @@ pic.draw(edge, { style: [thick, { stroke: '#2563eb' }] })
 //    failing silently)
 parseStyleString('thick, dashed, red')
 ```
+
+**Named styles** — TikZ's `\tikzset`. Register a style once, reference it
+by name (string form) or by the frozen preset it returns (typed form):
+
+```ts
+import { registerStyle, parseStyleString } from '@ozan.e/jikz'
+
+const brand = registerStyle('brand', { stroke: '#2563eb', strokeWidth: 2 })
+registerStyle('brandsoft', ['brand', dashed])   // compose named styles
+
+pic.draw(edge, { style: [brand] })                 // typed
+pic.draw(edge, { style: parseStyleString('brandsoft, dashed') })
+```
+Re-registering a name replaces it; registered names shadow built-ins.
+`registerStyle` resolves its recipe eagerly (register dependencies
+first); use lowercase names if you want them reachable from
+`parseStyleString` (which lowercases).
+
 Named fields use literal-union types: `dash: 'dashed'`,
 `fillPattern: 'north east lines'`, `lineCap: 'round'` — typos are
 compile errors. `DASH_PATTERN_NAMES` and `PRESET_OBJECTS` export the
@@ -221,10 +242,10 @@ declare module 'jikz' {
 picture().node('H', { shape: 'house', at: point(80, 60), width: 60, height: 50 })
 
 // 2. Custom arrow tip (marker artwork in a 10×10 box, +x = travel direction)
-registerArrowTip('diamond', {
+registerArrowTip('pennant', {
   filled: true,
-  end:   { d: 'M 0 5 L 5 0 L 10 5 L 5 10 z', refX: 9 },
-  start: { d: 'M 10 5 L 5 0 L 0 5 L 5 10 z', refX: 1 },
+  end:   { d: 'M 0 0 L 10 5 L 0 5 Z', refX: 9 },
+  start: { d: 'M 10 0 L 0 5 L 10 5 Z', refX: 1 },
 })
 
 // 3. Custom fill pattern (SVG tile fragment)
@@ -308,6 +329,35 @@ compile-checked too — but `"name.port"` endpoint specs resolve through
 `Picture` at runtime, where a typo'd port throws `AnchorError` (with
 the known names in the message).
 
+## Logic gates (ext/gates)
+
+Digital logic — jikz's analogue of TikZ's `shapes.gates.logic` — ships
+as the opt-in `ext/gates` package, on the same `registerShape` seam:
+
+```ts
+import { picture, registerGates, gates, point } from '@ozan.e/jikz'
+
+registerGates() // once, like \usetikzlibrary{shapes.gates.logic.US}
+
+const pic = picture()
+  .node('X', gates.xor({ at: point(90, 70) }))   // Sum
+  .node('C', gates.and({ at: point(90, 150) }))  // Carry
+  .coordinate('a', point(20, 50))
+  .coordinate('b', point(20, 90))
+  .edge('a', 'X.in1', { arrowEnd: 'none' })
+  .edge('b', 'X.in2', { arrowEnd: 'none' })
+  .edge('a', 'C.in1', { arrowEnd: 'none' })
+  .edge('b', 'C.in2', { arrowEnd: 'none' })
+pic.toSVG({ width: 230, height: 190 })
+```
+
+Gates: `and`, `nand`, `or`, `nor`, `xor`, `xnor`, `not`, `buffer` —
+ANSI distinctive shapes (`variant: 'iec'` draws the rectangular body;
+pass `text` for the `&`/`≥1`/`=1`/`1` symbol). Two-input gates expose
+`in1`/`in2`/`out` ports; `not`/`buffer` expose `in`/`out`. Negated gates
+draw a bubble; rotate with `node({ rotate })`. Shape instances expose
+typed port accessors (`x.out`) for the code-first route.
+
 ## Demo
 
 The demo page renders every example through the library itself — the
@@ -330,6 +380,10 @@ npm test          # vitest, incl. SVG-output + example-gallery snapshot suites
 npm run build     # tsc typecheck (src + examples) + vite library build → dist/
 npm run dev       # vite dev server (demo page)
 ```
+
+`scripts/audit-probes*.ts` are manual numerical sanity checks (known
+values for intersections, arcs, path operations); run one with
+`npx vite-node scripts/audit-probes.ts` and read the PASS/FAIL lines.
 
 Layout: `src/{core,geometry,node,picture,path,render,layout,text,utils}`,
 with complex node shapes in `src/geometry/complex/`. The example gallery

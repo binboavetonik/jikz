@@ -10,14 +10,20 @@ export default function render(container: HTMLElement) {
     ['<-',      '#ca8a04'],
     ['<->',     '#7c3aed'],
     ['|',       '#ca8a04'],
+    ['||',      '#0f766e'],
+    ['*',       '#be185d'],
+    ['o',       '#b45309'],
+    ['square',  '#1d4ed8'],
+    ['diamond', '#059669'],
+    ['roundCap','#9a3412'],
   ]
   rows.forEach(([tip, color], i) => {
     const y = 25 + i * 24
     pic.node(`s${i}`, { at: point(40, y),  shape: 'circle', width: 14, height: 14 })
     pic.node(`e${i}`, { at: point(200, y), shape: 'circle', width: 14, height: 14 })
     pic.edge(`s${i}`, `e${i}`, { arrowEnd: tip }, { style: { stroke: color, strokeWidth: 1.5 } })
-    pic.text(point(230, y), tip, { fontSize: 11 })
+    pic.text(point(232, y), tip, { fontSize: 11 })
   })
 
-  pic.mount(container, { width: 280, height: 200 })
+  pic.mount(container, { width: 300, height: 335 })
 }

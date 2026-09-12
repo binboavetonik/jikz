@@ -247,6 +247,14 @@ The circuits extension (jikz's \usetikzlibrary{circuits.ee} analogue) ships symb
 
 **Source:** [`examples/circuit-symbols.ts`](../../examples/circuit-symbols.ts)
 
+### Logic gates — ext/gates
+
+![Logic gates — ext/gates](img/logic-gates.svg)
+
+A half adder from the logic-gate extension (TikZ's shapes.gates.logic): XOR for the sum, AND for the carry. Gates expose typed ports (in1/in2/out) and rotate with node({ rotate }); negated gates draw their bubble. Built on the same registerShape seam as ext/circuits.
+
+**Source:** [`examples/logic-gates.ts`](../../examples/logic-gates.ts)
+
 ### Two ways to reference symbols — strings vs typed builders
 
 ![Two ways to reference symbols — strings vs typed builders](img/circuit-typed-api.svg)
@@ -298,6 +306,14 @@ Three nodes and two labeled arrows — and the edge style uses the typed array f
 Graph theory: nodeCircle lays the vertices on a ring, then every pair gets an edge referenced by name. Boundary anchoring means the chords clip at the node rims for free.
 
 **Source:** [`examples/complete-graph.ts`](../../examples/complete-graph.ts)
+
+### Force-directed graph — arbitrary graphs
+
+![Force-directed graph — arbitrary graphs](img/force-graph.svg)
+
+A cycle with chords: no hierarchy, no DAG — the case the layered/tree engines can't express. graph().force() runs a seeded Fruchterman–Reingold spring embedder, so the layout is reproducible and needs zero structural assumptions.
+
+**Source:** [`examples/force-graph.ts`](../../examples/force-graph.ts)
 
 ### Probability tree
 
@@ -351,6 +367,14 @@ f and f' on shared axes; the tangent at x=3.5 is computed from the derivative �
 The statistics-textbook figure: P(X > 1.5) as a closed plot on [1.5, 3.5] — sample the density, close the path, and the fill lands between curve and axis with no polygon stitching.
 
 **Source:** [`examples/normal-curve.ts`](../../examples/normal-curve.ts)
+
+### Plot marks — scatter markers
+
+![Plot marks — scatter markers](img/scatter-marks.svg)
+
+Noisy samples as a scatter of circleFilled markers over the curve they come from, with an asterisk mark every 15th sample — marks.every thins the markers without thinning the curve. Marks inherit the plot's stroke color.
+
+**Source:** [`examples/scatter-marks.ts`](../../examples/scatter-marks.ts)
 
 ### Polar rose gallery
 
@@ -584,7 +608,7 @@ bendAngle curves to the LEFT of travel when positive; out/in give absolute depar
 
 ![Arrow tips & TikZ specs](img/arrow-tips.svg)
 
-stealth, latex, to, bar — plus the TikZ spellings ->, <-, <->. Arrowheads always take the edge's stroke color.
+stealth, latex, to, bar — plus the TikZ spellings ->, <-, <->, ||, *, o — and the geometric tips circle, square, diamond, roundCap. Arrowheads always take the edge's stroke color.
 
 **Source:** [`examples/arrow-tips.ts`](../../examples/arrow-tips.ts)
 
@@ -655,6 +679,14 @@ The 12 TikZ patterns — hatching, grids, dots, bricks, checkerboard, stars.
 User-supplied `style` overrides the path-mode baseline. Linear gradients, dashed strokes, and drop shadows all flow through the builder's string pipeline — no DOM dependency.
 
 **Source:** [`examples/styling.ts`](../../examples/styling.ts)
+
+### TikZ shadings — shade() & ball color
+
+![TikZ shadings — shade() & ball color](img/shadings.svg)
+
+pic.shade() fills a shape with a gradient spanning its bounding box: left/right and top/bottom axis shadings, radial inner/outer, and the ball shading with its offset highlight — each from one TikZ-style key list.
+
+**Source:** [`examples/shadings.ts`](../../examples/shadings.ts)
 
 ### Double lines & layers
 

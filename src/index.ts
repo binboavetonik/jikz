@@ -127,6 +127,10 @@ export {
   plotSpiral,
   plotRose,
   plotCardioid,
+  // Plot marks (scatter markers)
+  plotMarkPath,
+  plotMarkFilled,
+  PLOT_MARK_NAMES,
   // Vertex-driven base for custom shapes
   AnchoredPolygon,
   rayEdgeIntersection,
@@ -149,6 +153,8 @@ export type {
   PlotOptions,
   ParametricPlotOptions,
   PolarPlotOptions,
+  PlotMark,
+  PlotMarkSpec,
 } from './geometry'
 
 // Node system
@@ -382,6 +388,11 @@ export {
   registeredDecorations,
   // Path data transforms
   rotatePathData,
+  // SVG path import (parsePathData / pathFromSVG)
+  pathFromSVG,
+  parsePathData,
+  // Bézier control points (TikZ out/in/bend/looseness)
+  bezierControlPoints,
 } from './path'
 
 export type {
@@ -398,6 +409,7 @@ export type {
   RandomOptions,
   BraceOptions,
   PathDecorationType,
+  BezierRouteOptions,
 } from './path'
 
 // Renderer
@@ -422,6 +434,10 @@ export {
   applyPreset,
   applyPresets,
   parseStyleString,
+  resolveStyle,
+  registerStyle,
+  hasStyle,
+  registeredStyleNames,
   styleToSVGAttributes,
   styleToCSSString,
   // Named preset objects for the array form of `style`
@@ -510,6 +526,11 @@ export {
   registerPattern,
   getPatternDefinition,
   registeredPatternNames,
+  // Shadings (TikZ \shade)
+  axisShading,
+  radialShading,
+  ballShading,
+  resolveShading,
 } from './render'
 
 // Picture — TikZ-style scope with a named-node registry and path-mode
@@ -527,7 +548,7 @@ export {
   TransformedAnchorable,
 } from './picture'
 export { Pen } from './picture'
-export type { PenOptions, PenHost, PenPoint } from './picture'
+export type { PenOptions, PenHost, PenPoint, ToOptions } from './picture'
 export type {
   PictureEndpoint,
   PictureItem,
@@ -538,6 +559,7 @@ export type {
   PictureViewBox,
   MountOptions,
   DrawOptions,
+  ShadeOptions,
   DrawLabel,
   ScopeOptions,
   GroupRenderOptions,
@@ -558,6 +580,7 @@ export type {
   SVGAttributes,
   StylePreset,
   StyleSpec,
+  StyleRecipe,
   DashPatternName,
   KaTeXOptions,
   SVGRendererOptions,
@@ -574,6 +597,9 @@ export type {
   LinearGradientSpec,
   RadialGradientSpec,
   GradientSpec,
+  // Shadings
+  ShadingName,
+  ShadingOptions,
   // Shadows
   DropShadowSpec,
   // Clipping and double lines
@@ -603,6 +629,8 @@ export {
   treeFromSpec,
   // Layered
   layered,
+  // Graph (force-directed / circular)
+  graph,
 } from './layout'
 
 export type {
@@ -630,6 +658,13 @@ export type {
   LayeredEdgeSpec,
   LayeredResult,
   LayeredBuilder,
+  // Graph
+  GraphBuilder,
+  GraphNodeSpec,
+  GraphEdgeSpec,
+  GraphResult,
+  ForceOptions,
+  CircularOptions,
 } from './layout'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -693,3 +728,34 @@ export type {
   GroundOptions,
   OpAmpOptions,
 } from './ext/circuits'
+
+// Logic gates (TikZ shapes.gates.logic) — opt-in registration
+
+export {
+  registerGates,
+  gatesRegistered,
+  GATE_SHAPES,
+  GATE_PORTS,
+  gates,
+  LogicGate,
+  gate,
+  andGate,
+  nandGate,
+  orGate,
+  norGate,
+  xorGate,
+  xnorGate,
+  notGate,
+  bufferGate,
+  GATE_DEFAULT_WIDTH,
+  GATE_DEFAULT_HEIGHT,
+} from './ext/gates'
+
+export type {
+  GateShapeName,
+  GatePort,
+  GateBuilder,
+  GateKind,
+  GateVariant,
+  LogicGateOptions,
+} from './ext/gates'

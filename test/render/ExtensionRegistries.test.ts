@@ -20,10 +20,10 @@ import {
   registeredPatternNames,
 } from '../../src/render/FillPattern'
 
-registerArrowTip('diamond', {
+registerArrowTip('pennant', {
   filled: true,
-  end: { d: 'M 0 5 L 5 0 L 10 5 L 5 10 z', refX: 9 },
-  start: { d: 'M 10 5 L 5 0 L 0 5 L 5 10 z', refX: 1 },
+  end: { d: 'M 0 0 L 10 5 L 0 5 Z', refX: 9 },
+  start: { d: 'M 10 0 L 0 5 L 10 5 Z', refX: 1 },
 })
 
 registerPattern('wavy', {
@@ -36,7 +36,10 @@ registerPattern('wavy', {
 
 describe('arrow tip registry', () => {
   it('built-ins are registered', () => {
-    for (const tip of ['stealth', 'latex', 'to', 'bar']) {
+    for (const tip of [
+      'stealth', 'latex', 'to', 'bar',
+      'circle', 'openCircle', 'square', 'diamond', 'roundCap', 'doubleBar',
+    ]) {
       expect(hasArrowTip(tip)).toBe(true)
     }
   })
@@ -45,22 +48,39 @@ describe('arrow tip registry', () => {
     expect(resolveArrowTipKind('->')).toBe('to')
     expect(resolveArrowTipKind('<->')).toBe('to')
     expect(resolveArrowTipKind('|')).toBe('bar')
-    expect(resolveArrowTipKind('diamond')).toBe('diamond')
+    expect(resolveArrowTipKind('||')).toBe('doubleBar')
+    expect(resolveArrowTipKind('*')).toBe('circle')
+    expect(resolveArrowTipKind('o')).toBe('openCircle')
+    expect(resolveArrowTipKind('pennant')).toBe('pennant')
+  })
+
+  it('built-in geometric tips render through edges by name', () => {
+    const a = new Node({ shape: 'circle', at: point(40, 40), width: 30, height: 30, text: 'A' })
+    const b = new Node({ shape: 'circle', at: point(140, 40), width: 30, height: 30, text: 'B' })
+    const renderer = new SVGRenderer()
+    renderer.renderEdge(new Edge(a, b, { arrowEnd: 'circle' }))
+    renderer.renderEdge(new Edge(a, b, { arrowEnd: 'doubleBar' }))
+    const svg = renderer.toSVG({ width: 180, height: 80 })
+    expect(svg).toContain('arrow-circle-')
+    expect(svg).toContain('M 7.5 5 A 2.5 2.5 0 0 0 2.5 5 A 2.5 2.5 0 0 0 7.5 5 Z')
+    expect(svg).toContain('arrow-doubleBar-')
+    expect(svg).toContain('M 4 0 L 4 10 M 6 0 L 6 10')
+    expect(svg).toContain('marker-end')
   })
 
   it('user tips render through edges by name', () => {
     const a = new Node({ shape: 'circle', at: point(40, 40), width: 30, height: 30, text: 'A' })
     const b = new Node({ shape: 'circle', at: point(140, 40), width: 30, height: 30, text: 'B' })
     const renderer = new SVGRenderer()
-    renderer.renderEdge(new Edge(a, b, { arrowEnd: 'diamond' }))
+    renderer.renderEdge(new Edge(a, b, { arrowEnd: 'pennant' }))
     const svg = renderer.toSVG({ width: 180, height: 80 })
-    expect(svg).toContain('arrow-diamond-')
-    expect(svg).toContain('M 0 5 L 5 0 L 10 5 L 5 10 z')
+    expect(svg).toContain('arrow-pennant-')
+    expect(svg).toContain('M 0 0 L 10 5 L 0 5 Z')
     expect(svg).toContain('marker-end')
   })
 
   it('registeredArrowTips includes user tips', () => {
-    expect(registeredArrowTips()).toContain('diamond')
+    expect(registeredArrowTips()).toContain('pennant')
   })
 })
 

@@ -30,6 +30,10 @@ export {
   applyPreset,
   applyPresets,
   parseStyleString,
+  resolveStyle,
+  registerStyle,
+  hasStyle,
+  registeredStyleNames,
   styleToSVGAttributes,
   styleToCSSString,
   createGradientId,
@@ -48,6 +52,7 @@ export type {
   SVGAttributes,
   StylePreset,
   StyleSpec,
+  StyleRecipe,
   DashPatternName,
   ClipSpec,
   DoubleLineSpec,
@@ -74,6 +79,10 @@ export type {
   RadialGradientSpec,
   GradientSpec,
 } from './Gradient'
+
+// Shadings (TikZ \shade vocabulary)
+export { axisShading, radialShading, ballShading, resolveShading } from './Shadings'
+export type { ShadingName, ShadingOptions } from './Shadings'
 
 // Shadows
 export {

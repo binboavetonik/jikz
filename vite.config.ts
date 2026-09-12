@@ -16,6 +16,9 @@ export default defineConfig({
       // `declare module` augmentation in ext/circuits that adds circuit
       // shape names to ShapeRegistry; per-file .d.ts output preserves
       // it (dist/ext/circuits/index.d.ts augments ../../node/Node).
+      // scripts/postbuild-dts.mjs then adds .js extensions to the
+      // relative specifiers (Node16 resolution) and writes .d.cts twins
+      // for the require condition; `npm run check:pkg` verifies both.
       rollupTypes: false,
     }),
   ],

@@ -87,6 +87,55 @@ describe('pen path geometry', () => {
     expect(svg).toMatch(/M 0 50 C [\d.]+ [\d.-]+, [\d.]+ [\d.-]+, 100 50/)
   })
 
+  it('to() without options is a straight segment (TikZ --)', () => {
+    const pic = picture()
+    pic.pen().moveTo(0, 0).to(point(100, 0)).to(100, 50)
+    const svg = pic.toSVG({ width: 120, height: 80 })
+    expect(svg).toContain('M 0 0 L 100 0 L 100 50')
+  })
+
+  it('to() with out/in compiles a cubic segment', () => {
+    const pic = picture()
+    pic.pen().moveTo(0, 0).to(point(100, 0), { out: 90, in: 90 })
+    const svg = pic.toSVG({ width: 120, height: 80 })
+    // out: 90 = down from start → cp1 (0, 40); in: 90 = arrive heading south → cp2 (100, -40)
+    expect(svg).toMatch(/M 0 0 C [^ ]+ 40, [^ ]+ -40, 100 0/)
+  })
+
+  it('to() with bend left curves left of travel', () => {
+    const pic = picture()
+    pic.pen().moveTo(0, 0).to(point(100, 0), { bend: 'left' })
+    const svg = pic.toSVG({ width: 120, height: 80 })
+    expect(svg).toMatch(/M 0 0 C [\d.]+ [\d.-]+, [\d.]+ [\d.-]+, 100 0/)
+    // left of east travel = up: the first control point has negative y
+    const m = svg.match(/M 0 0 C ([\d.-]+) ([\d.-]+),/)
+    expect(parseFloat(m![2]!)).toBeLessThan(0)
+  })
+
+  it('to() as first verb with no options acts as moveTo', () => {
+    const pic = picture()
+    pic.pen().to(10, 10).to(50, 10)
+    expect(pic.toSVG({ width: 60, height: 20 })).toContain('M 10 10 L 50 10')
+  })
+
+  it('curved to() requires a pen position', () => {
+    expect(() => picture().pen().to(point(10, 10), { out: 0 })).toThrow(/pen position/)
+  })
+
+  it('pos label rides a curved to() segment by arc length', () => {
+    const pic = picture()
+    pic.pen()
+      .moveTo(0, 100)
+      .to(point(100, 0), { bend: 'left' })
+      .label('m', { pos: 0.5, offset: 0 })
+    const svg = pic.toSVG({ width: 120, height: 120 })
+    expect(svg).toContain('>m</text>')
+    // midpoint of a 30°-bent segment sits left of the straight chord
+    const xy = textXY(svg, 'm')
+    expect(xy.x).toBeLessThan(50)
+    expect(xy.y).toBeLessThan(50)
+  })
+
   it('arcTo / circularArcTo compile SVG arc segments', () => {
     const pic = picture()
     pic.pen().moveTo(0, 0).arcTo(30, 20, 0, false, true, point(60, 0))

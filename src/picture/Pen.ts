@@ -40,6 +40,7 @@
 import { Point, point } from '../core/Point'
 import type { PointLike } from '../core/types'
 import { Path, path } from '../path/Path'
+import { bezierControlPoints, type BezierRouteOptions } from '../path/bezier'
 import {
   placeText,
   DEFAULT_LABEL_FONT_SIZE,
@@ -57,6 +58,12 @@ import type { PathMode, PictureItem, PictureTextOptions } from './Picture'
 export interface PenOptions extends RenderOptions {
   mode?: PathMode
 }
+
+/**
+ * Routing keys for the pen's `to()` verb — TikZ `to[out=…, in=…,
+ * bend=…, looseness=…]`. Same shape as {@link BezierRouteOptions}.
+ */
+export type ToOptions = BezierRouteOptions
 
 /**
  * The picture surface a pen needs: named-coordinate registration
@@ -135,11 +142,46 @@ export class Pen {
     return this.apply('lineTo', (p) => p.lineTo(to))
   }
 
-  /** TikZ `--` alias for {@link lineTo}. As first verb, acts as moveTo. */
-  to(p: PenPoint): this
-  to(x: number, y: number): this
-  to(a: PenPoint | number, b?: number): this {
-    return typeof a === 'number' ? this.lineTo(a, b ?? 0) : this.lineTo(a as PenPoint)
+  /**
+   * Connect to a point — TikZ's `to` operation.
+   *
+   * With no routing options this is exactly `--` (a straight segment;
+   * as the first verb it acts as `moveTo`). With `out`/`in`/`bend`/
+   * `looseness` it draws a single cubic Bézier whose control points are
+   * derived from those angles — TikZ `to[out=30, in=150]`:
+   *
+   * ```ts
+   * pic.pen()
+   *   .moveTo('A')
+   *   .to('B', { out: 30, in: 150 })        // curved
+   *   .to('C', { bend: 'left' })             // TikZ bend left (= 30°)
+   *   .to('D')                               // straight, like `--`
+   * ```
+   *
+   * `pos` labels after a curved `to` ride the Bézier by arc length.
+   */
+  to(p: PenPoint, options?: ToOptions): this
+  to(x: number, y: number, options?: ToOptions): this
+  to(a: PenPoint | number, b?: number | ToOptions, c?: ToOptions): this {
+    let end: Point
+    let options: ToOptions | undefined
+    if (typeof a === 'number') {
+      end = this.pt(a, typeof b === 'number' ? b : 0)
+      options = typeof b === 'object' ? b : c
+    } else {
+      end = this.pt(a as PenPoint)
+      options = typeof b === 'object' ? b : undefined
+    }
+
+    // Plain `to` (no out/in/bend) is a straight segment — TikZ's `--`.
+    if (!options || !hasRouting(options)) {
+      if (!this.penPoint) return this.moveTo(end)
+      return this.apply('lineTo', (p) => p.lineTo(end))
+    }
+
+    const from = this.requirePen('to')
+    const [c1, c2] = bezierControlPoints(from, end, options)
+    return this.apply('curveTo', (p) => p.curveTo(c1, c2, end))
   }
 
   /** Horizontal segment to x (TikZ `… -| (x,y)` horizontal leg). */
@@ -427,4 +469,9 @@ function mergeStyleSpec(
     ...(Array.isArray(base) ? base : [base]),
     ...(Array.isArray(over) ? over : [over]),
   ]
+}
+
+/** Whether `to()` options request a curve (out/in/bend set). */
+function hasRouting(o: ToOptions): boolean {
+  return o.out !== undefined || o.in !== undefined || (o.bend ?? 0) !== 0
 }

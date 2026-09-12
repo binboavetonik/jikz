@@ -12,6 +12,11 @@ export {
 
 export type { PathSegment, PathSegmentType, PathOptions } from './Path'
 
+export { pathFromSVG, parsePathData } from './svgPath'
+
+export { bezierControlPoints } from './bezier'
+export type { BezierRouteOptions } from './bezier'
+
 // Path data transforms
 export { rotatePathData } from './rotatePath'
 

@@ -39,7 +39,8 @@ describe('rotatePathData', () => {
 
   it('rotates cubic curves point-wise', () => {
     // 180° about (50,50): every point (x,y) → (100−x, 100−y).
+    // Path.toSVGPath emits C control pairs comma-separated.
     const d = rotatePathData('M 0 0 C 10 0 20 10 30 10', 180, { x: 50, y: 50 })
-    expect(d).toBe('M 100 100 C 90 100 80 90 70 90')
+    expect(d).toBe('M 100 100 C 90 100, 80 90, 70 90')
   })
 })

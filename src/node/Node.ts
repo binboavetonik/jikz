@@ -140,7 +140,7 @@ interface BuiltinShapes {
  * @example
  * ```ts
  * registerShape('house', (o) => new House(o))
- * declare module 'jikz' {
+ * declare module '@ozan.e/jikz' {
  *   interface ShapeRegistry { house: {} }
  * }
  * ```

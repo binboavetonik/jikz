@@ -8,9 +8,14 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/jikz.js",
-      "require": "./dist/jikz.umd.cjs",
-      "types": "./dist/index.d.ts"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/jikz.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/jikz.umd.cjs"
+      }
     }
   },
   "files": [
@@ -19,7 +24,7 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "dev:demo": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && node scripts/postbuild-dts.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview",
@@ -27,7 +32,8 @@
     "docs:cookbook": "vite-node scripts/build-cookbook.ts",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
-    "prepublishOnly": "npm run test && npm run build"
+    "prepublishOnly": "npm run test && npm run build && npm run check:pkg",
+    "check:pkg": "publint && attw --pack ."
   },
   "peerDependencies": {
     "katex": "^0.16.0"
@@ -38,8 +44,10 @@
     }
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
     "jsdom": "^30.0.1",
     "katex": "^0.16.11",
+    "publint": "^0.3.24",
     "typedoc": "^0.28.20",
     "typescript": "^5.7.3",
     "vite": "^5.4.14",

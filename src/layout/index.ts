@@ -50,3 +50,14 @@ export type {
   LayeredResult,
   LayeredBuilder,
 } from './Layered'
+
+// Graph (force-directed / circular)
+export { graph } from './Graph'
+export type {
+  GraphBuilder,
+  GraphNodeSpec,
+  GraphEdgeSpec,
+  GraphResult,
+  ForceOptions,
+  CircularOptions,
+} from './Graph'

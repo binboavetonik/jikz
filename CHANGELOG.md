@@ -2,7 +2,98 @@
 
 ## Unreleased
 
+### Added
+
+- **Graph layout — `graph()` (force-directed + circular).** A unified
+  builder for arbitrary graphs (cycles, undirected, disconnected — no
+  structural assumptions, unlike `tree`/`layered`). `.force({ seed })`
+  runs a seeded Fruchterman–Reingold spring embedder (repulsion +
+  attraction + cooling, viewport-clamped, deterministic per seed);
+  `.circular()` places nodes on a ring sized from the node count
+  (`order: 'given' | 'degree'`). The result mirrors `LayeredResult`
+  (`{ nodes, edges, getNode, toRenderables, bounds }`).
+- **`ext/gates` — logic gates.** The opt-in `registerGates()` package is
+  jikz's `shapes.gates.logic`: `and`/`nand`/`or`/`nor`/`xor`/`xnor`/
+  `not`/`buffer` with ANSI distinctive shapes (D-shape, concave-OR,
+  triangle) and IEC rectangular bodies (`variant: 'iec'`). Two-input
+  gates expose `in1`/`in2`/`out` ports, `not`/`buffer` expose `in`/`out`;
+  negated gates draw a bubble; shape instances add typed port accessors
+  (`x.out`), and `gates.*` builders mirror `circuit.*`. Built entirely on
+  the `registerShape`/port seams shared with ext/circuits.
+- **SVG path import.** `pathFromSVG('M … C … Z')` parses any SVG `d`
+  string — absolute/relative, `H`/`V`/`S`/`T` shorthand, implicit
+  `M`→`L`, arcs with packed flags, sign-separated/exponent numbers —
+  into a `Path` (the inverse of `toSVGPath()`), so imported paths can be
+  drawn, decorated, measured and transformed. `parsePathData` exposes
+  the raw segment normalization; `rotatePathData` now reuses the same
+  parser (`Path.rotate` + `toSVGPath(precision)`), and `toSVGPath` gained
+  an optional precision argument for compact output.
+- **Named style registry (`\tikzset`).** `registerStyle('name', recipe)`
+  defines a reusable style; `parseStyleString('name, …')` and
+  `resolveStyle([...])` resolve it alongside the built-in presets, and
+  the frozen object it returns works in the array form
+  (`style: [name, …]`). Recipes compose other names (`['brand', dashed]`)
+  eagerly; re-registering replaces, and registered names shadow
+  built-ins. `hasStyle`/`registeredStyleNames` introspect the namespace.
+- **The `shade` verb + named shadings.** `pic.shade(obj, { … })` is
+  TikZ's `\shade` — a gradient fill spanning the shape's bounding box.
+  Accepts an explicit `gradient` spec or the TikZ color keys
+  (`leftColor`/`rightColor`, `topColor`/`bottomColor`, `innerColor`/
+  `outerColor`, `middleColor`, `ballColor`, `shading: 'axis' | 'radial' |
+  'ball'`). New builders `axisShading`/`radialShading`/`ballShading` +
+  `resolveShading` turn those keys into the existing `GradientSpec`.
+- **The `to` path verb.** `pen.to(point, { out, in, bend, looseness })`
+  now draws TikZ's `to[out=…, in=…]` curved connector — a single Bézier
+  whose control points derive from the angles. `bend: 'left' | 'right'`
+  is the symmetric shorthand (30° default); `to(point)` with no keys
+  stays a straight `--`. The underlying Bézier math was extracted from
+  `Edge` into a shared `bezierControlPoints` helper (`out`/`in`/`bend`/
+  `looseness`/`outLooseness`/`inLooseness`), so edges and pen segments
+  now route through one implementation.
+- **More arrow tips.** `circle` (`*`), `openCircle` (`o`), `square`,
+  `diamond`, `roundCap`, and `doubleBar` (`||`) join `stealth` / `latex` /
+  `to` / `bar`, all registered through the same public `registerArrowTip`
+  seam (10 built-in tips; TikZ spellings resolve to them).
+- **Plot marks.** `plot()` / `plotParametric()` / `plotPolar()` /
+  `plotFromPoints()` / `plotFromCoords()` accept a `marks` option
+  (`{ name, size, every }`) that draws scatter markers at each — or every
+  Nth — sampled point. Marks inherit the plot's stroke color; open marks
+  stroke it and `*Filled` marks fill with it. TikZ spellings accepted:
+  `*`, `+`, `x`/`X`, `o`.
+
 ### Fixed
+
+- **`layered()` no longer throws on cyclic input, and its network simplex
+  is ~5× faster.** Cycle removal reverses back-edges, so a 2-cycle a→b,
+  b→a became two parallel a→b edges. The network simplex assumes a
+  simple graph — its cut-value bookkeeping finds "the" tree edge between
+  two vertices by endpoints — so parallel pairs were double-counted, cut
+  values drifted, and a pivot could be chosen with no entering edge:
+  `build()` threw "network simplex: no replacement edge found
+  (infeasible)" (a 5-node, 9-edge graph reproduces it). Ranking now
+  merges parallel edges first (`mergeParallelEdges`: weights summed,
+  minLength maxed — dagre's `simplify`), and the pivot loop has a
+  defensive cap so any future degeneracy degrades to a feasible ranking
+  instead of a hang.
+
+  The simplex internals moved from `Map`/`Set` keyed by object identity
+  to integer-indexed typed arrays with iterative DFS (no recursion-depth
+  limit). Iteration order is unchanged, so every pivot — and every
+  snapshot — is identical; the per-pivot low/lim, cut-value and rank
+  recomputation is just cheaper. A random 100-node / 200-edge cyclic
+  graph builds in 0.9 s instead of 4.5 s with the default Gansner
+  coordinates (0.06 s with `coordinates: 'brandes-koepf'`); the
+  acyclic equivalent went from 0.19 s to 0.05 s.
+
+- **Published types now resolve under every TypeScript module-resolution
+  mode.** `exports` listed `types` last, so TypeScript only found
+  `dist/index.d.ts` through a fallback bug, and the emitted declarations
+  used extensionless relative imports that Node16/NodeNext ESM resolution
+  rejects. `types` now comes first in each condition, a post-build step
+  (`scripts/postbuild-dts.mjs`) appends `.js` to relative specifiers and
+  writes `.d.cts` twins for the `require` condition, and
+  `npm run check:pkg` (publint + arethetypeswrong) runs in
+  `prepublishOnly` to keep it that way.
 
 - **`tree()` no longer overlaps branches with variable node sizes in
   parent alignment.** The contour packing walked the facing contours in

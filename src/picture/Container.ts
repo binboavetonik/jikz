@@ -13,6 +13,7 @@ import { Pen, type PenOptions } from './Pen'
 import type { Renderable, RenderOptions, TextOptions } from '../render/Renderer'
 import { mergeStyles } from '../render/StyleMapper'
 import type { ClipSpec, RenderStyle, StyleSpec } from '../render/StyleMapper'
+import { resolveShading, type ShadingOptions } from '../render/Shadings'
 import { shapeLabelPoint, type DrawLabel } from '../text/shapeLabels'
 import type { TextPlacement } from '../text/placeText'
 
@@ -41,6 +42,13 @@ export interface DrawOptions extends RenderOptions {
   /** Multiple labels — TikZ allows several nodes per path statement. */
   labels?: readonly DrawLabel[]
 }
+
+/**
+ * Options for the `shade()` verb — {@link DrawOptions} plus TikZ's
+ * shading keys (`left color`, `ball color`, …). The shading resolves to
+ * a gradient that fills the shape's bounding box.
+ */
+export interface ShadeOptions extends DrawOptions, ShadingOptions {}
 
 /**
  * An endpoint in {@link ItemContainer.edge} can be:
@@ -414,6 +422,51 @@ export abstract class ItemContainer {
   /** `\filldraw` — append stroked and filled. */
   filldraw(obj: Renderable, options?: DrawOptions): this {
     return this.bare(obj, 'filldraw', options)
+  }
+
+  /**
+   * `\shade` — append filled with a shading (gradient) that spans the
+   * shape's bounding box. Accepts an explicit `gradient` spec or TikZ's
+   * color keys:
+   *
+   * ```ts
+   * pic.shade(circle(p, 40), { leftColor: '#2563eb', rightColor: '#7c3aed' })
+   * pic.shade(rect(0, 0, 100, 100), { ballColor: '#dc2626' })
+   * pic.shade(circle(p, 40), { gradient: { type: 'radial', stops: [...] } })
+   * ```
+   */
+  shade(obj: Renderable, options?: ShadeOptions): this {
+    const {
+      gradient,
+      shading,
+      leftColor,
+      rightColor,
+      topColor,
+      bottomColor,
+      middleColor,
+      innerColor,
+      outerColor,
+      ballColor,
+      ...rest
+    } = options ?? {}
+
+    const spec = resolveShading({
+      gradient,
+      shading,
+      leftColor,
+      rightColor,
+      topColor,
+      bottomColor,
+      middleColor,
+      innerColor,
+      outerColor,
+      ballColor,
+    })
+
+    const own = styleList(rest.style)
+    const style: StyleSpec =
+      own.length > 0 ? [...own, { gradient: spec }] : { gradient: spec }
+    return this.fill(obj, { ...rest, style })
   }
 
   /**
