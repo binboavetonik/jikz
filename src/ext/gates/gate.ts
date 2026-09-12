@@ -57,6 +57,9 @@ const XOR_OFFSET = 8
 /** OR left-edge radius as a fraction of height (≈0.25·H sagitta). */
 const OR_RADIUS = 0.625
 
+/** Gate kinds whose ANSI body has a concave back (the OR family). */
+const OR_FAMILY: ReadonlySet<GateKind> = new Set(['or', 'nor', 'xor', 'xnor'])
+
 /** Gate kinds that draw a negation bubble at the output. */
 const NEGATED: Readonly<Record<GateKind, boolean>> = {
   and: false,
@@ -72,6 +75,27 @@ const NEGATED: Readonly<Record<GateKind, boolean>> = {
 /** A small circle at (cx, cy) — used for the negation bubble. */
 function circleAt(cx: number, cy: number, r: number): string {
   return `M ${cx + r} ${cy} A ${r} ${r} 0 1 0 ${cx - r} ${cy} A ${r} ${r} 0 1 0 ${cx + r} ${cy} Z`
+}
+
+/**
+ * Derived box geometry — the single source of truth for where the leads
+ * sit, shared by the port table and the drawing so the two cannot drift.
+ */
+interface GateGeometry {
+  cy: number
+  /** West box edge: where input leads start (and the input ports sit). */
+  westX: number
+  /** East box edge: the `out` port, and the bubble's right edge. */
+  eastX: number
+  /** Body's left edge — where a flat-backed body meets its leads. */
+  x1: number
+  /** Body's right extent — where the output lead or bubble begins. */
+  x2: number
+  top: number
+  bot: number
+  halfH: number
+  /** y of each input lead: one for `not`/`buffer`, two otherwise. */
+  inputY: readonly number[]
 }
 
 /**
@@ -98,17 +122,32 @@ export class LogicGate extends CircuitSymbol {
     this.inputs = type === 'not' || type === 'buffer' ? 1 : 2
   }
 
-  protected portTable(): Record<string, Point> {
+  private geometry(): GateGeometry {
     const cx = this.center.x
     const cy = this.center.y
     const halfW = this.width / 2
     const halfH = this.height / 2
-    const ports: Record<string, Point> = { out: point(cx + halfW, cy) }
+    return {
+      cy,
+      westX: cx - halfW,
+      eastX: cx + halfW,
+      x1: cx - halfW + LEAD,
+      x2: cx + halfW - LEAD,
+      top: cy - halfH,
+      bot: cy + halfH,
+      halfH,
+      inputY: this.inputs === 1 ? [cy] : [cy - halfH / 2, cy + halfH / 2],
+    }
+  }
+
+  protected portTable(): Record<string, Point> {
+    const { cy, westX, eastX, inputY } = this.geometry()
+    const ports: Record<string, Point> = { out: point(eastX, cy) }
     if (this.inputs === 1) {
-      ports.in = point(cx - halfW, cy)
+      ports.in = point(westX, inputY[0]!)
     } else {
-      ports.in1 = point(cx - halfW, cy - halfH / 2)
-      ports.in2 = point(cx - halfW, cy + halfH / 2)
+      ports.in1 = point(westX, inputY[0]!)
+      ports.in2 = point(westX, inputY[1]!)
     }
     return ports
   }
@@ -134,51 +173,48 @@ export class LogicGate extends CircuitSymbol {
   }
 
   toSVGPath(): string {
-    const cx = this.center.x
-    const cy = this.center.y
-    const halfW = this.width / 2
-    const halfH = this.height / 2
-    const westX = cx - halfW
-    const eastX = cx + halfW
-    const x1 = westX + LEAD
-    const x2 = eastX - LEAD
-    const top = cy - halfH
-    const bot = cy + halfH
-
+    const g = this.geometry()
     const parts: string[] = []
 
-    // Input leads.
-    if (this.inputs === 1) {
-      parts.push(`M ${westX} ${cy} L ${x1} ${cy}`)
-    } else {
-      const y1 = cy - halfH / 2
-      const y2 = cy + halfH / 2
-      parts.push(`M ${westX} ${y1} L ${x1} ${y1}`)
-      parts.push(`M ${westX} ${y2} L ${x1} ${y2}`)
+    // Input leads, each ending ON the body (see leadEndX).
+    for (const y of g.inputY) {
+      parts.push(`M ${g.westX} ${y} L ${this.leadEndX(g, y)} ${y}`)
     }
 
     // Body.
-    parts.push(this.bodyPath(x1, x2, top, bot, cy, halfH))
+    parts.push(this.bodyPath(g))
 
     // Negation bubble + output lead. The bubble fills the output lead
     // region — its right edge is the `out` port, so no separate lead.
     if (NEGATED[this.type]) {
-      parts.push(circleAt(eastX - BUBBLE_R, cy, BUBBLE_R))
+      parts.push(circleAt(g.eastX - BUBBLE_R, g.cy, BUBBLE_R))
     } else {
-      parts.push(`M ${x2} ${cy} L ${eastX} ${cy}`)
+      parts.push(`M ${g.x2} ${g.cy} L ${g.eastX} ${g.cy}`)
     }
 
     return parts.join(' ')
   }
 
-  private bodyPath(
-    x1: number,
-    x2: number,
-    top: number,
-    bot: number,
-    cy: number,
-    halfH: number
-  ): string {
+  /**
+   * Where an input lead at height `y` meets the body. Flat-backed bodies
+   * (AND family, IEC rectangle, NOT/buffer triangle) take it to the
+   * body's left edge; the OR family's back is an arc through the two
+   * corners, so its leads run on to the arc itself — stopping at `x1`
+   * would leave them floating ~0.4·halfH short. XOR/XNOR leads then
+   * cross the exclusive arc, as in the standard drawing.
+   */
+  private leadEndX(g: GateGeometry, y: number): number {
+    if (this.variant === 'iec' || !OR_FAMILY.has(this.type)) return g.x1
+    const r = OR_RADIUS * g.halfH * 2
+    const arcCx = g.x1 - Math.sqrt(r * r - g.halfH * g.halfH)
+    const dy = y - g.cy
+    // Rounded: the only irrational coordinate in the path data.
+    return Number((arcCx + Math.sqrt(r * r - dy * dy)).toFixed(3))
+  }
+
+  private bodyPath(g: GateGeometry): string {
+    const { cy, x1, x2, top, bot, halfH } = g
+
     if (this.variant === 'iec') {
       return `M ${x1} ${top} L ${x2} ${top} L ${x2} ${bot} L ${x1} ${bot} Z`
     }
@@ -186,8 +222,14 @@ export class LogicGate extends CircuitSymbol {
     switch (this.type) {
       case 'and':
       case 'nand': {
-        const xflat = x2 - halfH
-        return `M ${x1} ${top} L ${x1} ${bot} L ${xflat} ${bot} A ${halfH} ${halfH} 0 0 1 ${xflat} ${top} Z`
+        // Half-ellipse nose sweeping RIGHT, so the body meets the output
+        // lead (or bubble) at x2. rx shrinks on tall gates — with a plain
+        // halfH radius the nose would start left of x1 and the body would
+        // double back over its own flat edge.
+        const rx = Math.min(halfH, x2 - x1)
+        const xflat = x2 - rx
+        const flat = xflat > x1 ? ` L ${xflat} ${bot}` : ''
+        return `M ${x1} ${top} L ${x1} ${bot}${flat} A ${rx} ${halfH} 0 0 0 ${xflat} ${top} Z`
       }
       case 'or':
       case 'nor': {
@@ -197,7 +239,12 @@ export class LogicGate extends CircuitSymbol {
       case 'xor':
       case 'xnor': {
         const r = OR_RADIUS * halfH * 2
-        const extra = `M ${x1 - XOR_OFFSET} ${top} A ${r} ${r} 0 0 1 ${x1 - XOR_OFFSET} ${bot}`
+        const ex = x1 - XOR_OFFSET
+        // Traced out and back: the exclusive arc encloses no area, so a
+        // filled gate doesn't paint the sliver between it and the body.
+        const extra =
+          `M ${ex} ${top} A ${r} ${r} 0 0 1 ${ex} ${bot}` +
+          ` A ${r} ${r} 0 0 0 ${ex} ${top}`
         return `M ${x1} ${top} A ${r} ${r} 0 0 1 ${x1} ${bot} L ${x2} ${cy} Z ${extra}`
       }
       case 'not':

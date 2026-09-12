@@ -17,6 +17,7 @@ import {
 } from '../../../src/ext/gates'
 import { AnchorError } from '../../../src/core/Anchor'
 import { hasShape, createShape } from '../../../src/geometry/registry'
+import { pathFromSVG } from '../../../src/path/svgPath'
 import { Node } from '../../../src/node/Node'
 import { picture } from '../../../src/picture/Picture'
 import { point } from '../../../src/core/Point'
@@ -89,18 +90,23 @@ describe('gate geometry', () => {
     const d = andGate().toSVGPath()
     expect(d).toContain('M -35 -12.5 L -25 -12.5')
     expect(d).toContain('M -35 12.5 L -25 12.5')
-    expect(d).toContain('M -25 -25 L -25 25 L 0 25 A 25 25 0 0 1 0 -25 Z')
+    expect(d).toContain('M -25 -25 L -25 25 L 0 25 A 25 25 0 0 0 0 -25 Z')
     expect(d).toContain('M 25 0 L 35 0') // output lead
   })
 
   it('or/nor draw a concave-left pointed-right body', () => {
     const d = gate('or').toSVGPath()
     expect(d).toContain('A 31.25 31.25 0 0 1 -25 25 L 25 0 Z')
+    // Leads run past x1 (-25) onto the concave back, not short of it.
+    expect(d).toContain('M -35 -12.5 L -15.109 -12.5')
+    expect(d).toContain('M -35 12.5 L -15.109 12.5')
   })
 
   it('xor/xnor add the exclusive arc', () => {
     const d = xorGate().toSVGPath()
-    expect(d).toContain('M -33 -25 A 31.25 31.25 0 0 1 -33 25')
+    expect(d).toContain(
+      'M -33 -25 A 31.25 31.25 0 0 1 -33 25 A 31.25 31.25 0 0 0 -33 -25'
+    )
   })
 
   it('not/buffer draw a triangle', () => {
@@ -114,6 +120,87 @@ describe('gate geometry', () => {
   })
 })
 
+/**
+ * Structural invariants, checked by sampling the emitted path data —
+ * the properties that make a gate LOOK like one gate rather than
+ * disconnected strokes. These hold for every kind and variant, so they
+ * catch geometry regressions the pinned path strings above cannot.
+ */
+describe('gate geometry invariants', () => {
+  type Pt = { x: number; y: number }
+
+  /** Subpaths of a `d` string — one per `M`. */
+  function subpaths(d: string): string[] {
+    return d.split(/(?=M )/).map((s) => s.trim()).filter(Boolean)
+  }
+
+  /** Evenly spaced points along a subpath (pointAt is by arc length). */
+  function samples(d: string, n = 400): Pt[] {
+    const p = pathFromSVG(d)
+    return Array.from({ length: n + 1 }, (_, i) => p.pointAt(i / n))
+  }
+
+  function distanceTo(pt: Pt, pts: Pt[]): number {
+    return Math.min(...pts.map((q) => Math.hypot(q.x - pt.x, q.y - pt.y)))
+  }
+
+  /** toSVGPath emits leads first, then the body, then output/bubble. */
+  function bodyOf(g: LogicGate): string {
+    return subpaths(g.toSVGPath())[g.inputs]!
+  }
+
+  const variants = ['ansi', 'iec'] as const
+
+  for (const variant of variants) {
+    for (const kind of GATE_SHAPES) {
+      describe(`${kind} (${variant})`, () => {
+        const g = gate(kind, { variant })
+        // Box: 70×50 centered on the origin; body spans x1…x2.
+        const x1 = -25
+        const x2 = 25
+
+        it('every input lead ends on the body outline', () => {
+          const body = samples(bodyOf(g))
+          const leads = subpaths(g.toSVGPath()).slice(0, g.inputs)
+          for (const lead of leads) {
+            const end = pathFromSVG(lead).endPoint!
+            expect(distanceTo(end, body)).toBeLessThan(0.5)
+          }
+        })
+
+        it('the body spans x1…x2, so the output lead/bubble meets it', () => {
+          const [minX, , maxX] = pathFromSVG(bodyOf(g)).bounds
+          expect(maxX).toBeCloseTo(x2, 6)
+          expect(minX).toBeCloseTo(x1, 6)
+        })
+
+        it('the body stays inside the node box', () => {
+          const [, minY, , maxY] = pathFromSVG(bodyOf(g)).bounds
+          expect(minY).toBeCloseTo(-25, 6)
+          expect(maxY).toBeCloseTo(25, 6)
+        })
+      })
+    }
+  }
+
+  it('holds for gates taller than they are wide', () => {
+    // halfH (60) exceeds the body width (50): the nose has to flatten
+    // into a half-ellipse, or it starts left of x1 and doubles back.
+    const tall = gate('and', { width: 70, height: 120 })
+    const [minX, , maxX] = pathFromSVG(bodyOf(tall)).bounds
+    expect(maxX).toBeCloseTo(25, 6)
+    expect(minX).toBeCloseTo(-25, 6)
+  })
+
+  it('the exclusive arc encloses no area, so a filled xor stays clean', () => {
+    // Traced out and back: same start and end, zero net winding.
+    const extra = subpaths(xorGate().toSVGPath())[3]!
+    const p = pathFromSVG(extra)
+    expect(p.startPoint!.x).toBeCloseTo(p.endPoint!.x, 6)
+    expect(p.startPoint!.y).toBeCloseTo(p.endPoint!.y, 6)
+  })
+})
+
 describe('gates through the picture', () => {
   it('renders gates and wires ports by name', () => {
     const pic = picture()
@@ -123,7 +210,7 @@ describe('gates through the picture', () => {
     const svg = pic.toSVG({ width: 220, height: 80 })
 
     expect(svg).toContain('<path') // gate bodies + edge
-    expect(svg).toContain('A 25 25 0 0 1') // AND D-shape arc
+    expect(svg).toContain('A 25 25 0 0 0') // AND D-shape arc
     expect(svg).toContain('A 5 5 0 1 0') // bubble present
   })
 
