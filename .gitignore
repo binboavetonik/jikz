@@ -8,4 +8,7 @@ implementation-plans/
 docs/api/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
+.vitepress/cache/
+vite.config.ts.timestamp-*
+scratch-*.ts
 etc/
