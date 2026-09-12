@@ -149,7 +149,7 @@ declare module '../../node/Node' {
 }
 
 // Compile-time guard: the augmentation above must cover CIRCUIT_SHAPES.
-assertType<(typeof CIRCUIT_SHAPES)[number] extends ShapeType ? true : never>()
+assertType<(typeof CIRCUIT_SHAPES)[number] extends ShapeType ? true : false>()
 
 let registered = false
 

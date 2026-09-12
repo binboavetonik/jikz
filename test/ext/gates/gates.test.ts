@@ -8,10 +8,17 @@ import {
   registerGates,
   gatesRegistered,
   GATE_SHAPES,
+  GATE_PORTS,
+  UNARY_GATE_PORTS,
+  BINARY_GATE_PORTS,
   LogicGate,
+  UnaryGate,
+  BinaryGate,
+  isUnaryGate,
   gate,
   andGate,
   notGate,
+  bufferGate,
   xorGate,
   gates,
 } from '../../../src/ext/gates'
@@ -82,6 +89,71 @@ describe('gate symbol', () => {
     const g = andGate()
     expect(() => g.anchor('in')).toThrow(AnchorError)
     expect(() => g.anchor('outt')).toThrow(AnchorError)
+  })
+})
+
+/**
+ * Arity split: a gate's CLASS carries exactly the ports it has, so
+ * `andGate().in` is a compile error rather than an AnchorError at
+ * render time. The compile half is pinned by assertType guards in
+ * ext/gates/index.ts (tests are outside tsconfig's include); this is
+ * the runtime half — the classes, the port tables, and the constants
+ * that mirror them.
+ */
+describe('gate arity', () => {
+  it('factories return the class matching the gate arity', () => {
+    expect(andGate()).toBeInstanceOf(BinaryGate)
+    expect(xorGate()).toBeInstanceOf(BinaryGate)
+    expect(notGate()).toBeInstanceOf(UnaryGate)
+    expect(bufferGate()).toBeInstanceOf(UnaryGate)
+    expect(gate('nor')).toBeInstanceOf(BinaryGate)
+    expect(gate('not')).toBeInstanceOf(UnaryGate)
+    // Both are LogicGates — the shared geometry half.
+    expect(andGate()).toBeInstanceOf(LogicGate)
+    expect(notGate()).toBeInstanceOf(LogicGate)
+  })
+
+  it('builds the right class through the shape registry', () => {
+    expect(createShape('or', { center: point(0, 0) })).toBeInstanceOf(BinaryGate)
+    expect(createShape('not', { center: point(0, 0) })).toBeInstanceOf(UnaryGate)
+    expect(new Node({ shape: 'buffer', at: point(0, 0) }).shape).toBeInstanceOf(
+      UnaryGate
+    )
+  })
+
+  it('moveTo/resize preserve the subclass', () => {
+    expect(andGate().moveTo(point(10, 10))).toBeInstanceOf(BinaryGate)
+    expect(andGate().resize(90, 60)).toBeInstanceOf(BinaryGate)
+    expect(notGate().moveTo(point(10, 10))).toBeInstanceOf(UnaryGate)
+    expect(notGate().resize(90, 60)).toBeInstanceOf(UnaryGate)
+  })
+
+  it('reports its input count', () => {
+    expect(andGate().inputs).toBe(2)
+    expect(notGate().inputs).toBe(1)
+  })
+
+  it('isUnaryGate matches the classes it picks', () => {
+    for (const kind of GATE_SHAPES) {
+      const g = gate(kind)
+      expect(isUnaryGate(kind)).toBe(g instanceof UnaryGate)
+    }
+  })
+
+  it('port constants mirror the runtime port tables', () => {
+    expect([...notGate().portNames].sort()).toEqual([...UNARY_GATE_PORTS].sort())
+    expect([...andGate().portNames].sort()).toEqual(
+      [...BINARY_GATE_PORTS].sort()
+    )
+    expect([...GATE_PORTS].sort()).toEqual(
+      [...new Set([...UNARY_GATE_PORTS, ...BINARY_GATE_PORTS])].sort()
+    )
+  })
+
+  it("a gate answers only its own arity's input ports", () => {
+    expect(() => andGate().anchor('in')).toThrow(AnchorError)
+    expect(() => notGate().anchor('in1')).toThrow(AnchorError)
+    expect(() => notGate().anchor('in2')).toThrow(AnchorError)
   })
 })
 

@@ -180,6 +180,11 @@ export type ShapeOptionsFor<S> = S extends keyof ShapeRegistry
  * Compile-time assertion: `assertType<true>()` compiles only when the
  * type argument resolves to `true`. Pins type-level invariants that
  * runtime tests cannot see. (Not re-exported from the package root.)
+ *
+ * Write the failing branch as `false`, NEVER as `never`: `never` is
+ * assignable to every type, so `X extends Y ? true : never` satisfies
+ * the constraint however the condition resolves — a guard that pins
+ * nothing. `? true : false` is the form that fails.
  */
 export function assertType<T extends true>(_phantom?: T): void {
   /* compile-time only */
@@ -188,8 +193,8 @@ export function assertType<T extends true>(_phantom?: T): void {
 // Compile-time guards: BuiltinShapes must mirror SHAPE_TYPES exactly.
 // (Asserted against BuiltinShapes, not ShapeRegistry — extensions
 // legitimately widen ShapeRegistry by declaration merging.)
-assertType<(typeof SHAPE_TYPES)[number] extends keyof BuiltinShapes ? true : never>()
-assertType<keyof BuiltinShapes extends (typeof SHAPE_TYPES)[number] ? true : never>()
+assertType<(typeof SHAPE_TYPES)[number] extends keyof BuiltinShapes ? true : false>()
+assertType<keyof BuiltinShapes extends (typeof SHAPE_TYPES)[number] ? true : false>()
 import { createShape, shapeTextAutoSize } from '../geometry/registry'
 import type { StarOptions } from '../geometry/complex/Star'
 import type { RegularPolygonOptions } from '../geometry/complex/RegularPolygon'

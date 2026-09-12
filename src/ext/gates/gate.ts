@@ -34,6 +34,19 @@ export type GateKind =
   | 'not'
   | 'buffer'
 
+/** Gate kinds with a single input. */
+export type UnaryGateKind = 'not' | 'buffer'
+
+/** Gate kinds with two inputs. */
+export type BinaryGateKind = Exclude<GateKind, UnaryGateKind>
+
+const UNARY_KINDS: ReadonlySet<GateKind> = new Set<GateKind>(['not', 'buffer'])
+
+/** Whether `type` is a one-input gate — narrows to {@link UnaryGateKind}. */
+export function isUnaryGate(type: GateKind): type is UnaryGateKind {
+  return UNARY_KINDS.has(type)
+}
+
 /** Drawing style: ANSI distinctive shapes, or IEC rectangle. */
 export type GateVariant = 'ansi' | 'iec'
 
@@ -102,12 +115,19 @@ interface GateGeometry {
  * A logic gate symbol. Drawn horizontally (inputs west, output east);
  * rotate with `node({ rotate })`. Ports are answered first from the
  * port table, then delegate to the box via {@link CircuitSymbol.anchor}.
+ *
+ * The shared half: the body drawing and the `out` port every gate has.
+ * Input ports differ by arity, so they live on the concrete subclasses —
+ * {@link UnaryGate} (`in`) and {@link BinaryGate} (`in1`/`in2`) — which
+ * is what makes a missing port a COMPILE error rather than a throw.
+ * Build gates with {@link gate} or the per-kind factories, which hand
+ * back the right subclass for the kind.
  */
-export class LogicGate extends CircuitSymbol {
+export abstract class LogicGate extends CircuitSymbol {
   readonly type: GateKind
   readonly variant: GateVariant
   /** Number of input ports — 1 for `not`/`buffer`, else 2. */
-  readonly inputs: number
+  abstract readonly inputs: 1 | 2
 
   constructor(
     center: PointLike,
@@ -119,10 +139,9 @@ export class LogicGate extends CircuitSymbol {
     super(center, width, height)
     this.type = type
     this.variant = variant
-    this.inputs = type === 'not' || type === 'buffer' ? 1 : 2
   }
 
-  private geometry(): GateGeometry {
+  protected geometry(): GateGeometry {
     const cx = this.center.x
     const cy = this.center.y
     const halfW = this.width / 2
@@ -140,36 +159,9 @@ export class LogicGate extends CircuitSymbol {
     }
   }
 
-  protected portTable(): Record<string, Point> {
-    const { cy, westX, eastX, inputY } = this.geometry()
-    const ports: Record<string, Point> = { out: point(eastX, cy) }
-    if (this.inputs === 1) {
-      ports.in = point(westX, inputY[0]!)
-    } else {
-      ports.in1 = point(westX, inputY[0]!)
-      ports.in2 = point(westX, inputY[1]!)
-    }
-    return ports
-  }
-
-  /** Output lead tip (east box edge). */
+  /** The output lead tip (east box edge) — every gate has one. */
   get out(): Point {
     return this.anchor('out')
-  }
-
-  /** Input lead tip (west box edge) — `not`/`buffer` only. */
-  get in(): Point {
-    return this.anchor('in')
-  }
-
-  /** First input lead tip (two-input gates only). */
-  get in1(): Point {
-    return this.anchor('in1')
-  }
-
-  /** Second input lead tip (two-input gates only). */
-  get in2(): Point {
-    return this.anchor('in2')
   }
 
   toSVGPath(): string {
@@ -253,70 +245,161 @@ export class LogicGate extends CircuitSymbol {
     }
   }
 
+  protected abstract recreate(
+    center: PointLike,
+    width: number,
+    height: number
+  ): LogicGate
+}
+
+/**
+ * A one-input gate (`not`, `buffer`): ports `in` and `out`.
+ */
+export class UnaryGate extends LogicGate {
+  declare readonly type: UnaryGateKind
+  readonly inputs = 1 as const
+
+  constructor(
+    center: PointLike,
+    width: number,
+    height: number,
+    type: UnaryGateKind,
+    variant: GateVariant = 'ansi'
+  ) {
+    super(center, width, height, type, variant)
+  }
+
+  protected portTable(): Record<string, Point> {
+    const { cy, westX, eastX, inputY } = this.geometry()
+    return { in: point(westX, inputY[0]!), out: point(eastX, cy) }
+  }
+
+  /** Input lead tip (west box edge) — typed form of `anchor('in')`. */
+  get in(): Point {
+    return this.anchor('in')
+  }
+
   protected recreate(
     center: PointLike,
     width: number,
     height: number
-  ): LogicGate {
-    return new LogicGate(center, width, height, this.type, this.variant)
+  ): UnaryGate {
+    return new UnaryGate(center, width, height, this.type, this.variant)
+  }
+}
+
+/**
+ * A two-input gate (`and`, `nand`, `or`, `nor`, `xor`, `xnor`): ports
+ * `in1`, `in2` and `out`.
+ */
+export class BinaryGate extends LogicGate {
+  declare readonly type: BinaryGateKind
+  readonly inputs = 2 as const
+
+  constructor(
+    center: PointLike,
+    width: number,
+    height: number,
+    type: BinaryGateKind,
+    variant: GateVariant = 'ansi'
+  ) {
+    super(center, width, height, type, variant)
+  }
+
+  protected portTable(): Record<string, Point> {
+    const { cy, westX, eastX, inputY } = this.geometry()
+    return {
+      in1: point(westX, inputY[0]!),
+      in2: point(westX, inputY[1]!),
+      out: point(eastX, cy),
+    }
+  }
+
+  /** First input lead tip — typed form of `anchor('in1')`. */
+  get in1(): Point {
+    return this.anchor('in1')
+  }
+
+  /** Second input lead tip — typed form of `anchor('in2')`. */
+  get in2(): Point {
+    return this.anchor('in2')
+  }
+
+  protected recreate(
+    center: PointLike,
+    width: number,
+    height: number
+  ): BinaryGate {
+    return new BinaryGate(center, width, height, this.type, this.variant)
   }
 }
 
 /**
  * Create a logic gate. Honors {@link symbolSize} (intrinsic 70×50
  * default; width/height override when larger than the minimums).
+ *
+ * The kind picks the class: `not`/`buffer` give a {@link UnaryGate}
+ * (port `in`), the rest a {@link BinaryGate} (ports `in1`/`in2`), so
+ * the ports a gate actually has are the ports its type exposes.
  */
+export function gate(
+  type: UnaryGateKind,
+  options?: LogicGateOptions
+): UnaryGate
+export function gate(
+  type: BinaryGateKind,
+  options?: LogicGateOptions
+): BinaryGate
+export function gate(type: GateKind, options?: LogicGateOptions): LogicGate
 export function gate(type: GateKind, options: LogicGateOptions = {}): LogicGate {
   const { width, height } = symbolSize(
     options,
     GATE_DEFAULT_WIDTH,
     GATE_DEFAULT_HEIGHT
   )
-  return new LogicGate(
-    options.center ?? point(0, 0),
-    width,
-    height,
-    type,
-    options.variant ?? 'ansi'
-  )
+  const center = options.center ?? point(0, 0)
+  const variant = options.variant ?? 'ansi'
+  return isUnaryGate(type)
+    ? new UnaryGate(center, width, height, type, variant)
+    : new BinaryGate(center, width, height, type, variant)
 }
 
 /** AND gate. */
-export function andGate(options: LogicGateOptions = {}): LogicGate {
+export function andGate(options: LogicGateOptions = {}): BinaryGate {
   return gate('and', options)
 }
 
 /** NAND gate. */
-export function nandGate(options: LogicGateOptions = {}): LogicGate {
+export function nandGate(options: LogicGateOptions = {}): BinaryGate {
   return gate('nand', options)
 }
 
 /** OR gate. */
-export function orGate(options: LogicGateOptions = {}): LogicGate {
+export function orGate(options: LogicGateOptions = {}): BinaryGate {
   return gate('or', options)
 }
 
 /** NOR gate. */
-export function norGate(options: LogicGateOptions = {}): LogicGate {
+export function norGate(options: LogicGateOptions = {}): BinaryGate {
   return gate('nor', options)
 }
 
 /** XOR gate. */
-export function xorGate(options: LogicGateOptions = {}): LogicGate {
+export function xorGate(options: LogicGateOptions = {}): BinaryGate {
   return gate('xor', options)
 }
 
 /** XNOR gate. */
-export function xnorGate(options: LogicGateOptions = {}): LogicGate {
+export function xnorGate(options: LogicGateOptions = {}): BinaryGate {
   return gate('xnor', options)
 }
 
 /** NOT gate (inverter). */
-export function notGate(options: LogicGateOptions = {}): LogicGate {
+export function notGate(options: LogicGateOptions = {}): UnaryGate {
   return gate('not', options)
 }
 
 /** Buffer gate. */
-export function bufferGate(options: LogicGateOptions = {}): LogicGate {
+export function bufferGate(options: LogicGateOptions = {}): UnaryGate {
   return gate('buffer', options)
 }

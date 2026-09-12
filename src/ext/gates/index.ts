@@ -19,15 +19,26 @@
  * ```
  *
  * Ports: `in1`/`in2`/`out` (two-input gates), `in`/`out` (`not`/
- * `buffer`). Negated gates draw a bubble; `variant: 'iec'` draws the
- * rectangular IEC body (pass `text` for the `&`/`≥1`/`=1`/`1` symbol).
+ * `buffer`) — and the factories hand back the matching class, so a
+ * gate's type exposes exactly the ports it has. Negated gates draw a
+ * bubble; `variant: 'iec'` draws the rectangular IEC body (pass `text`
+ * for the `&`/`≥1`/`=1`/`1` symbol).
  */
+import type { Point } from '../../core/Point'
 import { registerShape } from '../../geometry/registry'
 import { assertType, type ShapeType } from '../../node/Node'
-import { gate, type LogicGateOptions } from './gate'
+import {
+  gate,
+  type BinaryGate,
+  type LogicGateOptions,
+  type UnaryGate,
+} from './gate'
 
 export {
   LogicGate,
+  UnaryGate,
+  BinaryGate,
+  isUnaryGate,
   gate,
   andGate,
   nandGate,
@@ -40,7 +51,13 @@ export {
   GATE_DEFAULT_WIDTH,
   GATE_DEFAULT_HEIGHT,
 } from './gate'
-export type { GateKind, GateVariant, LogicGateOptions } from './gate'
+export type {
+  GateKind,
+  UnaryGateKind,
+  BinaryGateKind,
+  GateVariant,
+  LogicGateOptions,
+} from './gate'
 export { gates } from './builders'
 export type { GateBuilder } from './builders'
 
@@ -59,8 +76,25 @@ export const GATE_SHAPES = [
 /** Gate shape names registered by {@link registerGates}. */
 export type GateShapeName = (typeof GATE_SHAPES)[number]
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Port-name vocabulary — compile-time constants mirroring the runtime
+// port tables (pinned equal by tests), split the way the classes are.
+// Annotate your own constants with these unions so typo'd ports are
+// compile errors:
+//   const p: BinaryGatePort = 'in1'
+//   pic.edge(`A.${p}`, 'N.in')
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Port names of one-input gates (`not`, `buffer`). */
+export const UNARY_GATE_PORTS = ['in', 'out'] as const
+export type UnaryGatePort = (typeof UNARY_GATE_PORTS)[number]
+
 /** Port names of two-input gates. */
-export const GATE_PORTS = ['in1', 'in2', 'out'] as const
+export const BINARY_GATE_PORTS = ['in1', 'in2', 'out'] as const
+export type BinaryGatePort = (typeof BINARY_GATE_PORTS)[number]
+
+/** Every gate port name, either arity. */
+export const GATE_PORTS = ['in', 'in1', 'in2', 'out'] as const
 export type GatePort = (typeof GATE_PORTS)[number]
 
 /**
@@ -83,7 +117,15 @@ declare module '../../node/Node' {
 }
 
 // Compile-time guard: the augmentation above must cover GATE_SHAPES.
-assertType<(typeof GATE_SHAPES)[number] extends ShapeType ? true : never>()
+assertType<(typeof GATE_SHAPES)[number] extends ShapeType ? true : false>()
+
+// Compile-time guards: a gate's TYPE exposes exactly the ports it has,
+// so reaching for the wrong arity's port is an error at the call site
+// rather than an AnchorError at render time.
+assertType<UnaryGate extends { in: Point } ? true : false>()
+assertType<UnaryGate extends { in1: Point } ? false : true>()
+assertType<BinaryGate extends { in1: Point; in2: Point } ? true : false>()
+assertType<BinaryGate extends { in: Point } ? false : true>()
 
 let registered = false
 

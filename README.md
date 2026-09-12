@@ -355,8 +355,13 @@ Gates: `and`, `nand`, `or`, `nor`, `xor`, `xnor`, `not`, `buffer` —
 ANSI distinctive shapes (`variant: 'iec'` draws the rectangular body;
 pass `text` for the `&`/`≥1`/`=1`/`1` symbol). Two-input gates expose
 `in1`/`in2`/`out` ports; `not`/`buffer` expose `in`/`out`. Negated gates
-draw a bubble; rotate with `node({ rotate })`. Shape instances expose
-typed port accessors (`x.out`) for the code-first route.
+draw a bubble; rotate with `node({ rotate })`.
+
+Shape instances expose typed port accessors for the code-first route,
+and the arity is in the type: `gate()` and the per-kind factories hand
+back a `BinaryGate` (`in1`/`in2`/`out`) or a `UnaryGate` (`in`/`out`),
+so `andGate().in` is a compile error rather than an `AnchorError` at
+render time.
 
 ## Demo
 
