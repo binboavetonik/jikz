@@ -62,6 +62,17 @@ for (const [key, title, blurb] of CATEGORY_ORDER) {
   if (group.length === 0) continue
   lines.push(`## ${title}`, '', blurb, '')
   for (const demo of group) {
+    // VitePress compiles markdown to a Vue SFC, so a raw `<tag>` outside a
+    // code span becomes an unclosed element and breaks `docs:build`.
+    // Catch it here, where the offending description is named.
+    const outsideCode = demo.description.replace(/`[^`]*`/g, '')
+    const rawTag = outsideCode.match(/<[a-zA-Z][^>\s]*/)
+    if (rawTag) {
+      throw new Error(
+        `examples/manifest.ts: description of "" contains a raw > — ` +
+          'wrap HTML/SVG element names in backticks so VitePress does not parse them as Vue elements',
+      )
+    }
     lines.push(
       `### ${demo.title}`,
       '',

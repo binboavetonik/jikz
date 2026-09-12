@@ -1,5 +1,11 @@
 import { defineConfig } from 'vitepress'
 
+// The demo page is a Vite dev-server app (`npm run dev` serves it on
+// :5173 next to this site on :5174) and is not deployed with the docs,
+// so the cross-link only belongs in the dev nav.
+const isDev = process.env.NODE_ENV !== 'production'
+const liveDemos = isDev ? [{ text: '▶ Live demos', link: 'http://localhost:5173/demo/index.html' }] : []
+
 export default defineConfig({
   title: 'jikz',
   description: 'TikZ-inspired coordinate and drawing library for JavaScript/TypeScript',
@@ -16,7 +22,7 @@ export default defineConfig({
       { text: 'Tutorials', link: '/tutorials/01-first-picture' },
       { text: 'Reference', link: '/reference/picture' },
       { text: 'Cookbook', link: '/cookbook/' },
-      { text: '▶ Live demos', link: 'http://localhost:5173/demo/index.html' },
+      ...liveDemos,
     ],
     sidebar: [
       {

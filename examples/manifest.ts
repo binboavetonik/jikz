@@ -263,7 +263,7 @@ const meta: DemoMeta[] = [
     id: "animation",
     category: "paths-decorations",
     title: "SMIL animation",
-    description: "Declarative `animate` on any render call emits <animate>/<animateTransform> children — a radar pulse that survives even toSVG() serialization.",
+    description: "Declarative `animate` on any render call emits `<animate>`/`<animateTransform>` children — a radar pulse that survives even toSVG() serialization.",
   },
   {
     id: "large-tree-collapse",
@@ -299,7 +299,7 @@ const meta: DemoMeta[] = [
     id: "scope-groups",
     category: "diagram-layout",
     title: "Scopes — group transform, style cascade, opacity",
-    description: "One sub-assembly authored around its own origin and instantiated three times: each scope() shifts the whole group and cascades a stroke color onto every node, edge and shape inside it, while each item can still override a single key. Geometry inside a scope stays in the scope's own coordinates \u2014 the transform rides on a <g>, so strokes and arrow tips scale with it. Node names stay global to the picture, so the connecting edges are declared at picture level and resolve across scope boundaries. The strip at the bottom shows group opacity compositing a scope as one unit rather than per item.",
+    description: "One sub-assembly authored around its own origin and instantiated three times: each scope() shifts the whole group and cascades a stroke color onto every node, edge and shape inside it, while each item can still override a single key. Geometry inside a scope stays in the scope's own coordinates \u2014 the transform rides on a `<g>`, so strokes and arrow tips scale with it. Node names stay global to the picture, so the connecting edges are declared at picture level and resolve across scope boundaries. The strip at the bottom shows group opacity compositing a scope as one unit rather than per item.",
   },
   {
     id: "layout-layered",

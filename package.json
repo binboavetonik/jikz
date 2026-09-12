@@ -63,6 +63,9 @@
   "homepage": "https://bitbucket.org/binboavetonik/jikz",
   "bugs": "https://bitbucket.org/binboavetonik/jikz/issues",
   "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
   "publishConfig": {
     "access": "public"
   }
