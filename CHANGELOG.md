@@ -15,11 +15,17 @@
 - **`ext/gates` — logic gates.** The opt-in `registerGates()` package is
   jikz's `shapes.gates.logic`: `and`/`nand`/`or`/`nor`/`xor`/`xnor`/
   `not`/`buffer` with ANSI distinctive shapes (D-shape, concave-OR,
-  triangle) and IEC rectangular bodies (`variant: 'iec'`). Two-input
-  gates expose `in1`/`in2`/`out` ports, `not`/`buffer` expose `in`/`out`;
-  negated gates draw a bubble; shape instances add typed port accessors
-  (`x.out`), and `gates.*` builders mirror `circuit.*`. Built entirely on
-  the `registerShape`/port seams shared with ext/circuits.
+  triangle) and IEC rectangular bodies (`variant: 'iec'`); negated gates
+  draw a bubble, and `gates.*` builders mirror `circuit.*`. A gate's
+  arity is part of its type: `gate(kind)` and the per-kind factories
+  return a `BinaryGate` (ports `in1`/`in2`/`out`) or a `UnaryGate`
+  (`in`/`out`), both extending the abstract `LogicGate` that carries the
+  drawing and the `out` port every gate has — so `andGate().in` is a
+  compile error rather than an `AnchorError` at render time.
+  `UNARY_GATE_PORTS`, `BINARY_GATE_PORTS` and `GATE_PORTS` (the union)
+  are the matching compile-time vocabularies, pinned against the runtime
+  port tables. Built entirely on the `registerShape`/port seams shared
+  with ext/circuits.
 - **SVG path import.** `pathFromSVG('M … C … Z')` parses any SVG `d`
   string — absolute/relative, `H`/`V`/`S`/`T` shorthand, implicit
   `M`→`L`, arcs with packed flags, sign-separated/exponent numbers —
