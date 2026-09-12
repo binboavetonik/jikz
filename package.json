@@ -4,13 +4,13 @@
   "description": "TikZ-inspired coordinate and drawing library for JavaScript/TypeScript",
   "type": "module",
   "main": "./dist/jikz.umd.cjs",
-  "module": "./dist/jikz.js",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": {
         "types": "./dist/index.d.ts",
-        "default": "./dist/jikz.js"
+        "default": "./dist/index.js"
       },
       "require": {
         "types": "./dist/index.d.cts",
@@ -21,6 +21,7 @@
   "files": [
     "dist"
   ],
+  "sideEffects": false,
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "dev:demo": "vite",
@@ -45,6 +46,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
+    "esbuild": "^0.28.2",
     "jsdom": "^30.0.1",
     "katex": "^0.16.11",
     "publint": "^0.3.24",

@@ -26,7 +26,27 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
       name: 'Jikz',
-      fileName: 'jikz',
+    },
+    rollupOptions: {
+      output: [
+        // ES build keeps one file per source module. Together with
+        // `"sideEffects": false` in package.json this is what lets a
+        // consumer's bundler drop everything they don't import — a
+        // single-file bundle would keep every top-level statement it
+        // cannot prove pure (presets, lookup tables, class statics).
+        {
+          format: 'es',
+          preserveModules: true,
+          preserveModulesRoot: 'src',
+          entryFileNames: '[name].js',
+        },
+        // UMD stays a single file for <script> consumers and require().
+        {
+          format: 'umd',
+          name: 'Jikz',
+          entryFileNames: 'jikz.umd.cjs',
+        },
+      ],
     },
   },
 })

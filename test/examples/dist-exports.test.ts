@@ -2,7 +2,7 @@
  * Stale-dist guard.
  *
  * Examples import from 'jikz', which dev/test aliases to src/ — the
- * LIVE source. A published user gets dist/jikz.js instead. If dist
+ * LIVE source. A published user gets dist/index.js instead. If dist
  * predates a public API an example uses, that example breaks for end
  * users with `SyntaxError: does not provide an export named '…'`.
  *
@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..')
 const EXAMPLES_DIR = join(ROOT, 'examples')
-const DIST_BUNDLE = join(ROOT, 'dist/jikz.js')
+const DIST_BUNDLE = join(ROOT, 'dist/index.js')
 
 /** Named exports of the built ES bundle (handles `x as y` aliases). */
 function bundleExports(bundleSource: string): Set<string> {
@@ -62,7 +62,7 @@ describe('built bundle satisfies every example import', () => {
   })
 
   it.skipIf(!existsSync(DIST_BUNDLE))(
-    'dist/jikz.js exports every jikz name used by any example',
+    'dist/index.js exports every jikz name used by any example',
     () => {
       const exports = bundleExports(readFileSync(DIST_BUNDLE, 'utf8'))
       const missing: string[] = []
@@ -74,7 +74,7 @@ describe('built bundle satisfies every example import', () => {
       }
       expect(
         missing,
-        `dist/jikz.js is stale — these example imports are missing from the bundle. Run \`npm run build\`.\n  ${missing.join('\n  ')}`
+        `dist/index.js is stale — these example imports are missing from the bundle. Run \`npm run build\`.\n  ${missing.join('\n  ')}`
       ).toEqual([])
     }
   )

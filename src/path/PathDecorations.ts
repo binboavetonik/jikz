@@ -486,6 +486,7 @@ const decorationRegistry = new Map<string, DecorationFn>()
  * ```
  */
 export function registerDecoration(name: string, fn: DecorationFn): void {
+  ensureBuiltins()
   decorationRegistry.set(name, fn)
 }
 
@@ -493,6 +494,7 @@ export function registerDecoration(name: string, fn: DecorationFn): void {
  * Whether a decoration is registered under `name`.
  */
 export function hasDecoration(name: string): boolean {
+  ensureBuiltins()
   return decorationRegistry.has(name)
 }
 
@@ -500,17 +502,36 @@ export function hasDecoration(name: string): boolean {
  * All registered decoration names (built-ins plus user registrations).
  */
 export function registeredDecorations(): readonly string[] {
+  ensureBuiltins()
   return Array.from(decorationRegistry.keys())
 }
 
-// Built-in decorations
-registerDecoration('snake', (p, o) => snakePath(p, o))
-registerDecoration('zigzag', (p, o) => zigzagPath(p, o))
-registerDecoration('coil', (p, o) => coilPath(p, o as CoilOptions))
-registerDecoration('bumps', (p, o) => bumpsPath(p, o as BumpsOptions))
-registerDecoration('saw', (p, o) => sawPath(p, o))
-registerDecoration('random', (p, o) => randomPath(p, o as RandomOptions))
-registerDecoration('brace', (p, o) => braceDecorationPath(p, o as BraceOptions))
+// Built-in decorations — registered on first use.
+let builtinsRegistered = false
+
+/**
+ * Register the built-ins on first use. Every public function of this
+ * registry calls this first, so built-ins are always present and always
+ * registered BEFORE anything the caller adds — a user registration under
+ * a built-in name still wins, exactly as when built-ins registered at
+ * import time.
+ *
+ * Deferring to first use is what makes the package tree-shakeable
+ * (`"sideEffects": false`): loading this module no longer mutates any
+ * table, so a bundle that never resolves a name by string can drop the
+ * shapes/artwork this function references.
+ */
+function ensureBuiltins(): void {
+  if (builtinsRegistered) return
+  builtinsRegistered = true
+  registerDecoration('snake', (p, o) => snakePath(p, o))
+  registerDecoration('zigzag', (p, o) => zigzagPath(p, o))
+  registerDecoration('coil', (p, o) => coilPath(p, o as CoilOptions))
+  registerDecoration('bumps', (p, o) => bumpsPath(p, o as BumpsOptions))
+  registerDecoration('saw', (p, o) => sawPath(p, o))
+  registerDecoration('random', (p, o) => randomPath(p, o as RandomOptions))
+  registerDecoration('brace', (p, o) => braceDecorationPath(p, o as BraceOptions))
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Convenience: Decorate any path
@@ -543,6 +564,7 @@ export function decoratePath(
   type: PathDecorationType,
   options: DecorationOptions & CoilOptions & BumpsOptions & BraceOptions & Record<string, unknown> = {}
 ): Path {
+  ensureBuiltins()
   const fn = decorationRegistry.get(type)
   if (!fn) {
     const known = registeredDecorations().map((n) => `"${n}"`).join(', ')

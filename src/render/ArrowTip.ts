@@ -51,6 +51,7 @@ const registry = new Map<string, ArrowTipDefinition>()
  * earlier ones under the same name.
  */
 export function registerArrowTip(name: string, def: ArrowTipDefinition): void {
+  ensureBuiltins()
   registry.set(name, def)
 }
 
@@ -58,6 +59,7 @@ export function registerArrowTip(name: string, def: ArrowTipDefinition): void {
  * Look up a registered arrow tip (undefined when absent).
  */
 export function getArrowTip(name: string): ArrowTipDefinition | undefined {
+  ensureBuiltins()
   return registry.get(name)
 }
 
@@ -65,6 +67,7 @@ export function getArrowTip(name: string): ArrowTipDefinition | undefined {
  * Whether an arrow tip is registered under `name`.
  */
 export function hasArrowTip(name: string): boolean {
+  ensureBuiltins()
   return registry.has(name)
 }
 
@@ -72,6 +75,7 @@ export function hasArrowTip(name: string): boolean {
  * All registered arrow tip names.
  */
 export function registeredArrowTips(): readonly string[] {
+  ensureBuiltins()
   return Array.from(registry.keys())
 }
 
@@ -96,75 +100,93 @@ export function resolveArrowTipKind(arrowType: string): string {
 // with default (strokeWidth-scaled) markerUnits.
 // ─────────────────────────────────────────────────────────────────────────────
 
-registerArrowTip('stealth', {
-  filled: true,
-  end: { d: 'M 0 0 L 10 5 L 0 10 L 3 5 z', refX: 9 },
-  start: { d: 'M 10 0 L 0 5 L 10 10 L 7 5 z', refX: 1 },
-})
+let builtinsRegistered = false
 
-registerArrowTip('latex', {
-  filled: false,
-  strokeWidth: 1.5,
-  end: { d: 'M 0 0 L 10 5 L 0 10', refX: 9 },
-  start: { d: 'M 10 0 L 0 5 L 10 10', refX: 1 },
-})
+/**
+ * Register the built-ins on first use. Every public function of this
+ * registry calls this first, so built-ins are always present and always
+ * registered BEFORE anything the caller adds — a user registration under
+ * a built-in name still wins, exactly as when built-ins registered at
+ * import time.
+ *
+ * Deferring to first use is what makes the package tree-shakeable
+ * (`"sideEffects": false`): loading this module no longer mutates any
+ * table, so a bundle that never resolves a name by string can drop the
+ * shapes/artwork this function references.
+ */
+function ensureBuiltins(): void {
+  if (builtinsRegistered) return
+  builtinsRegistered = true
+  registerArrowTip('stealth', {
+    filled: true,
+    end: { d: 'M 0 0 L 10 5 L 0 10 L 3 5 z', refX: 9 },
+    start: { d: 'M 10 0 L 0 5 L 10 10 L 7 5 z', refX: 1 },
+  })
 
-registerArrowTip('to', {
-  filled: true,
-  end: { d: 'M 0 0 L 10 5 L 0 10 z', refX: 9 },
-  start: { d: 'M 10 0 L 0 5 L 10 10 z', refX: 1 },
-})
+  registerArrowTip('latex', {
+    filled: false,
+    strokeWidth: 1.5,
+    end: { d: 'M 0 0 L 10 5 L 0 10', refX: 9 },
+    start: { d: 'M 10 0 L 0 5 L 10 10', refX: 1 },
+  })
 
-registerArrowTip('bar', {
-  filled: false,
-  strokeWidth: 2,
-  end: { d: 'M 5 0 L 5 10', refX: 5 },
-  start: { d: 'M 5 0 L 5 10', refX: 5 },
-})
+  registerArrowTip('to', {
+    filled: true,
+    end: { d: 'M 0 0 L 10 5 L 0 10 z', refX: 9 },
+    start: { d: 'M 10 0 L 0 5 L 10 10 z', refX: 1 },
+  })
 
-// Double bar — two parallel stops (TikZ `||`).
-registerArrowTip('doubleBar', {
-  filled: false,
-  strokeWidth: 2,
-  end: { d: 'M 4 0 L 4 10 M 6 0 L 6 10', refX: 5 },
-  start: { d: 'M 4 0 L 4 10 M 6 0 L 6 10', refX: 5 },
-})
+  registerArrowTip('bar', {
+    filled: false,
+    strokeWidth: 2,
+    end: { d: 'M 5 0 L 5 10', refX: 5 },
+    start: { d: 'M 5 0 L 5 10', refX: 5 },
+  })
 
-// Filled circle, centered on the path endpoint (TikZ `Circle` / `*`).
-// Two 180° arcs (same sweep) close into a full circle around (5, 5).
-const CIRCLE_D = 'M 7.5 5 A 2.5 2.5 0 0 0 2.5 5 A 2.5 2.5 0 0 0 7.5 5 Z'
+  // Double bar — two parallel stops (TikZ `||`).
+  registerArrowTip('doubleBar', {
+    filled: false,
+    strokeWidth: 2,
+    end: { d: 'M 4 0 L 4 10 M 6 0 L 6 10', refX: 5 },
+    start: { d: 'M 4 0 L 4 10 M 6 0 L 6 10', refX: 5 },
+  })
 
-registerArrowTip('circle', {
-  filled: true,
-  end: { d: CIRCLE_D, refX: 5 },
-  start: { d: CIRCLE_D, refX: 5 },
-})
+  // Filled circle, centered on the path endpoint (TikZ `Circle` / `*`).
+  // Two 180° arcs (same sweep) close into a full circle around (5, 5).
+  const CIRCLE_D = 'M 7.5 5 A 2.5 2.5 0 0 0 2.5 5 A 2.5 2.5 0 0 0 7.5 5 Z'
 
-// Hollow circle — the `o` open-dot tip (TikZ `Circle[open]`).
-registerArrowTip('openCircle', {
-  filled: false,
-  strokeWidth: 1.5,
-  end: { d: CIRCLE_D, refX: 5 },
-  start: { d: CIRCLE_D, refX: 5 },
-})
+  registerArrowTip('circle', {
+    filled: true,
+    end: { d: CIRCLE_D, refX: 5 },
+    start: { d: CIRCLE_D, refX: 5 },
+  })
 
-// Filled square, centered on the path endpoint (TikZ `Square`).
-registerArrowTip('square', {
-  filled: true,
-  end: { d: 'M 2.5 2.5 L 7.5 2.5 L 7.5 7.5 L 2.5 7.5 Z', refX: 5 },
-  start: { d: 'M 2.5 2.5 L 7.5 2.5 L 7.5 7.5 L 2.5 7.5 Z', refX: 5 },
-})
+  // Hollow circle — the `o` open-dot tip (TikZ `Circle[open]`).
+  registerArrowTip('openCircle', {
+    filled: false,
+    strokeWidth: 1.5,
+    end: { d: CIRCLE_D, refX: 5 },
+    start: { d: CIRCLE_D, refX: 5 },
+  })
 
-// Filled diamond with the long axis along the path (TikZ `Diamond`).
-registerArrowTip('diamond', {
-  filled: true,
-  end: { d: 'M 0 5 L 5 0 L 10 5 L 5 10 Z', refX: 9 },
-  start: { d: 'M 10 5 L 5 0 L 0 5 L 5 10 Z', refX: 1 },
-})
+  // Filled square, centered on the path endpoint (TikZ `Square`).
+  registerArrowTip('square', {
+    filled: true,
+    end: { d: 'M 2.5 2.5 L 7.5 2.5 L 7.5 7.5 L 2.5 7.5 Z', refX: 5 },
+    start: { d: 'M 2.5 2.5 L 7.5 2.5 L 7.5 7.5 L 2.5 7.5 Z', refX: 5 },
+  })
 
-// Filled round cap — a half-disc bulging forward (TikZ `Round Cap`).
-registerArrowTip('roundCap', {
-  filled: true,
-  end: { d: 'M 5 2.5 A 2.5 2.5 0 0 1 5 7.5 Z', refX: 5 },
-  start: { d: 'M 5 2.5 A 2.5 2.5 0 0 0 5 7.5 Z', refX: 5 },
-})
+  // Filled diamond with the long axis along the path (TikZ `Diamond`).
+  registerArrowTip('diamond', {
+    filled: true,
+    end: { d: 'M 0 5 L 5 0 L 10 5 L 5 10 Z', refX: 9 },
+    start: { d: 'M 10 5 L 5 0 L 0 5 L 5 10 Z', refX: 1 },
+  })
+
+  // Filled round cap — a half-disc bulging forward (TikZ `Round Cap`).
+  registerArrowTip('roundCap', {
+    filled: true,
+    end: { d: 'M 5 2.5 A 2.5 2.5 0 0 1 5 7.5 Z', refX: 5 },
+    start: { d: 'M 5 2.5 A 2.5 2.5 0 0 0 5 7.5 Z', refX: 5 },
+  })
+}

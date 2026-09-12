@@ -67,6 +67,25 @@
   stroke it and `*Filled` marks fill with it. TikZ spellings accepted:
   `*`, `+`, `x`/`X`, `o`.
 
+### Changed
+
+- **The package is now tree-shakeable.** `package.json` declares
+  `"sideEffects": false`, the ES build keeps one file per source module
+  (`dist/index.js` is the entry; `module` and `exports.import` point at
+  it) instead of a single 500 kB bundle, and the built-in shape, arrow
+  tip and decoration registries fill their tables on first use rather
+  than at import time. Nothing changes for callers: every registry
+  lookup registers the built-ins first, so `shape: 'star'` still just
+  works and a user `registerShape('star', …)` still wins over the
+  built-in. Measured through a consumer's bundler: `import { point }`
+  now costs 2 kB minified / 0.9 kB gzipped instead of 147 kB / 29 kB;
+  `{ circle, intersectLineCircle }` 6 kB / 2 kB; a `picture()` about
+  207 kB / 47 kB, which is its real floor because string shape lookup
+  needs every shape. `test/build/tree-shaking.test.ts` bundles those
+  imports with esbuild and fails if the geometry-only case grows past
+  40 kB; `test/render/LazyBuiltins.test.ts` pins the registration
+  order. The UMD build is unchanged.
+
 ### Fixed
 
 - **`layered()` no longer throws on cyclic input, and its network simplex

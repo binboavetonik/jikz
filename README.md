@@ -7,6 +7,8 @@ model, not on a scene graph.
 
 - **Zero runtime dependencies.** Rendering is string-first through jikz's
   own `SVGBuilder`; KaTeX is an *optional* peer for math labels.
+  Tree-shakeable: `import { point }` costs under 1 kB gzipped, a full
+  `picture()` about 47 kB.
 - **Runs anywhere.** `toSVG()` works in Node, workers, and SSR with no
   DOM; `mount()` attaches a live tree in the browser.
 - **TikZ semantics.** Named nodes with boundary-aware edges, compass
