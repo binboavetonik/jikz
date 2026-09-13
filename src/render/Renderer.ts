@@ -1,5 +1,7 @@
 import type { Point } from '../core/Point'
 import type { Path } from '../path/Path'
+import type { MarkedPath } from '../path/MarkedPath'
+import type { TextPath } from '../path/TextPath'
 import type { Line } from '../geometry/Line'
 import type { Circle } from '../geometry/Circle'
 import type { Arc } from '../geometry/Arc'
@@ -23,6 +25,8 @@ import type { LayerName } from './Layer'
 export type Renderable =
   | Point
   | Path
+  | MarkedPath
+  | TextPath
   | Line
   | Circle
   | Arc
@@ -359,6 +363,36 @@ export function isPath(obj: unknown): obj is Path {
     obj !== null &&
     'segments' in obj &&
     typeof (obj as Path).toSVGPath === 'function'
+  )
+}
+
+/**
+ * Type guard to check if an object is a MarkedPath (path + marks along it)
+ */
+export function isMarkedPath(obj: unknown): obj is MarkedPath {
+  const tag = tagOf(obj)
+  if (tag !== undefined) return tag === 'markedPath'
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'path' in obj &&
+    'marks' in obj &&
+    typeof (obj as MarkedPath).toSVGPath === 'function'
+  )
+}
+
+/**
+ * Type guard to check if an object is a TextPath (text riding a path)
+ */
+export function isTextPath(obj: unknown): obj is TextPath {
+  const tag = tagOf(obj)
+  if (tag !== undefined) return tag === 'textPath'
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'path' in obj &&
+    'text' in obj &&
+    typeof (obj as TextPath).toSVGPath === 'function'
   )
 }
 
