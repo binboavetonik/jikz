@@ -1,10 +1,12 @@
 import { defineConfig } from 'vitepress'
 
-// The demo page is a Vite dev-server app (`npm run dev` serves it on
-// :5173 next to this site on :5174) and is not deployed with the docs,
-// so the cross-link only belongs in the dev nav.
+// The demo page is a Vite app: `npm run dev` serves it on :5173 next to
+// this site on :5174, and the docs workflow builds it into <site>/demo/
+// (`npm run demo:build`). In production the link is the absolute URL the
+// workflow passes in, so VitePress's router does not treat it as a page.
 const isDev = process.env.NODE_ENV !== 'production'
-const liveDemos = isDev ? [{ text: '▶ Live demos', link: 'http://localhost:5173/demo/index.html' }] : []
+const demoUrl = isDev ? 'http://localhost:5173/demo/index.html' : process.env.DOCS_DEMO_URL
+const liveDemos = demoUrl ? [{ text: '▶ Live demos', link: demoUrl }] : []
 
 export default defineConfig({
   // GitHub Pages serves a project site under /jikz/; the docs workflow sets

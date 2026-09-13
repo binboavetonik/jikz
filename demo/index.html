@@ -184,7 +184,7 @@
 <body>
   <header>
     <div class="wrap">
-      <h1>jikz — live demos <a class="docs-link" href="http://localhost:5174/">📖 docs →</a></h1>
+      <h1>jikz — live demos <a class="docs-link" href="../">📖 docs →</a></h1>
       <p>
         Every preview below is rendered by the code shown in its
         <strong>Code</strong> tab — not by a hidden harness. Each card is a
@@ -193,9 +193,10 @@
         examples can never drift from the library. Paste the code into your
         app (with <code>npm&nbsp;install&nbsp;@ozan.e/jikz</code>) and it
         works verbatim.<br>
-        <strong>Serving this page:</strong> run <code>npm&nbsp;run&nbsp;dev</code>
+        <strong>Serving this page locally:</strong> run <code>npm&nbsp;run&nbsp;dev</code>
         and open the Vite URL — the examples import the live library source
-        (<code>src/</code>) via the <code>jikz</code> alias.
+        (<code>src/</code>) via the <code>jikz</code> alias. The published copy
+        is built from the same modules by <code>npm&nbsp;run&nbsp;demo:build</code>.
       </p>
     </div>
   </header>
@@ -221,6 +222,10 @@
     // and snapshot-tested by vitest. The Code tab shows the module's raw
     // source, so what you read is exactly what ran.
     import { demos, CATEGORY_INFO } from '../examples/manifest.ts'
+
+    // Under `npm run dev` the docs site runs on its own port; deployed,
+    // it is the parent of /demo/ (the href in the markup).
+    if (import.meta.env.DEV) document.querySelector('.docs-link').href = 'http://localhost:5174/'
 
     function escapeHtml(s) {
       return s
