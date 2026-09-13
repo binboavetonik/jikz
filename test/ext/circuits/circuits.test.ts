@@ -1,5 +1,5 @@
 /**
- * Circuit extension — milestone 1: scaffold, CircuitSymbol port base,
+ * Circuit extension — milestone 1: scaffold, PortedShape port base,
  * resistor symbol (ANSI zigzag + IEC box), registry integration.
  *
  * These tests double as the dogfood report for the public extension

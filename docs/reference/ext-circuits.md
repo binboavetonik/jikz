@@ -74,6 +74,9 @@ points in one chain. Full schematics:
 Symbols are built only on **public seams** — `defineShape`, port
 anchors, `rotate` — so the extension doubles as the proof that jikz's
 extensibility API is sufficient for a real TikZ-library-sized domain.
-`CircuitSymbol` (in `ports.ts`) is the base class: a box with a port
-table; unknown anchor names throw `AnchorError` instead of silently
-mis-resolving.
+`PortedShape` (in `geometry/PortedShape`) is the base class: a box with
+a port table; unknown anchor names throw `AnchorError` — naming the
+ports the shape does answer to — instead of silently mis-resolving. It
+lives in `geometry` rather than here because the logic gates use it too;
+`ports.ts` keeps what is circuit-specific (`TwoTerminalSymbol`, the
+port-name constants).

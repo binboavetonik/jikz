@@ -87,7 +87,7 @@ export class Resistor extends TwoTerminalSymbol {
 }
 
 /**
- * Create a resistor symbol. Honors {@link symbolSize} (intrinsic 60×20
+ * Create a resistor symbol. Honors {@link intrinsicSize} (intrinsic 60×20
  * default; width/height override when larger than the minimums).
  */
 export function resistor(options: ResistorOptions = {}): Resistor {

@@ -339,7 +339,7 @@ export class BinaryGate extends LogicGate {
 }
 
 /**
- * Create a logic gate. Honors {@link symbolSize} (intrinsic 70×50
+ * Create a logic gate. Honors {@link intrinsicSize} (intrinsic 70×50
  * default; width/height override when larger than the minimums).
  *
  * The kind picks the class: `not`/`buffer` give a {@link UnaryGate}
