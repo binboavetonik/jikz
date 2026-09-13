@@ -1,6 +1,13 @@
-# Publishes to npm when a version tag is pushed, using npm trusted
+# Stages a release on npm when a version tag is pushed, using npm trusted
 # publishing (OIDC): no NPM_TOKEN secret, and every release carries a
 # provenance attestation linking the tarball to this commit and workflow.
+#
+# The trusted publisher is stage-only (npm's recommendation): this
+# workflow runs `npm stage publish`, which puts the version in the
+# package's stage queue; a maintainer approves it with 2FA on npmjs.com
+# (or `npm stage approve`) before it becomes installable. OIDC tokens
+# cannot approve — that human step is the point. A direct `npm publish`
+# from here is rejected with "OIDC permission denied for this action".
 #
 # One-time setup on npmjs.com → package @ozan.e/jikz → Settings →
 # Trusted publishers: add GitHub Actions with
@@ -10,6 +17,7 @@
 #   1. move the Unreleased section of CHANGELOG.md under the new version
 #   2. npm version <x.y.z> --no-git-tag-version, commit "release: x.y.z"
 #   3. git tag vx.y.z && git push origin master vx.y.z
+#   4. approve the staged version on npmjs.com (stage queue) with 2FA
 name: Release
 
 on:
@@ -35,6 +43,8 @@ jobs:
           tag="${GITHUB_REF_NAME#v}"
           pkg="$(node -p "require('./package.json').version")"
           test "$tag" = "$pkg" || { echo "tag v$tag != package.json $pkg"; exit 1; }
+      # staged publishing needs npm >= 11.15; the runner's bundled npm may lag
+      - run: npm install -g npm@latest && npm --version
       - run: npm ci --no-audit --no-fund
-      # prepublishOnly runs lint, test, build and check:pkg before publishing
-      - run: npm publish --provenance --access public
+      # prepublishOnly runs lint, test, build and check:pkg before staging
+      - run: npm stage publish --provenance --access public
