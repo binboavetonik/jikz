@@ -340,6 +340,12 @@ Both produce the same objects and mix freely (`circuit.resistor(...)`
 is just `NodeOptions` under the hood). Use strings when specs come
 from data, builders when they come from code.
 
+One caveat on the typed accessors: they read the instance you built, and
+`node({ shape: r1, rotate: 90 })` rotates a *copy*. So `r1.out` keeps
+reporting its pre-rotation point while `pic.resolve('R1.out')` gives the
+rotated one — on a rotated node, go through the picture (or a
+`"R1.out"` edge endpoint, which resolves the same way).
+
 **Strings** remain the TikZ-familiar, data-driven route:
 `node({ shape: 'resistor' })` still works — the circuits extension
 set gives the picture its shape names, so they autocomplete and are
@@ -378,7 +384,9 @@ Shape instances expose typed port accessors for the code-first route,
 and the arity is in the type: `gate()` and the per-kind factories hand
 back a `BinaryGate` (`in1`/`in2`/`out`) or a `UnaryGate` (`in`/`out`),
 so `andGate().in` is a compile error rather than an `AnchorError` at
-render time.
+render time — and when one is wrong at runtime, the error names the
+ports that shape does answer to. The rotation caveat above applies here
+too: a rotated gate's ports come from the picture, not the instance.
 
 ## Demo
 

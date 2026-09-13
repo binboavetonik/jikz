@@ -1,7 +1,8 @@
 import { point } from '../../../core/Point'
 import type { PointLike } from '../../../core/types'
 import type { ShapeOptions } from '../../../geometry/Shape'
-import { TwoTerminalSymbol, symbolSize } from '../ports'
+import { intrinsicSize } from '../../../geometry/PortedShape'
+import { TwoTerminalSymbol } from '../ports'
 
 /** Resistor drawing style: ANSI zigzag (US) or IEC rectangle (EU). */
 export type ResistorVariant = 'ansi' | 'iec'
@@ -90,7 +91,7 @@ export class Resistor extends TwoTerminalSymbol {
  * default; width/height override when larger than the minimums).
  */
 export function resistor(options: ResistorOptions = {}): Resistor {
-  const { width, height } = symbolSize(
+  const { width, height } = intrinsicSize(
     options,
     RESISTOR_DEFAULT_WIDTH,
     RESISTOR_DEFAULT_HEIGHT

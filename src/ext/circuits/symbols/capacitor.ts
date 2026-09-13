@@ -1,6 +1,7 @@
 import type { PointLike } from '../../../core/types'
 import type { ShapeOptions } from '../../../geometry/Shape'
-import { TwoTerminalSymbol, symbolSize } from '../ports'
+import { intrinsicSize } from '../../../geometry/PortedShape'
+import { TwoTerminalSymbol } from '../ports'
 
 /** Capacitor drawing style: two straight plates, or one curved (polarized). */
 export type CapacitorVariant = 'normal' | 'polarized'
@@ -74,7 +75,7 @@ export class Capacitor extends TwoTerminalSymbol {
 
 /** Create a capacitor symbol (intrinsic 60×20 default). */
 export function capacitor(options: CapacitorOptions = {}): Capacitor {
-  const { width, height } = symbolSize(
+  const { width, height } = intrinsicSize(
     options,
     CAPACITOR_DEFAULT_WIDTH,
     CAPACITOR_DEFAULT_HEIGHT

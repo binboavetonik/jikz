@@ -1,7 +1,7 @@
 import { Point, point } from '../../../core/Point'
 import type { PointLike } from '../../../core/types'
 import type { ShapeOptions } from '../../../geometry/Shape'
-import { CircuitSymbol, symbolSize } from '../ports'
+import { PortedShape, intrinsicSize } from '../../../geometry/PortedShape'
 
 /** Op-amp symbol options. */
 export type OpAmpOptions = ShapeOptions
@@ -23,10 +23,10 @@ const PIN_OFFSET_FRACTION = 0.32
  * Ports: `in-` / `-` (upper input), `in+` / `+` (lower input),
  * `out` (east apex lead tip). Input leads run from the west box edge
  * to the triangle's flat side; the output lead runs apex → east edge.
- * This is the multi-port validation of the CircuitSymbol port table:
+ * This is the multi-port validation of the PortedShape port table:
  * non-compass names on the border, typo'd names throw AnchorError.
  */
-export class OpAmp extends CircuitSymbol {
+export class OpAmp extends PortedShape {
   readonly type = 'op amp' as const
 
   private get pinOffset(): number {
@@ -108,7 +108,7 @@ export class OpAmp extends CircuitSymbol {
 
 /** Create an op-amp symbol (intrinsic 60×50 default). */
 export function opAmp(options: OpAmpOptions = {}): OpAmp {
-  const { width, height } = symbolSize(
+  const { width, height } = intrinsicSize(
     options,
     OPAMP_DEFAULT_WIDTH,
     OPAMP_DEFAULT_HEIGHT

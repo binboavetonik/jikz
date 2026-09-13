@@ -116,6 +116,7 @@ export { DEFAULT_SHAPE_OPTIONS } from './Shape'
 export { AnchoredPolygon, rayEdgeIntersection, pointInPolygon, polygonBounds } from './AnchoredPolygon'
 
 // Shape registry (register your own shapes by name)
+export { PortedShape, intrinsicSize } from './PortedShape'
 export { defineShape, isShapeKind } from './ShapeKind'
 export type { ShapeKind, ShapeSet, ShapeOptionsOf } from './ShapeKind'
 export { basicShapes, complexShapes, allShapes, defaultShape } from './shapes'

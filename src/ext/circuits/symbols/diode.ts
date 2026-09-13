@@ -1,7 +1,8 @@
 import { Point, point } from '../../../core/Point'
 import type { PointLike } from '../../../core/types'
 import type { ShapeOptions } from '../../../geometry/Shape'
-import { TwoTerminalSymbol, symbolSize } from '../ports'
+import { intrinsicSize } from '../../../geometry/PortedShape'
+import { TwoTerminalSymbol } from '../ports'
 
 /** Diode family: standard, Zener (hooked cathode bar), LED (light arrows). */
 export type DiodeVariant = 'standard' | 'zener' | 'led'
@@ -103,7 +104,7 @@ function ledArrow(from: Point, len: number): string {
 
 /** Create a diode symbol (intrinsic 60×20 default). */
 export function diode(options: DiodeOptions = {}): Diode {
-  const { width, height } = symbolSize(
+  const { width, height } = intrinsicSize(
     options,
     DIODE_DEFAULT_WIDTH,
     DIODE_DEFAULT_HEIGHT

@@ -137,6 +137,8 @@ export {
   pointInPolygon,
   polygonBounds,
   // Shape registry
+  PortedShape,
+  intrinsicSize,
   defineShape,
   isShapeKind,
   basicShapes,
@@ -672,9 +674,7 @@ export type {
 
 export {
   circuit,
-  CircuitSymbol,
   TwoTerminalSymbol,
-  symbolSize,
   twoTerminalPorts,
   TWO_TERMINAL_PORTS,
   OPAMP_PORTS,

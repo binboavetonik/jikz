@@ -1,7 +1,7 @@
 import { Point, point } from '../../../core/Point'
 import type { PointLike } from '../../../core/types'
 import type { ShapeOptions } from '../../../geometry/Shape'
-import { CircuitSymbol, symbolSize } from '../ports'
+import { PortedShape, intrinsicSize } from '../../../geometry/PortedShape'
 
 /** Ground symbol options (no variant — earth ground only). */
 export type GroundOptions = ShapeOptions
@@ -20,7 +20,7 @@ const LINE_SPACING = 5
  * pointing DOWN (the common case) — rotate for other orientations.
  * Port: `in` (also `north`, via the box).
  */
-export class Ground extends CircuitSymbol {
+export class Ground extends PortedShape {
   readonly type = 'ground' as const
 
   protected portTable(): Record<string, Point> {
@@ -60,7 +60,7 @@ export class Ground extends CircuitSymbol {
 
 /** Create a ground symbol (intrinsic 24×18 default). */
 export function ground(options: GroundOptions = {}): Ground {
-  const { width, height } = symbolSize(
+  const { width, height } = intrinsicSize(
     options,
     GROUND_DEFAULT_WIDTH,
     GROUND_DEFAULT_HEIGHT

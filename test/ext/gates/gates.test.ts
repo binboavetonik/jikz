@@ -88,6 +88,11 @@ describe('gate symbol', () => {
     expect(() => g.anchor('in')).toThrow(AnchorError)
     expect(() => g.anchor('outt')).toThrow(AnchorError)
   })
+
+  it('the error names the ports this shape does answer to', () => {
+    expect(() => andGate().anchor('outt')).toThrow(/"in1", "in2", "out"/)
+    expect(() => notGate().anchor('in1')).toThrow(/"in", "out"/)
+  })
 })
 
 /**
@@ -186,7 +191,9 @@ describe('gate geometry', () => {
 
   it('negated gates draw a bubble at the output', () => {
     const d = notGate().toSVGPath()
-    expect(d).toContain('M 35 0 A 5 5 0 1 0 25 0 A 5 5 0 1 0 35 0 Z')
+    // The bubble is a Circle's own outline — one spelling, shared with
+    // the circuit symbols that draw small circles.
+    expect(d).toContain('M 25 0 A 5 5 0 1 0 35 0 A 5 5 0 1 0 25 0')
   })
 })
 
@@ -268,6 +275,40 @@ describe('gate geometry invariants', () => {
     const p = pathFromSVG(extra)
     expect(p.startPoint!.x).toBeCloseTo(p.endPoint!.x, 6)
     expect(p.startPoint!.y).toBeCloseTo(p.endPoint!.y, 6)
+  })
+})
+
+describe('rotation', () => {
+  it('rotates the ports with the shape', () => {
+    const n = new Node({ shape: gateShapes.and, at: point(100, 100), rotate: 90 })
+    // out sits east when unrotated (135, 100); 90° clockwise puts it south.
+    expectPt(n.anchor('out'), 100, 135, 'out')
+    expectPt(n.anchor('in1'), 112.5, 65, 'in1')
+    expectPt(n.anchor('in2'), 87.5, 65, 'in2')
+  })
+
+  it('typed accessors read the UNROTATED instance — go through the picture', () => {
+    const g = andGate({ center: point(100, 100) })
+    const pic = picture()
+    pic.node('A', { shape: g, rotate: 90 })
+
+    // The instance never learns about the rotation: Node rotates a copy.
+    expectPt(g.in1, 65, 87.5, 'instance in1')
+    // The picture resolves the port on the rotated node.
+    expectPt(pic.resolve('A.in1'), 112.5, 65, 'resolved in1')
+  })
+})
+
+describe('gates.* builders', () => {
+  it('carry the gate kind, no shape set needed', () => {
+    expect(gates.xnor({ at: point(0, 0) }).shape).toBe(gateShapes.xnor)
+  })
+
+  it('pass the variant through as shapeOptions', () => {
+    expect(gates.and({ variant: 'iec' }).shapeOptions).toEqual({ variant: 'iec' })
+    expect(gates.and().shapeOptions).toBeUndefined()
+    const n = new Node(gates.nor({ at: point(0, 0), variant: 'iec' }))
+    expect((n.shape as LogicGate).variant).toBe('iec')
   })
 })
 

@@ -1,6 +1,7 @@
 import type { PointLike } from '../../../core/types'
 import type { ShapeOptions } from '../../../geometry/Shape'
-import { TwoTerminalSymbol, symbolSize } from '../ports'
+import { intrinsicSize } from '../../../geometry/PortedShape'
+import { TwoTerminalSymbol } from '../ports'
 
 /** Switch state: normally open (angled blade) or closed (straight). */
 export type SwitchVariant = 'open' | 'closed'
@@ -84,7 +85,7 @@ function contactDot(x: number, y: number): string {
 
 /** Create a switch symbol (intrinsic 60×20 default). */
 export function createSwitch(options: SwitchOptions = {}): Switch {
-  const { width, height } = symbolSize(
+  const { width, height } = intrinsicSize(
     options,
     SWITCH_DEFAULT_WIDTH,
     SWITCH_DEFAULT_HEIGHT

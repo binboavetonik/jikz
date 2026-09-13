@@ -99,16 +99,22 @@ export class AnchorError extends Error {
   /** The spec that failed to parse. */
   readonly spec: AnchorSpec
 
-  constructor(spec: AnchorSpec) {
+  /** Custom names the shape does answer to, when it has any. */
+  readonly known: readonly string[]
+
+  constructor(spec: AnchorSpec, known: readonly string[] = []) {
     super(
       `Unknown anchor: ${JSON.stringify(spec)}. Expected a cardinal name ` +
         `('north', 'south east', …), an alias ('n', 'ne', 'c', …), a ` +
-        `numeric angle (30 or '30deg'), or 'center'. Custom anchor names ` +
-        `(e.g. circuit-symbol ports) must be intercepted by the shape's ` +
-        `own anchor() before delegating to parseAnchorSpec.`
+        `numeric angle (30 or '30deg'), or 'center'.` +
+        (known.length
+          ? ` This shape's own anchors: ${known.map((n) => `"${n}"`).join(', ')}.`
+          : ` Custom anchor names (e.g. ports) must be intercepted by the ` +
+            `shape's own anchor() before delegating to parseAnchorSpec.`)
     )
     this.name = 'AnchorError'
     this.spec = spec
+    this.known = known
   }
 }
 

@@ -47,7 +47,7 @@ import { voltageSource, currentSource } from './symbols/sources'
 import { ground } from './symbols/ground'
 import { opAmp } from './symbols/opamp'
 
-export { CircuitSymbol, TwoTerminalSymbol, symbolSize, twoTerminalPorts } from './ports'
+export { TwoTerminalSymbol, twoTerminalPorts } from './ports'
 export {
   TWO_TERMINAL_PORTS,
   OPAMP_PORTS,

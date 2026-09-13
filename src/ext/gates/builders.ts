@@ -12,11 +12,11 @@ import type { GateKind, GateVariant } from './gate'
 /** NodeOptions minus the fields a builder fills in for you. */
 type BaseOptions = Omit<NodeOptions, 'shape' | 'shapeOptions'>
 
-function build(
-  kind: GateKind,
-  base: BaseOptions,
-  variant?: GateVariant
-): NodeOptions {
+/** What every gate builder takes: node options plus the drawing style. */
+export type GateNodeOptions = BaseOptions & { variant?: GateVariant }
+
+function build(kind: GateKind, options: GateNodeOptions): NodeOptions {
+  const { variant, ...base } = options
   const shape = gateShapes[kind]
   return variant
     ? { ...base, shape, shapeOptions: { variant } }
@@ -28,44 +28,36 @@ function build(
  */
 export const gates = {
   /** AND gate. */
-  and(options: BaseOptions & { variant?: GateVariant } = {}): NodeOptions {
-    const { variant, ...base } = options
-    return build('and', base, variant)
+  and(options: GateNodeOptions = {}): NodeOptions {
+    return build('and', options)
   },
   /** NAND gate (negated AND). */
-  nand(options: BaseOptions & { variant?: GateVariant } = {}): NodeOptions {
-    const { variant, ...base } = options
-    return build('nand', base, variant)
+  nand(options: GateNodeOptions = {}): NodeOptions {
+    return build('nand', options)
   },
   /** OR gate. */
-  or(options: BaseOptions & { variant?: GateVariant } = {}): NodeOptions {
-    const { variant, ...base } = options
-    return build('or', base, variant)
+  or(options: GateNodeOptions = {}): NodeOptions {
+    return build('or', options)
   },
   /** NOR gate (negated OR). */
-  nor(options: BaseOptions & { variant?: GateVariant } = {}): NodeOptions {
-    const { variant, ...base } = options
-    return build('nor', base, variant)
+  nor(options: GateNodeOptions = {}): NodeOptions {
+    return build('nor', options)
   },
   /** XOR gate. */
-  xor(options: BaseOptions & { variant?: GateVariant } = {}): NodeOptions {
-    const { variant, ...base } = options
-    return build('xor', base, variant)
+  xor(options: GateNodeOptions = {}): NodeOptions {
+    return build('xor', options)
   },
   /** XNOR gate (negated XOR). */
-  xnor(options: BaseOptions & { variant?: GateVariant } = {}): NodeOptions {
-    const { variant, ...base } = options
-    return build('xnor', base, variant)
+  xnor(options: GateNodeOptions = {}): NodeOptions {
+    return build('xnor', options)
   },
   /** NOT gate (inverter). */
-  not(options: BaseOptions & { variant?: GateVariant } = {}): NodeOptions {
-    const { variant, ...base } = options
-    return build('not', base, variant)
+  not(options: GateNodeOptions = {}): NodeOptions {
+    return build('not', options)
   },
   /** Buffer gate. */
-  buffer(options: BaseOptions & { variant?: GateVariant } = {}): NodeOptions {
-    const { variant, ...base } = options
-    return build('buffer', base, variant)
+  buffer(options: GateNodeOptions = {}): NodeOptions {
+    return build('buffer', options)
   },
 } as const
 

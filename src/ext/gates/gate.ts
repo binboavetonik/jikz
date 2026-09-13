@@ -19,9 +19,10 @@
  * `not`/`buffer`. Draw horizontally; rotate with `node({ rotate })`.
  */
 import { Point, point } from '../../core/Point'
+import { circle } from '../../geometry/Circle'
 import type { PointLike } from '../../core/types'
 import type { ShapeOptions } from '../../geometry/Shape'
-import { CircuitSymbol, symbolSize } from '../circuits/ports'
+import { PortedShape, intrinsicSize } from '../../geometry/PortedShape'
 
 /** Gate type — doubles as the shape name registered in the registry. */
 export type GateKind =
@@ -40,11 +41,9 @@ export type UnaryGateKind = 'not' | 'buffer'
 /** Gate kinds with two inputs. */
 export type BinaryGateKind = Exclude<GateKind, UnaryGateKind>
 
-const UNARY_KINDS: ReadonlySet<GateKind> = new Set<GateKind>(['not', 'buffer'])
-
 /** Whether `type` is a one-input gate — narrows to {@link UnaryGateKind}. */
 export function isUnaryGate(type: GateKind): type is UnaryGateKind {
-  return UNARY_KINDS.has(type)
+  return GATES[type].inputs === 1
 }
 
 /** Drawing style: ANSI distinctive shapes, or IEC rectangle. */
@@ -70,24 +69,29 @@ const XOR_OFFSET = 8
 /** OR left-edge radius as a fraction of height (≈0.25·H sagitta). */
 const OR_RADIUS = 0.625
 
-/** Gate kinds whose ANSI body has a concave back (the OR family). */
-const OR_FAMILY: ReadonlySet<GateKind> = new Set(['or', 'nor', 'xor', 'xnor'])
-
-/** Gate kinds that draw a negation bubble at the output. */
-const NEGATED: Readonly<Record<GateKind, boolean>> = {
-  and: false,
-  nand: true,
-  or: false,
-  nor: true,
-  xor: false,
-  xnor: true,
-  not: true,
-  buffer: false,
+/** What distinguishes one gate kind from another. */
+interface GateMeta {
+  /** Number of input ports. */
+  inputs: 1 | 2
+  /** Draws a negation bubble at the output. */
+  negated: boolean
+  /** ANSI body has a concave back, so input leads end ON the arc. */
+  concaveBack: boolean
 }
 
-/** A small circle at (cx, cy) — used for the negation bubble. */
-function circleAt(cx: number, cy: number, r: number): string {
-  return `M ${cx + r} ${cy} A ${r} ${r} 0 1 0 ${cx - r} ${cy} A ${r} ${r} 0 1 0 ${cx + r} ${cy} Z`
+/**
+ * Every per-kind fact in one table: adding a gate means adding a row
+ * here and a body in {@link LogicGate.bodyPath}, and nothing else.
+ */
+const GATES: Readonly<Record<GateKind, GateMeta>> = {
+  and: { inputs: 2, negated: false, concaveBack: false },
+  nand: { inputs: 2, negated: true, concaveBack: false },
+  or: { inputs: 2, negated: false, concaveBack: true },
+  nor: { inputs: 2, negated: true, concaveBack: true },
+  xor: { inputs: 2, negated: false, concaveBack: true },
+  xnor: { inputs: 2, negated: true, concaveBack: true },
+  not: { inputs: 1, negated: true, concaveBack: false },
+  buffer: { inputs: 1, negated: false, concaveBack: false },
 }
 
 /**
@@ -114,7 +118,7 @@ interface GateGeometry {
 /**
  * A logic gate symbol. Drawn horizontally (inputs west, output east);
  * rotate with `node({ rotate })`. Ports are answered first from the
- * port table, then delegate to the box via {@link CircuitSymbol.anchor}.
+ * port table, then delegate to the box via {@link PortedShape.anchor}.
  *
  * The shared half: the body drawing and the `out` port every gate has.
  * Input ports differ by arity, so they live on the concrete subclasses —
@@ -123,7 +127,7 @@ interface GateGeometry {
  * Build gates with {@link gate} or the per-kind factories, which hand
  * back the right subclass for the kind.
  */
-export abstract class LogicGate extends CircuitSymbol {
+export abstract class LogicGate extends PortedShape {
   readonly type: GateKind
   readonly variant: GateVariant
   /** Number of input ports — 1 for `not`/`buffer`, else 2. */
@@ -178,8 +182,8 @@ export abstract class LogicGate extends CircuitSymbol {
 
     // Negation bubble + output lead. The bubble fills the output lead
     // region — its right edge is the `out` port, so no separate lead.
-    if (NEGATED[this.type]) {
-      parts.push(circleAt(g.eastX - BUBBLE_R, g.cy, BUBBLE_R))
+    if (GATES[this.type].negated) {
+      parts.push(circle(point(g.eastX - BUBBLE_R, g.cy), BUBBLE_R).toSVGPath())
     } else {
       parts.push(`M ${g.x2} ${g.cy} L ${g.eastX} ${g.cy}`)
     }
@@ -196,7 +200,7 @@ export abstract class LogicGate extends CircuitSymbol {
    * cross the exclusive arc, as in the standard drawing.
    */
   private leadEndX(g: GateGeometry, y: number): number {
-    if (this.variant === 'iec' || !OR_FAMILY.has(this.type)) return g.x1
+    if (this.variant === 'iec' || !GATES[this.type].concaveBack) return g.x1
     const r = OR_RADIUS * g.halfH * 2
     const arcCx = g.x1 - Math.sqrt(r * r - g.halfH * g.halfH)
     const dy = y - g.cy
@@ -352,7 +356,7 @@ export function gate(
 ): BinaryGate
 export function gate(type: GateKind, options?: LogicGateOptions): LogicGate
 export function gate(type: GateKind, options: LogicGateOptions = {}): LogicGate {
-  const { width, height } = symbolSize(
+  const { width, height } = intrinsicSize(
     options,
     GATE_DEFAULT_WIDTH,
     GATE_DEFAULT_HEIGHT

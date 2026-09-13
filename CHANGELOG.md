@@ -4,6 +4,41 @@
 
 ### Added
 
+- **`ext/dataviz` — data visualization (TikZ `datavisualization`).**
+  Scaled axes with Heckbert "nice number" ticks, gridlines, tick and
+  axis labels, a legend, and `line`/`scatter`/`bar` series builders —
+  no more hand-rolled axes. `chart(pic, { series, … })` is the one-call
+  builder: domains infer from the data (`domain: 'auto'`, widened to
+  nice tick boundaries; bar series pin the baseline at 0), labeled
+  series collect into a framed legend at the north-east corner of the
+  plot area. `axes(pic, …)` returns a `ChartFrame` — the `x`/`y`
+  scales, plot area, and resolved ticks plus `.line()/.scatter()/.bars()`
+  builders — so custom drawing stays in data space, and `legend()`
+  works standalone. Pure drawing on the public container verbs: no
+  shapes to register, composes with any shape set.
+- **Markings along a path (TikZ `decorations.markings`).**
+  `markPath(guide, …specs)` places arrow tips or plot marks at
+  positions along any guide — a `Path` or anything with an SVG outline
+  (`Arc`, `Circle`, shapes; the new `PathLike` union converts through
+  `pathFromSVG`). `{ mark: 'stealth', at: 0.5 }` is TikZ's
+  `mark=at position … with \arrow{…}`; `between: [a, b]` + `step` is
+  the repeated form; `scale` sizes the artwork. Tips rotate with the
+  tangent, plot marks stay upright, and marks inherit the path's
+  stroke color. Names resolve arrow-tip first, then plot mark —
+  `{ plotMark: 'circle' }` forces the scatter namespace for names both
+  claim. Returns a `MarkedPath` renderable (base path + resolved
+  marks), dispatched by `SVGRenderer` like `Plot`.
+- **Text along a path (TikZ `decorations.text`).**
+  `textAlongPath(guide, text, options)` flows text along any
+  `PathLike` via SVG `<textPath>`: the guide goes into `<defs>`
+  (never painted) and the text rides it, staying selectable, crisp
+  type. `anchor: 'middle'` centers on the midpoint (startOffset
+  derives from the anchor unless given); `side: 'right'` walks the
+  guide backwards to flip the text to the other side — arcs included,
+  via dense resampling (`Path.reverse` drops arc/quadratic segments).
+  Text color follows the text convention (the resolved stroke) unless
+  `color` is set. KaTeX cannot flow along a curve — plain text only.
+
 - **Graph layout — `graph()` (force-directed + circular).** A unified
   builder for arbitrary graphs (cycles, undirected, disconnected — no
   structural assumptions, unlike `tree`/`layered`). `.force({ seed })`
@@ -68,6 +103,17 @@
   `*`, `+`, `x`/`X`, `o`.
 
 ### Changed
+
+- **The ported-shape base moved out of the circuits extension.**
+  `CircuitSymbol` and `symbolSize` are now `PortedShape` and
+  `intrinsicSize` in `geometry/PortedShape` — logic gates were importing
+  them from `ext/circuits/ports`, which made one extension depend on
+  another's internals. `ext/circuits` keeps what is circuit-specific:
+  `TwoTerminalSymbol`, `twoTerminalPorts` and the port-name constants.
+- **`AnchorError` names the anchors the shape does answer to.** A typo'd
+  port used to produce a message listing only cardinals; it now reads
+  `… This shape's own anchors: "in1", "in2", "out".` when the shape has
+  ports, and carries them as `error.known`.
 
 - **`mount({ panZoom })` takes the `attachPanZoom` function.** The flag
   form is gone: pass the function itself, or an object carrying it
@@ -172,6 +218,13 @@
   order. The UMD build is unchanged.
 
 ### Fixed
+
+- **The typed port accessors' rotation caveat is documented.** `r1.out`
+  and `g.in1` read the instance you built, and `node({ shape: r1,
+  rotate: 90 })` rotates a copy — so a rotated node's ports come from
+  the picture (`pic.resolve('R1.out')`), not the instance. Unchanged
+  behaviour, now stated in the README, on `PortedShape`, and pinned by a
+  test.
 
 - **`layered()` no longer throws on cyclic input, and its network simplex
   is ~5× faster.** Cycle removal reverses back-edges, so a 2-cycle a→b,

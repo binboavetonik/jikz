@@ -1,6 +1,9 @@
+import { point } from '../../../core/Point'
 import type { PointLike } from '../../../core/types'
+import { circle } from '../../../geometry/Circle'
 import type { ShapeOptions } from '../../../geometry/Shape'
-import { TwoTerminalSymbol, symbolSize } from '../ports'
+import { intrinsicSize } from '../../../geometry/PortedShape'
+import { TwoTerminalSymbol } from '../ports'
 
 /** Voltage/current source symbol options. */
 export type SourceOptions = ShapeOptions
@@ -9,11 +12,6 @@ export type SourceOptions = ShapeOptions
 export const SOURCE_DEFAULT_WIDTH = 60
 /** Intrinsic symbol height when no height is given. */
 export const SOURCE_DEFAULT_HEIGHT = 36
-
-/** Tiny circle outline as two half-arcs (matches Circle.toSVGPath style). */
-function circleOutline(cx: number, cy: number, r: number): string {
-  return `M ${cx - r} ${cy} A ${r} ${r} 0 1 0 ${cx + r} ${cy} A ${r} ${r} 0 1 0 ${cx - r} ${cy}`
-}
 
 /**
  * Independent voltage source: circle with +/− markings and leads.
@@ -37,7 +35,7 @@ export class VoltageSource extends TwoTerminalSymbol {
 
     return [
       `M ${westX} ${cy} L ${cx - r} ${cy}`,
-      circleOutline(cx, cy, r),
+      circle(point(cx, cy), r).toSVGPath(),
       `M ${cx + r} ${cy} L ${eastX} ${cy}`,
       // plus
       `M ${cx - s} ${py} L ${cx + s} ${py} M ${cx} ${py - s} L ${cx} ${py + s}`,
@@ -75,7 +73,7 @@ export class CurrentSource extends TwoTerminalSymbol {
 
     return [
       `M ${westX} ${cy} L ${cx - r} ${cy}`,
-      circleOutline(cx, cy, r),
+      circle(point(cx, cy), r).toSVGPath(),
       `M ${cx + r} ${cy} L ${eastX} ${cy}`,
       // arrow shaft (pointing up)
       `M ${cx} ${cy + ay} L ${cx} ${cy - ay}`,
@@ -95,7 +93,7 @@ export class CurrentSource extends TwoTerminalSymbol {
 
 /** Create a voltage source symbol (intrinsic 60×36 default). */
 export function voltageSource(options: SourceOptions = {}): VoltageSource {
-  const { width, height } = symbolSize(
+  const { width, height } = intrinsicSize(
     options,
     SOURCE_DEFAULT_WIDTH,
     SOURCE_DEFAULT_HEIGHT
@@ -105,7 +103,7 @@ export function voltageSource(options: SourceOptions = {}): VoltageSource {
 
 /** Create a current source symbol (intrinsic 60×36 default). */
 export function currentSource(options: SourceOptions = {}): CurrentSource {
-  const { width, height } = symbolSize(
+  const { width, height } = intrinsicSize(
     options,
     SOURCE_DEFAULT_WIDTH,
     SOURCE_DEFAULT_HEIGHT
