@@ -72,6 +72,12 @@ docs/         Concepts, tutorials, reference, generated cookbook
   add new shapes to a set rather than to a table, and keep each set in
   a module that pulls in only the shapes it names — `allShapes` lives
   apart from `basicShapes` for exactly that reason.
+- **Values or registry?** Shapes and fill patterns are values you hand
+  to a picture or a style (`defineShape`, `definePattern`), because a
+  drawing that never uses one should not carry it. Arrow tips and path
+  decorations stay global registries on purpose: their tables are small
+  (~1.4 kB for all ten tips) and nearly every edge draws a tip, so
+  passing one around would cost more in ceremony than it saves in bytes.
 - **Typing a helper that takes a picture.** `Picture` is generic in its
   shape set, and a bare `Picture` means `Picture<{}>` — no names. Name
   the set you expect (`Picture<typeof allShapes>`) or take a parameter

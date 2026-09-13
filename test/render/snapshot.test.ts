@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { SVGRenderer } from '../../src/render/SVGRenderer'
+import { fillPatterns } from '../../src/render/patterns'
 import { picture } from '../../src/picture/Picture'
 import { point } from '../../src/core/Point'
 import { circle } from '../../src/geometry/Circle'
@@ -152,7 +153,7 @@ describe('snapshot: fill pattern', () => {
   it('renders a rect filled with north east lines', () => {
     const svg = render({ width: 140, height: 90 }, (r) => {
       r.renderRect(rect(10, 10, 120, 70), {
-        style: { stroke: '#334155', fillPattern: 'north east lines' },
+        style: { stroke: '#334155', fillPattern: fillPatterns['north east lines'] },
       })
     })
     expect(svg).toMatchSnapshot()

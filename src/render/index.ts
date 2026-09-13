@@ -2,6 +2,8 @@
 export {
   isPoint,
   isPath,
+  isMarkedPath,
+  isTextPath,
   isLine,
   isCircle,
   isArc,
@@ -99,20 +101,18 @@ export type {
 
 // Fill patterns
 export {
-  PATTERN_DEFINITIONS,
+  definePattern,
   generatePatternId,
   normalizePatternSpec,
-  isPatternName,
-  registerPattern,
-  getPatternDefinition,
-  registeredPatternNames,
 } from './FillPattern'
+export { fillPatterns } from './patterns'
 
 export type {
-  FillPatternName,
   FillPatternSpec,
   PatternDefinition,
+  PatternKind,
 } from './FillPattern'
+export type { FillPatternName } from './patterns'
 
 // SVG Renderer
 export { SVGRenderer, createSVGRenderer } from './SVGRenderer'

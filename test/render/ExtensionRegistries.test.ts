@@ -14,11 +14,8 @@ import {
   registeredArrowTips,
   resolveArrowTipKind,
 } from '../../src/render/ArrowTip'
-import {
-  registerPattern,
-  getPatternDefinition,
-  registeredPatternNames,
-} from '../../src/render/FillPattern'
+import { definePattern } from '../../src/render/FillPattern'
+import { fillPatterns } from '../../src/render/patterns'
 import { allShapes } from '../../src/geometry/shapes'
 
 const SHAPES = allShapes
@@ -29,11 +26,11 @@ registerArrowTip('pennant', {
   start: { d: 'M 10 0 L 0 5 L 10 5 Z', refX: 1 },
 })
 
-registerPattern('wavy', {
+const wavy = definePattern('wavy', {
   width: 12,
   height: 6,
   defaultLineWidth: 1,
-  createContent: (color, lw) =>
+  createContent: (color: string, lw: number) =>
     `<path d="M0 3 Q3 0 6 3 T12 3" fill="none" stroke="${color}" stroke-width="${lw}"/>`,
 })
 
@@ -87,28 +84,28 @@ describe('arrow tip registry', () => {
   })
 })
 
-describe('pattern registry', () => {
-  it('built-ins are registered', () => {
-    expect(registeredPatternNames()).toContain('grid')
-    expect(getPatternDefinition('bricks')).toBeDefined()
+describe('fill patterns', () => {
+  it('the built-in set carries the twelve TikZ tiles', () => {
+    expect(Object.keys(fillPatterns)).toHaveLength(12)
+    expect(fillPatterns.grid.patternName).toBe('grid')
+    expect(fillPatterns.bricks.createContent('#000', 1)).toContain('<')
   })
 
-  it('user patterns render through style.fillPattern by name', () => {
+  it('a user pattern renders through style.fillPattern', () => {
     const renderer = new SVGRenderer()
     renderer.renderCircle(circle(point(50, 50), 30), {
-      style: { fillPattern: { name: 'wavy', color: '#ff0000' } },
+      style: { fillPattern: { pattern: wavy, color: '#ff0000' } },
     })
     const svg = renderer.toSVG({ width: 100, height: 100 })
     expect(svg).toContain('jikz-pattern-wavy')
     expect(svg).toContain('M0 3 Q3 0 6 3 T12 3')
   })
 
-  it('unknown patterns throw with known names', () => {
+  it('a built-in renders straight from the set, no lookup', () => {
     const renderer = new SVGRenderer()
-    expect(() =>
-      renderer.renderCircle(circle(point(50, 50), 30), {
-        style: { fillPattern: 'nope' },
-      })
-    ).toThrow(/Unknown fill pattern: "nope" \(known: /)
+    renderer.renderCircle(circle(point(50, 50), 30), {
+      style: { fillPattern: fillPatterns.dots },
+    })
+    expect(renderer.toSVG({ width: 100, height: 100 })).toContain('jikz-pattern-dots')
   })
 })

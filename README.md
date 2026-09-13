@@ -182,8 +182,9 @@ first); use lowercase names if you want them reachable from
 `parseStyleString` (which lowercases).
 
 Named fields use literal-union types: `dash: 'dashed'`,
-`fillPattern: 'north east lines'`, `lineCap: 'round'` — typos are
-compile errors. `DASH_PATTERN_NAMES` and `PRESET_OBJECTS` export the
+`lineCap: 'round'` — typos are compile errors. Fill patterns are values:
+`fillPattern: fillPatterns['north east lines']`, or a spec that tunes
+one, `{ pattern: fillPatterns.grid, color: '#2563eb', scale: 1.5 }`. `DASH_PATTERN_NAMES` and `PRESET_OBJECTS` export the
 catalogs for introspection.
 
 ## LaTeX math labels
@@ -214,7 +215,7 @@ Shapes are values, and arrow tips, fill patterns and decorations are
 registries — add your own without touching library source:
 
 ```ts
-import { AnchoredPolygon, defineShape, registerArrowTip, registerPattern, registerDecoration, picture, point } from '@ozan.e/jikz'
+import { AnchoredPolygon, defineShape, definePattern, registerArrowTip, registerDecoration, picture, point } from '@ozan.e/jikz'
 
 // 1. Custom shape: declare vertices, get anchors/bounds/contains/SVG for free
 class House extends AnchoredPolygon {
@@ -249,21 +250,27 @@ registerArrowTip('pennant', {
   start: { d: 'M 10 0 L 0 5 L 10 5 Z', refX: 1 },
 })
 
-// 3. Custom fill pattern (SVG tile fragment)
-registerPattern('wavy', {
+// 3. Custom fill pattern (SVG tile fragment) — a value, like a shape
+const wavy = definePattern('wavy', {
   width: 12, height: 6, defaultLineWidth: 1,
   createContent: (color, lw) =>
     `<path d="M0 3 Q3 0 6 3 T12 3" fill="none" stroke="${color}" stroke-width="${lw}"/>`,
 })
+pic.filldraw(rect(0, 0, 60, 40), { style: { fillPattern: wavy } })
 
 // 4. Custom path decoration
 registerDecoration('heartbeat', (path, options) => myTransform(path, options))
 ```
 
-Registered names for tips, patterns and decorations are accepted
-everywhere built-ins are — `edge(a, b, { arrowEnd })`,
-`style: { fillPattern }`, `decoratePath` — and unknown names throw
-errors listing the known ones.
+Registered names for arrow tips and decorations are accepted everywhere
+built-ins are — `edge(a, b, { arrowEnd })`, `decoratePath` — and unknown
+names throw errors listing the known ones. Those two stay registries on
+purpose: their tables are small, and nearly every edge draws a tip, so
+there is nothing to save by making callers carry one.
+
+Shapes and fill patterns are values instead: hand the ones you use to
+the picture or the style, and a drawing that never fills with a pattern
+does not carry the twelve tiles.
 
 Shapes work the other way round: a picture is given a **shape set**
 (`picture({ shapes: allShapes })`, or just the sets you use), and the

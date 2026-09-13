@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { fillPatterns } from '../../src/render/patterns'
 import { SVGRenderer } from '../../src/render/SVGRenderer'
 import { point } from '../../src/core/Point'
 import { circle } from '../../src/geometry/Circle'
@@ -55,7 +56,7 @@ describe('Node-side rendering: zero-dependency toSVG()', () => {
     const r = new SVGRenderer()
     r.renderRect(rect(0, 0, 100, 60), {
       style: {
-        fillPattern: { name: 'north east lines', color: '#333' },
+        fillPattern: { pattern: fillPatterns['north east lines'], color: '#333' },
         stroke: '#000',
       },
     })

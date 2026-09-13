@@ -1,4 +1,4 @@
-import type { FillPatternName, FillPatternSpec } from './FillPattern'
+import type { FillPatternSpec, PatternKind } from './FillPattern'
 import type { GradientSpec } from './Gradient'
 import type { DropShadowSpec } from './Shadow'
 
@@ -73,7 +73,7 @@ export interface RenderStyle {
   fillOpacity?: number
   /** CSS-alias of {@link fillOpacity}; camelCase wins when both are set. */
   'fill-opacity'?: number
-  fillPattern?: FillPatternName | (string & {}) | FillPatternSpec
+  fillPattern?: PatternKind | FillPatternSpec
   gradient?: GradientSpec
 
   // Effects
@@ -180,18 +180,6 @@ export const STYLE_PRESETS = {
   'fill only': { stroke: 'none' },
 
   // Fill pattern presets
-  'pattern horizontal lines': { fillPattern: 'horizontal lines' as FillPatternName },
-  'pattern vertical lines': { fillPattern: 'vertical lines' as FillPatternName },
-  'pattern north east lines': { fillPattern: 'north east lines' as FillPatternName },
-  'pattern north west lines': { fillPattern: 'north west lines' as FillPatternName },
-  'pattern grid': { fillPattern: 'grid' as FillPatternName },
-  'pattern crosshatch': { fillPattern: 'crosshatch' as FillPatternName },
-  'pattern dots': { fillPattern: 'dots' as FillPatternName },
-  'pattern crosshatch dots': { fillPattern: 'crosshatch dots' as FillPatternName },
-  'pattern fivepointed stars': { fillPattern: 'fivepointed stars' as FillPatternName },
-  'pattern sixpointed stars': { fillPattern: 'sixpointed stars' as FillPatternName },
-  'pattern bricks': { fillPattern: 'bricks' as FillPatternName },
-  'pattern checkerboard': { fillPattern: 'checkerboard' as FillPatternName },
 
   // Shadow presets
   shadow: { dropShadow: { offsetX: 2, offsetY: 2, blur: 3, color: 'rgba(0,0,0,0.3)' } },

@@ -1,15 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import {
-  PATTERN_DEFINITIONS,
   generatePatternId,
   normalizePatternSpec,
-  isPatternName,
   FillPatternName,
   FillPatternSpec,
 } from '../../src/render/FillPattern'
+import { fillPatterns } from '../../src/render/patterns'
 
 describe('FillPattern', () => {
-  describe('PATTERN_DEFINITIONS', () => {
+  describe('fillPatterns', () => {
     const patternNames: FillPatternName[] = [
       'horizontal lines',
       'vertical lines',
@@ -26,14 +25,14 @@ describe('FillPattern', () => {
     ]
 
     it('has all 12 TikZ patterns defined', () => {
-      expect(Object.keys(PATTERN_DEFINITIONS)).toHaveLength(12)
+      expect(Object.keys(fillPatterns)).toHaveLength(12)
       for (const name of patternNames) {
-        expect(PATTERN_DEFINITIONS[name]).toBeDefined()
+        expect(fillPatterns[name]).toBeDefined()
       }
     })
 
     describe.each(patternNames)('%s pattern', (name) => {
-      const def = PATTERN_DEFINITIONS[name]
+      const def = fillPatterns[name]
 
       it('has valid width', () => {
         expect(def.width).toBeGreaterThan(0)
@@ -73,92 +72,86 @@ describe('FillPattern', () => {
 
     describe('specific pattern content', () => {
       it('horizontal lines produces horizontal line', () => {
-        const content = PATTERN_DEFINITIONS['horizontal lines'].createContent('#000', 1)
+        const content = fillPatterns['horizontal lines'].createContent('#000', 1)
         expect(content).toContain('y1="5"')
         expect(content).toContain('y2="5"')
       })
 
       it('vertical lines produces vertical line', () => {
-        const content = PATTERN_DEFINITIONS['vertical lines'].createContent('#000', 1)
+        const content = fillPatterns['vertical lines'].createContent('#000', 1)
         expect(content).toContain('x1="5"')
         expect(content).toContain('x2="5"')
       })
 
       it('dots produces circles', () => {
-        const content = PATTERN_DEFINITIONS['dots'].createContent('#000', 0)
+        const content = fillPatterns['dots'].createContent('#000', 0)
         expect(content).toContain('<circle')
         expect(content).toContain('fill="#000"')
       })
 
       it('checkerboard produces rectangles', () => {
-        const content = PATTERN_DEFINITIONS['checkerboard'].createContent('#000', 0)
+        const content = fillPatterns['checkerboard'].createContent('#000', 0)
         expect(content).toContain('<rect')
         // Should have two rects for checkerboard
         expect((content.match(/<rect/g) || []).length).toBe(2)
       })
 
       it('bricks has horizontal and vertical lines', () => {
-        const content = PATTERN_DEFINITIONS['bricks'].createContent('#000', 1)
+        const content = fillPatterns['bricks'].createContent('#000', 1)
         // Should have multiple lines for mortar
         const lineCount = (content.match(/<line/g) || []).length
         expect(lineCount).toBeGreaterThanOrEqual(5)
       })
 
       it('fivepointed stars produces polygon', () => {
-        const content = PATTERN_DEFINITIONS['fivepointed stars'].createContent('#000', 0)
+        const content = fillPatterns['fivepointed stars'].createContent('#000', 0)
         expect(content).toContain('<polygon')
         expect(content).toContain('points="')
       })
 
       it('sixpointed stars produces two triangles', () => {
-        const content = PATTERN_DEFINITIONS['sixpointed stars'].createContent('#000', 0)
+        const content = fillPatterns['sixpointed stars'].createContent('#000', 0)
         expect(content).toContain('<polygon')
         // Should have two polygons for star of david
         expect((content.match(/<polygon/g) || []).length).toBe(2)
       })
 
       it('crosshatch dots produces 4 circles', () => {
-        const content = PATTERN_DEFINITIONS['crosshatch dots'].createContent('#000', 0)
+        const content = fillPatterns['crosshatch dots'].createContent('#000', 0)
         expect((content.match(/<circle/g) || []).length).toBe(4)
       })
     })
   })
 
-  describe('isPatternName', () => {
-    it('returns true for valid pattern names', () => {
-      expect(isPatternName('horizontal lines')).toBe(true)
-      expect(isPatternName('vertical lines')).toBe(true)
-      expect(isPatternName('dots')).toBe(true)
-      expect(isPatternName('crosshatch')).toBe(true)
-      expect(isPatternName('bricks')).toBe(true)
-      expect(isPatternName('checkerboard')).toBe(true)
+  describe('pattern names', () => {
+    it('the set is keyed by the twelve TikZ names', () => {
+      for (const name of ['horizontal lines', 'vertical lines', 'dots', 'crosshatch', 'bricks', 'checkerboard']) {
+        expect(fillPatterns).toHaveProperty(name)
+      }
     })
 
-    it('returns false for invalid pattern names', () => {
-      expect(isPatternName('invalid')).toBe(false)
-      expect(isPatternName('horizontal')).toBe(false)
-      expect(isPatternName('lines')).toBe(false)
-      expect(isPatternName('')).toBe(false)
+    it('a kind reports the name it was defined under', () => {
+      expect(fillPatterns.dots.patternName).toBe('dots')
+      expect(fillPatterns['north east lines'].patternName).toBe('north east lines')
     })
 
-    it('returns false for non-strings', () => {
-      expect(isPatternName(123)).toBe(false)
-      expect(isPatternName(null)).toBe(false)
-      expect(isPatternName(undefined)).toBe(false)
-      expect(isPatternName({})).toBe(false)
-      expect(isPatternName([])).toBe(false)
+    it('nothing answers for a name the set does not have', () => {
+      const names = Object.keys(fillPatterns)
+      expect(names).not.toContain('invalid')
+      expect(names).not.toContain('horizontal')
+      expect(names).toHaveLength(12)
     })
   })
 
   describe('normalizePatternSpec', () => {
     it('converts string name to spec object', () => {
-      const result = normalizePatternSpec('dots')
-      expect(result).toEqual({ name: 'dots' })
+      const result = normalizePatternSpec(fillPatterns.dots)
+      expect(result).toEqual({ pattern: fillPatterns['dots'] })
     })
 
     it('passes spec objects through unchanged', () => {
       const spec: FillPatternSpec = {
-        name: 'crosshatch',
+        pattern: fillPatterns['crosshatch'],
         color: '#ff0000',
         backgroundColor: '#ffffff',
         scale: 2,
@@ -170,65 +163,65 @@ describe('FillPattern', () => {
     })
 
     it('handles minimal spec object', () => {
-      const spec: FillPatternSpec = { name: 'grid' }
+      const spec: FillPatternSpec = { pattern: fillPatterns['grid'] }
       const result = normalizePatternSpec(spec)
-      expect(result).toEqual({ name: 'grid' })
+      expect(result).toEqual({ pattern: fillPatterns['grid'] })
     })
   })
 
   describe('generatePatternId', () => {
     it('produces deterministic IDs', () => {
-      const spec: FillPatternSpec = { name: 'dots' }
+      const spec: FillPatternSpec = { pattern: fillPatterns['dots'] }
       const id1 = generatePatternId(spec)
       const id2 = generatePatternId(spec)
       expect(id1).toBe(id2)
     })
 
     it('creates different IDs for different specs', () => {
-      const id1 = generatePatternId({ name: 'dots' })
-      const id2 = generatePatternId({ name: 'crosshatch' })
+      const id1 = generatePatternId({ pattern: fillPatterns['dots'] })
+      const id2 = generatePatternId({ pattern: fillPatterns['crosshatch'] })
       expect(id1).not.toBe(id2)
     })
 
     it('includes name in ID', () => {
-      const id = generatePatternId({ name: 'north east lines' })
+      const id = generatePatternId({ pattern: fillPatterns['north east lines'] })
       expect(id).toContain('north-east-lines')
     })
 
     it('includes color in ID when specified', () => {
-      const id1 = generatePatternId({ name: 'dots' })
-      const id2 = generatePatternId({ name: 'dots', color: '#ff0000' })
+      const id1 = generatePatternId({ pattern: fillPatterns['dots'] })
+      const id2 = generatePatternId({ pattern: fillPatterns['dots'], color: '#ff0000' })
       expect(id1).not.toBe(id2)
       expect(id2).toContain('ff0000')
     })
 
     it('includes backgroundColor in ID when specified', () => {
-      const id1 = generatePatternId({ name: 'dots' })
-      const id2 = generatePatternId({ name: 'dots', backgroundColor: '#ffffff' })
+      const id1 = generatePatternId({ pattern: fillPatterns['dots'] })
+      const id2 = generatePatternId({ pattern: fillPatterns['dots'], backgroundColor: '#ffffff' })
       expect(id1).not.toBe(id2)
       expect(id2).toContain('bg')
     })
 
     it('includes scale in ID when not 1', () => {
-      const id1 = generatePatternId({ name: 'dots' })
-      const id2 = generatePatternId({ name: 'dots', scale: 2 })
-      const id3 = generatePatternId({ name: 'dots', scale: 1 })
+      const id1 = generatePatternId({ pattern: fillPatterns['dots'] })
+      const id2 = generatePatternId({ pattern: fillPatterns['dots'], scale: 2 })
+      const id3 = generatePatternId({ pattern: fillPatterns['dots'], scale: 1 })
       expect(id2).toContain('s2')
       // Scale of 1 should not change ID
       expect(id1).toBe(id3)
     })
 
     it('includes lineWidth in ID when specified', () => {
-      const id1 = generatePatternId({ name: 'grid' })
-      const id2 = generatePatternId({ name: 'grid', lineWidth: 2 })
+      const id1 = generatePatternId({ pattern: fillPatterns['grid'] })
+      const id2 = generatePatternId({ pattern: fillPatterns['grid'], lineWidth: 2 })
       expect(id1).not.toBe(id2)
       expect(id2).toContain('lw2')
     })
 
     it('includes rotation in ID when not 0', () => {
-      const id1 = generatePatternId({ name: 'dots' })
-      const id2 = generatePatternId({ name: 'dots', rotation: 45 })
-      const id3 = generatePatternId({ name: 'dots', rotation: 0 })
+      const id1 = generatePatternId({ pattern: fillPatterns['dots'] })
+      const id2 = generatePatternId({ pattern: fillPatterns['dots'], rotation: 45 })
+      const id3 = generatePatternId({ pattern: fillPatterns['dots'], rotation: 0 })
       expect(id2).toContain('r45')
       // Rotation of 0 should not change ID
       expect(id1).toBe(id3)
@@ -236,7 +229,7 @@ describe('FillPattern', () => {
 
     it('creates unique IDs for complex specs', () => {
       const spec1: FillPatternSpec = {
-        name: 'crosshatch',
+        pattern: fillPatterns['crosshatch'],
         color: '#e74c3c',
         backgroundColor: '#fff',
         scale: 1.5,
@@ -244,7 +237,7 @@ describe('FillPattern', () => {
         rotation: 30,
       }
       const spec2: FillPatternSpec = {
-        name: 'crosshatch',
+        pattern: fillPatterns['crosshatch'],
         color: '#3498db',
         backgroundColor: '#fff',
         scale: 1.5,
@@ -256,7 +249,7 @@ describe('FillPattern', () => {
 
     it('produces valid CSS ID format', () => {
       const id = generatePatternId({
-        name: 'north west lines',
+        pattern: fillPatterns['north west lines'],
         color: '#abc123',
         scale: 2.5,
       })

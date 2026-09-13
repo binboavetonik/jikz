@@ -2,6 +2,8 @@ import { Point } from '../core/Point'
 import type { Transform } from '../core/Transform'
 import { PANZOOM_VIEWPORT_CLASS } from './PanZoom'
 import { Path } from '../path/Path'
+import { MarkedPath } from '../path/MarkedPath'
+import { TextPath } from '../path/TextPath'
 import { Line } from '../geometry/Line'
 import { Circle } from '../geometry/Circle'
 import { Arc } from '../geometry/Arc'
@@ -43,8 +45,6 @@ import {
   FillPatternSpec,
   generatePatternId,
   normalizePatternSpec,
-  getPatternDefinition,
-  registeredPatternNames,
 } from './FillPattern'
 import {
   GradientSpec,
@@ -150,6 +150,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
   private readonly groupStack: (SVGBuilder | null)[] = []
   private defaultStyle: RenderStyle
   private clipPathCounter: number = 0
+  private textPathCounter: number = 0
 
   // Collaborators: def bookkeeping, layers, math
   private readonly defsManager: DefsManager
@@ -238,11 +239,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
     const id = generatePatternId(spec)
 
     return this.defsManager.ensure(id, (defs) => {
-      const def = getPatternDefinition(spec.name)
-      if (!def) {
-        const known = registeredPatternNames().map((n) => `"${n}"`).join(', ')
-        throw new Error(`Unknown fill pattern: "${spec.name}" (known: ${known}).`)
-      }
+      const def = spec.pattern
       const color = spec.color ?? '#000000'
       const lw = spec.lineWidth ?? def.defaultLineWidth
       const scale = spec.scale ?? 1
@@ -644,6 +641,76 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
   }
 
   /**
+   * Render a {@link MarkedPath}: the base path with the caller's style,
+   * then each mark as its own element — placed at its position, rotated
+   * to the tangent, painted in the path's stroke color (the arrowhead
+   * convention). Arrow-tip artwork is drawn in a 10×10 box with the tip
+   * pointing +x and (refX, 5) on the path, so the transform mirrors
+   * SVG's `orient=auto` marker placement.
+   */
+  renderMarkedPath(mp: MarkedPath, options?: RenderOptions): SVGElement {
+    const el = this.renderPathData(mp.path.toSVGPath(), options)
+    if (mp.marks.length === 0) return el
+
+    const style = this.getStyle(options)
+    const color = style.stroke ?? '#000'
+    const target = this.getTarget()
+
+    for (const m of mp.marks) {
+      const paint = m.filled
+        ? { fill: color, stroke: 'none' }
+        : { fill: 'none', stroke: color, 'stroke-width': m.strokeWidth ?? 1.5 }
+      const transform =
+        `translate(${m.point.x} ${m.point.y}) rotate(${m.angle})` +
+        (m.scale !== 1 ? ` scale(${m.scale})` : '') +
+        ` translate(${-m.refX} ${-m.refY})`
+      target.path(m.d).attr({ ...paint, transform })
+    }
+
+    return el
+  }
+
+  /**
+   * Render a {@link TextPath}: the guide path is defined once in
+   * `<defs>` (never painted) and the text rides it via `<textPath>`.
+   * Text color follows the text convention — the resolved stroke —
+   * unless the TextPath carries its own `color`.
+   */
+  renderTextPath(tp: TextPath, options?: RenderOptions): SVGElement {
+    const style = this.getStyle(options)
+    const o = tp.options
+
+    const id = `jikz-textpath-${this.textPathCounter++}`
+    this.defsManager.ensure(id, (defs) => {
+      defs.el('path', { id, d: tp.toSVGPath() })
+    })
+
+    const anchor = o.anchor
+    const startOffset =
+      o.startOffset ?? (anchor === 'middle' ? 0.5 : anchor === 'end' ? 1 : 0)
+
+    const textAttrs: Record<string, unknown> = {
+      'font-family': o.fontFamily ?? 'sans-serif',
+      'font-size': o.fontSize ?? 14,
+      'font-weight': o.fontWeight ?? 'normal',
+      fill: o.color ?? style.stroke ?? '#000',
+    }
+    if (o.letterSpacing !== undefined) {
+      textAttrs['letter-spacing'] = o.letterSpacing
+    }
+
+    const textEl = this.getTarget().el('text', textAttrs)
+    const tpAttrs: Record<string, unknown> = {
+      href: `#${id}`,
+      startOffset: `${startOffset * 100}%`,
+    }
+    if (anchor) tpAttrs['text-anchor'] = anchor
+    textEl.el('textPath', tpAttrs).node.text = tp.text
+
+    return this.applyOptions(textEl, options)
+  }
+
+  /**
    * Shared pipeline for anything emitted as path data: double-line
    * expansion, style resolution, target/layer routing. Used by
    * renderPath, renderShape, rotated-ellipse, and double renderLine.
@@ -1008,6 +1075,12 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
     if (obj instanceof Plot) {
       return this.renderPlot(obj, options)
     }
+    if (obj instanceof MarkedPath) {
+      return this.renderMarkedPath(obj, options)
+    }
+    if (obj instanceof TextPath) {
+      return this.renderTextPath(obj, options)
+    }
     if (isNode(obj)) {
       return this.renderNode(obj, options)
     }
@@ -1036,6 +1109,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
     this.draw.clear()
     this.defsManager.clear()
     this.clipPathCounter = 0
+    this.textPathCounter = 0
     this.layerStack.clear()
     this.currentGroup = null
   }

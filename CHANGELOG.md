@@ -69,6 +69,29 @@
 
 ### Changed
 
+- **Fill patterns are values, like shapes.** A pattern is a
+  `PatternKind` — a tile definition carrying its name — and the twelve
+  TikZ tiles live in the `fillPatterns` set:
+
+  ```ts
+  style: { fillPattern: fillPatterns.dots }
+  style: { fillPattern: { pattern: fillPatterns.grid, color: '#2563eb', scale: 1.5 } }
+  const wavy = definePattern('wavy', { width: 12, height: 6, defaultLineWidth: 1, createContent })
+  ```
+
+  `registerPattern`, `getPatternDefinition`, `registeredPatternNames`,
+  `isPatternName`, `PATTERN_DEFINITIONS` and the string form
+  (`fillPattern: 'dots'`) are gone, as are the twelve `pattern *` style
+  preset NAMES — the `patternDots`/`patternGrid`/… preset objects remain
+  and now carry the value. The renderer no longer looks a pattern up, so
+  it cannot throw for an unknown one, and a picture that never fills
+  with a pattern no longer carries the tiles: `import { picture, point }`
+  drops from 104 kB to 102 kB minified.
+
+  Arrow tips and path decorations deliberately stay registries: their
+  tables are small and nearly every edge draws a tip, so the ceremony
+  would cost more than the bytes. CONTRIBUTING records that split.
+
 - **Shapes are values; the global shape registry is gone.** A shape is
   now a `ShapeKind` — a factory plus the one flag Node needs to size it
   — and a *name* is a key in an ordinary object:

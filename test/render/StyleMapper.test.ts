@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest'
+import { patternDots, patternCrosshatch, patternGrid } from '../../src/render/presets'
+import { fillPatterns } from '../../src/render/patterns'
 import {
   DEFAULT_STYLE,
   STYLE_PRESETS,
@@ -44,19 +46,11 @@ describe('StyleMapper', () => {
       expect(STYLE_PRESETS.green.stroke).toBe('#2ecc71')
     })
 
-    it('has pattern presets', () => {
-      expect(STYLE_PRESETS['pattern dots'].fillPattern).toBe('dots')
-      expect(STYLE_PRESETS['pattern crosshatch'].fillPattern).toBe('crosshatch')
-      expect(STYLE_PRESETS['pattern horizontal lines'].fillPattern).toBe('horizontal lines')
-      expect(STYLE_PRESETS['pattern vertical lines'].fillPattern).toBe('vertical lines')
-      expect(STYLE_PRESETS['pattern north east lines'].fillPattern).toBe('north east lines')
-      expect(STYLE_PRESETS['pattern north west lines'].fillPattern).toBe('north west lines')
-      expect(STYLE_PRESETS['pattern grid'].fillPattern).toBe('grid')
-      expect(STYLE_PRESETS['pattern bricks'].fillPattern).toBe('bricks')
-      expect(STYLE_PRESETS['pattern checkerboard'].fillPattern).toBe('checkerboard')
-      expect(STYLE_PRESETS['pattern fivepointed stars'].fillPattern).toBe('fivepointed stars')
-      expect(STYLE_PRESETS['pattern sixpointed stars'].fillPattern).toBe('sixpointed stars')
-      expect(STYLE_PRESETS['pattern crosshatch dots'].fillPattern).toBe('crosshatch dots')
+    it('pattern presets are values, not preset strings', () => {
+      expect(patternDots.fillPattern).toBe(fillPatterns.dots)
+      expect(patternCrosshatch.fillPattern).toBe(fillPatterns.crosshatch)
+      expect(patternGrid.fillPattern).toBe(fillPatterns.grid)
+      expect(STYLE_PRESETS).not.toHaveProperty('pattern dots')
     })
 
     it('has shadow presets', () => {
@@ -160,18 +154,6 @@ describe('StyleMapper', () => {
       const result = parseStyleString('thick, unknown, dashed')
       expect(result.strokeWidth).toBe(0.8)
       expect(result.strokeDasharray).toBe('3 3')
-    })
-
-    it('parses pattern presets', () => {
-      const result = parseStyleString('pattern dots')
-      expect(result.fillPattern).toBe('dots')
-    })
-
-    it('combines pattern with other presets', () => {
-      const result = parseStyleString('thick, pattern crosshatch, red')
-      expect(result.strokeWidth).toBe(0.8)
-      expect(result.stroke).toBe('#e74c3c')
-      expect(result.fillPattern).toBe('crosshatch')
     })
 
     it('parses shadow presets', () => {

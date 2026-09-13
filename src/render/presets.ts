@@ -18,6 +18,7 @@
  */
 
 import type { RenderStyle } from './StyleMapper'
+import { fillPatterns } from './patterns'
 import { STYLE_PRESETS } from './StyleMapper'
 
 const frozen = <T extends object>(o: T): Readonly<T> => Object.freeze(o)
@@ -98,29 +99,29 @@ export const fillOnly = frozen(STYLE_PRESETS['fill only'])
 
 // ── Fill patterns ────────────────────────────────────────────────────────────
 /** TikZ preset `pattern horizontal lines` — frozen; compose via the style array form. */
-export const patternHorizontalLines = frozen(STYLE_PRESETS['pattern horizontal lines'])
+export const patternHorizontalLines = frozen({ fillPattern: fillPatterns['horizontal lines'] })
 /** TikZ preset `pattern vertical lines` — frozen; compose via the style array form. */
-export const patternVerticalLines = frozen(STYLE_PRESETS['pattern vertical lines'])
+export const patternVerticalLines = frozen({ fillPattern: fillPatterns['vertical lines'] })
 /** TikZ preset `pattern north east lines` — frozen; compose via the style array form. */
-export const patternNorthEastLines = frozen(STYLE_PRESETS['pattern north east lines'])
+export const patternNorthEastLines = frozen({ fillPattern: fillPatterns['north east lines'] })
 /** TikZ preset `pattern north west lines` — frozen; compose via the style array form. */
-export const patternNorthWestLines = frozen(STYLE_PRESETS['pattern north west lines'])
+export const patternNorthWestLines = frozen({ fillPattern: fillPatterns['north west lines'] })
 /** TikZ preset `pattern grid` — frozen; compose via the style array form. */
-export const patternGrid = frozen(STYLE_PRESETS['pattern grid'])
+export const patternGrid = frozen({ fillPattern: fillPatterns['grid'] })
 /** TikZ preset `pattern crosshatch` — frozen; compose via the style array form. */
-export const patternCrosshatch = frozen(STYLE_PRESETS['pattern crosshatch'])
+export const patternCrosshatch = frozen({ fillPattern: fillPatterns['crosshatch'] })
 /** TikZ preset `pattern dots` — frozen; compose via the style array form. */
-export const patternDots = frozen(STYLE_PRESETS['pattern dots'])
+export const patternDots = frozen({ fillPattern: fillPatterns['dots'] })
 /** TikZ preset `pattern crosshatch dots` — frozen; compose via the style array form. */
-export const patternCrosshatchDots = frozen(STYLE_PRESETS['pattern crosshatch dots'])
+export const patternCrosshatchDots = frozen({ fillPattern: fillPatterns['crosshatch dots'] })
 /** TikZ preset `pattern fivepointed stars` — frozen; compose via the style array form. */
-export const patternFivepointedStars = frozen(STYLE_PRESETS['pattern fivepointed stars'])
+export const patternFivepointedStars = frozen({ fillPattern: fillPatterns['fivepointed stars'] })
 /** TikZ preset `pattern sixpointed stars` — frozen; compose via the style array form. */
-export const patternSixpointedStars = frozen(STYLE_PRESETS['pattern sixpointed stars'])
+export const patternSixpointedStars = frozen({ fillPattern: fillPatterns['sixpointed stars'] })
 /** TikZ preset `pattern bricks` — frozen; compose via the style array form. */
-export const patternBricks = frozen(STYLE_PRESETS['pattern bricks'])
+export const patternBricks = frozen({ fillPattern: fillPatterns['bricks'] })
 /** TikZ preset `pattern checkerboard` — frozen; compose via the style array form. */
-export const patternCheckerboard = frozen(STYLE_PRESETS['pattern checkerboard'])
+export const patternCheckerboard = frozen({ fillPattern: fillPatterns['checkerboard'] })
 
 // ── Shadows ──────────────────────────────────────────────────────────────────
 /** TikZ preset `shadow` — frozen; compose via the style array form. */

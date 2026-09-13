@@ -54,7 +54,7 @@ export const CATEGORY_INFO: [DemoCategory, string, string][] = [
   ['paths-decorations', 'Paths, decorations & styles',
     'Feature tours of pen statements, path surgery, decorations, and the style vocabulary.'],
   ['custom-extension', 'Custom extensions',
-    'defineShape, registerPattern, clip paths — TikZ-library-style extension on public seams.'],
+    'defineShape, definePattern, clip paths — TikZ-library-style extension on public seams.'],
   ['app-prototypes', 'Application prototypes',
     'Real app sketches (chess study tools) — diagrams derived from data, not coordinates.'],
 ]
@@ -563,7 +563,7 @@ const meta: DemoMeta[] = [
     id: "custom-pattern",
     category: "custom-extension",
     title: "Custom fill pattern — herringbone",
-    description: "registerPattern() takes an SVG tile fragment and compiles it to a `<defs>` pattern — so it works in Node string output too. Shown plain, scaled+rotated, and next to built-in 'bricks' for comparison.",
+    description: "definePattern() names an SVG tile fragment and compiles it to a `<defs>` pattern — so it works in Node string output too. The result is a value you hand to a style; nothing is registered, and a drawing carries only the tiles it uses. Shown plain, scaled+rotated, and next to built-in 'bricks' for comparison.",
   },
   {
     id: "clipping",

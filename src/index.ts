@@ -520,9 +520,8 @@ export {
   hasArrowTip,
   registeredArrowTips,
   resolveArrowTipKind,
-  registerPattern,
-  getPatternDefinition,
-  registeredPatternNames,
+  definePattern,
+  fillPatterns,
   // Shadings (TikZ \shade)
   axisShading,
   radialShading,
@@ -589,6 +588,7 @@ export type {
   FillPatternName,
   FillPatternSpec,
   PatternDefinition,
+  PatternKind,
   // Gradients
   GradientStop,
   LinearGradientSpec,
