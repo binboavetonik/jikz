@@ -2,7 +2,7 @@
 /**
  * Smoke test for the BUILT package, runnable on any Node the library
  * supports (engines.node >= 18) — unlike the vitest suite, whose jsdom
- * environment needs Node 20+. CI runs this on the Node 18 leg after
+ * environment needs Node 22.22+ / 24.15+. CI runs this on the Node 18 leg after
  * `npm run build`.
  *
  * Checks: the ES entry and the UMD entry both load, agree on their export

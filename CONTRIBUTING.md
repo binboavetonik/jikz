@@ -10,7 +10,7 @@ issue first.
 ```sh
 git clone git@github.com:binboavetonik/jikz.git
 cd jikz
-nvm use          # Node 24 (see .nvmrc); the dev toolchain needs 20+, the library runs on 18+
+nvm use          # Node 24 (see .nvmrc); the dev toolchain needs 22.22+ or 24.15+ (jsdom), the library runs on 18+
 npm ci
 npm test         # 2000+ unit, snapshot and example tests, ~4 s
 ```
