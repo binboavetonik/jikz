@@ -10,7 +10,7 @@ issue first.
 ```sh
 git clone git@github.com:binboavetonik/jikz.git
 cd jikz
-nvm use          # Node 24 (see .nvmrc); anything >= 18 works
+nvm use          # Node 24 (see .nvmrc); the dev toolchain needs 20+, the library runs on 18+
 npm ci
 npm test         # 2000+ unit, snapshot and example tests, ~4 s
 ```
@@ -27,8 +27,10 @@ Useful scripts:
 | `npm run docs:cookbook` | Regenerate `docs/cookbook/` from `examples/manifest.ts` |
 | `npm run docs:build` | Build the VitePress site |
 
-CI (`.github/workflows/ci.yml`) runs lint, build, test, `check:pkg` and
-the docs build on every push, and repeats build + test on Node 18.
+CI (`.github/workflows/ci.yml`) runs lint, build, test, `check:pkg`, the
+dist smoke test and the docs build on Node 24, and build + smoke test on
+Node 18 (the `engines` floor — jsdom, which the vitest suite needs, does
+not run there).
 
 ## Layout
 

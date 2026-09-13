@@ -36,7 +36,8 @@
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "prepublishOnly": "npm run lint && npm run test && npm run build && npm run check:pkg",
-    "check:pkg": "publint && attw --pack ."
+    "check:pkg": "publint && attw --pack .",
+    "smoke:dist": "node scripts/smoke-dist.mjs"
   },
   "peerDependencies": {
     "katex": ">=0.16.0"

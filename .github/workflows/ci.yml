@@ -1,6 +1,10 @@
 # Runs the same gates `prepublishOnly` runs before a release, plus the docs
-# build, on every push to master and every pull request. Node 24 matches
-# .nvmrc; engines.node says >=18, so the matrix also checks the floor.
+# build, on every push to master and every pull request.
+#
+# Two legs: Node 24 (matches .nvmrc) runs everything. Node 18 is the
+# library's engines floor; the dev toolchain itself needs Node 20+ (jsdom
+# 30 requires require(esm)), so that leg builds the package and runs the
+# dist smoke test instead of the vitest suite.
 name: CI
 
 on:
@@ -10,17 +14,13 @@ on:
 
 jobs:
   verify:
-    name: Node ${{ matrix.node }}
+    name: Node 24 — full gates
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node: [18, 24]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 24
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run lint
@@ -30,4 +30,18 @@ jobs:
       - run: npm test
       # publint + arethetypeswrong against the packed tarball
       - run: npm run check:pkg
+      - run: npm run smoke:dist
       - run: npm run docs:build
+
+  engines-floor:
+    name: Node 18 — build + dist smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+      - run: npm run smoke:dist
