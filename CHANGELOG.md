@@ -104,6 +104,14 @@
 
 ### Changed
 
+- **The repository moved to GitHub:** https://github.com/binboavetonik/jikz.
+  `repository`, `homepage` and `bugs` in `package.json` point there; CI is
+  GitHub Actions (`.github/workflows/ci.yml`, Node 18 and 24), releases
+  publish from a `v*` tag with npm provenance (`release.yml`), and the
+  docs deploy to GitHub Pages (`docs.yml`). The Bitbucket repository
+  stays as a read-only mirror so the URLs in already-published versions
+  keep resolving.
+
 - **The ported-shape base moved out of the circuits extension.**
   `CircuitSymbol` and `symbolSize` are now `PortedShape` and
   `intrinsicSize` in `geometry/PortedShape` — logic gates were importing

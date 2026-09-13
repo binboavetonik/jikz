@@ -7,6 +7,9 @@ const isDev = process.env.NODE_ENV !== 'production'
 const liveDemos = isDev ? [{ text: '▶ Live demos', link: 'http://localhost:5173/demo/index.html' }] : []
 
 export default defineConfig({
+  // GitHub Pages serves a project site under /jikz/; the docs workflow sets
+  // DOCS_BASE. Local dev/build stay at the root.
+  base: process.env.DOCS_BASE ?? '/',
   title: 'jikz',
   description: 'TikZ-inspired coordinate and drawing library for JavaScript/TypeScript',
   // The TypeDoc output (docs/api) is generated separately by
@@ -68,7 +71,7 @@ export default defineConfig({
       },
     ],
     socialLinks: [
-      { icon: 'bitbucket', link: 'https://bitbucket.org/binboavetonik/jikz' },
+      { icon: 'github', link: 'https://github.com/binboavetonik/jikz' },
       { icon: 'npm', link: 'https://www.npmjs.com/package/@ozan.e/jikz' },
     ],
   },

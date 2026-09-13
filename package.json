@@ -72,10 +72,10 @@
   "author": "ozan.erdemir <erdemirozan@gmail.com>",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@bitbucket.org/binboavetonik/jikz.git"
+    "url": "git+https://github.com/binboavetonik/jikz.git"
   },
-  "homepage": "https://bitbucket.org/binboavetonik/jikz",
-  "bugs": "https://bitbucket.org/binboavetonik/jikz/issues",
+  "homepage": "https://github.com/binboavetonik/jikz#readme",
+  "bugs": "https://github.com/binboavetonik/jikz/issues",
   "license": "MIT",
   "engines": {
     "node": ">=18"

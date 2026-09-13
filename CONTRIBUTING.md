@@ -8,7 +8,7 @@ issue first.
 ## Setup
 
 ```sh
-git clone git@bitbucket.org:binboavetonik/jikz.git
+git clone git@github.com:binboavetonik/jikz.git
 cd jikz
 nvm use          # Node 24 (see .nvmrc); anything >= 18 works
 npm ci
@@ -27,7 +27,7 @@ Useful scripts:
 | `npm run docs:cookbook` | Regenerate `docs/cookbook/` from `examples/manifest.ts` |
 | `npm run docs:build` | Build the VitePress site |
 
-CI (`bitbucket-pipelines.yml`) runs lint, build, test, `check:pkg` and
+CI (`.github/workflows/ci.yml`) runs lint, build, test, `check:pkg` and
 the docs build on every push, and repeats build + test on Node 18.
 
 ## Layout

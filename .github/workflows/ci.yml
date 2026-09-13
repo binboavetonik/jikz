@@ -1,0 +1,33 @@
+# Runs the same gates `prepublishOnly` runs before a release, plus the docs
+# build, on every push to master and every pull request. Node 24 matches
+# .nvmrc; engines.node says >=18, so the matrix also checks the floor.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  verify:
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [18, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      # tsc (src + examples) + vite build + declaration post-processing
+      - run: npm run build
+      # unit, snapshot, example-gallery and tree-shaking suites
+      - run: npm test
+      # publint + arethetypeswrong against the packed tarball
+      - run: npm run check:pkg
+      - run: npm run docs:build

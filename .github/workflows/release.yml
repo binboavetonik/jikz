@@ -1,0 +1,40 @@
+# Publishes to npm when a version tag is pushed, using npm trusted
+# publishing (OIDC): no NPM_TOKEN secret, and every release carries a
+# provenance attestation linking the tarball to this commit and workflow.
+#
+# One-time setup on npmjs.com → package @ozan.e/jikz → Settings →
+# Trusted publishers: add GitHub Actions with
+#   repository: binboavetonik/jikz, workflow: release.yml.
+#
+# Release procedure:
+#   1. move the Unreleased section of CHANGELOG.md under the new version
+#   2. npm version <x.y.z> --no-git-tag-version, commit "release: x.y.z"
+#   3. git tag vx.y.z && git push origin master vx.y.z
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          cache: npm
+      - name: Tag must match package.json version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          test "$tag" = "$pkg" || { echo "tag v$tag != package.json $pkg"; exit 1; }
+      - run: npm ci --no-audit --no-fund
+      # prepublishOnly runs lint, test, build and check:pkg before publishing
+      - run: npm publish --provenance --access public
