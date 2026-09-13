@@ -1,11 +1,11 @@
-import { picture, point, circle, rect, Transform } from 'jikz'
+import { Transform, allShapes, circle, picture, point, rect, type Picture } from 'jikz'
 
 /**
  * One sub-assembly, drawn three times at three places — the thing a
  * scope makes possible. The unit is authored once around its own
  * origin; each scope shifts, scales and recolors the whole group.
  */
-function bay(pic: ReturnType<typeof picture>, id: string, label: string, at: Transform, tint: string) {
+function bay(pic: Picture<typeof allShapes>, id: string, label: string, at: Transform, tint: string) {
   pic.scope({ transform: at, style: { stroke: tint, strokeWidth: 1.6 } }, (s) => {
     s.draw(rect(0, 0, 90, 54), { style: { fill: '#f8fafc' } })
       .node(`${id}-in`, { at: point(22, 27), shape: 'circle', width: 18, height: 18 })
@@ -16,7 +16,7 @@ function bay(pic: ReturnType<typeof picture>, id: string, label: string, at: Tra
 }
 
 export default function render(container: HTMLElement) {
-  const pic = picture()
+  const pic = picture({ shapes: allShapes })
 
   bay(pic, 'a', 'ingest', Transform.translation(10, 20), '#2563eb')
   bay(pic, 'b', 'transform', Transform.translation(130, 20), '#16a34a')

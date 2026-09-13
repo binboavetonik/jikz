@@ -1,4 +1,4 @@
-import { picture, rect, rectFit, point } from 'jikz'
+import { allShapes, picture, point, rect, rectFit } from 'jikz'
 
 // The Bayesian-network plate diagram — a texample staple. Latent and
 // observed variables as nodes (the observed one shaded), a dashed
@@ -7,7 +7,7 @@ import { picture, rect, rectFit, point } from 'jikz'
 // \node[fit=(z)(x), label=below right:N].
 
 export default function render(container: HTMLElement) {
-  const pic = picture()
+  const pic = picture({ shapes: allShapes })
 
   pic.node('z', {
     at: point(90, 80), shape: 'circle', width: 44, height: 44, text: '$z_i$',

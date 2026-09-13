@@ -1,10 +1,10 @@
-import { graph, SVGRenderer } from 'jikz'
+import { SVGRenderer, allShapes, graph } from 'jikz'
 
 export default function render(container: HTMLElement) {
   const g = graph()
   const names = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
   for (const n of names) {
-    g.node(n, { shape: 'circle', width: 32, height: 32, text: n.toUpperCase() })
+    g.node(n, { shape: allShapes['circle'], width: 32, height: 32, text: n.toUpperCase() })
   }
 
   // A cycle with chords — arbitrary graph, no hierarchy, no DAG. The

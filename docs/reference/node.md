@@ -9,7 +9,7 @@ text-bearing shape. Full API details: [generated API](../api/)
 | key | type | purpose |
 |---|---|---|
 | `at` | `PointLike` | placement (the node's `center` unless `anchor` redirects it) |
-| `shape` | `ShapeSpec` | any `SHAPE_TYPES` string, a registered custom name, or a `Shape` instance |
+| `shape` | `ShapeSpec` | a shape kind (`allShapes.star`, your own `defineShape(...)`) or a `Shape` instance. Through `pic.node`, also any name in the picture's shape set |
 | `shapeOptions` | `ShapeOptions` | forwarded to the shape (e.g. circuit `variant`) |
 | `width` / `height` | `number` | explicit size; omit both to auto-fit the text |
 | `minWidth` / `minHeight` | `number` | floor for auto-sizing (TikZ `minimum width`) |

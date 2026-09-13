@@ -1,11 +1,10 @@
-import { picture, registerCircuits, circuit, resistor, wire, point } from 'jikz'
+import { allShapes, circuit, circuitShapes, picture, point, resistor, wire } from 'jikz'
 
 export default function render(container: HTMLElement) {
-  registerCircuits()
   const sym = { stroke: '#0f172a', strokeWidth: 1.6 }
 
   // ── Style 1: string specs (TikZ-familiar, data-driven) ──
-  const strings = picture()
+  const strings = picture({ shapes: { ...allShapes, ...circuitShapes } })
   strings.text(point(150, 16), 'string specs — ports checked at runtime', { fontSize: 11 })
   strings.node('V1', { shape: 'voltage source', at: point(50, 110), rotate: 90 }, { style: sym })
   strings.node('R1', { shape: 'resistor', at: point(150, 55) }, { style: sym })
@@ -17,7 +16,7 @@ export default function render(container: HTMLElement) {
   wire(strings, ['V1.out', point(50, 165), point(240, 165), 'D1.out'])
 
   // ── Style 2: typed builders + typed port Points ──
-  const typed = picture()
+  const typed = picture({ shapes: { ...allShapes, ...circuitShapes } })
   typed.text(point(150, 16), 'typed builders — compile-time checked', { fontSize: 11 })
   typed.node('V1', circuit.voltageSource({ at: point(50, 110), rotate: 90 }), { style: sym })
   const r1 = resistor({ center: point(150, 55) }) // typed instance

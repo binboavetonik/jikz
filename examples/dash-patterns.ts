@@ -1,7 +1,7 @@
-import { picture, line, point, type DashPatternName } from 'jikz'
+import { allShapes, line, picture, point, type DashPatternName } from 'jikz'
 
 export default function render(container: HTMLElement) {
-  const pic = picture()
+  const pic = picture({ shapes: allShapes })
   const styles: DashPatternName[] = ['dashed', 'dotted', 'dashdotted', 'densely dashed', 'loosely dashed', 'densely dotted']
   styles.forEach((dash, i) => {
     const y = 22 + i * 24

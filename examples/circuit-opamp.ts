@@ -1,8 +1,7 @@
-import { picture, registerCircuits, circuit, opAmp, resistor, wire, junctionDot, point } from 'jikz'
+import { allShapes, circuit, circuitShapes, junctionDot, opAmp, picture, point, resistor, wire } from 'jikz'
 
 export default function render(container: HTMLElement) {
-  registerCircuits()
-  const pic = picture()
+  const pic = picture({ shapes: { ...allShapes, ...circuitShapes } })
   const sym = { stroke: '#0f172a', strokeWidth: 1.6 }
 
   // Typed instances: ports are Points (u1.minus/.plus/.out) that

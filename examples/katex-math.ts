@@ -1,7 +1,7 @@
-import { picture, point } from 'jikz'
+import { allShapes, picture, point } from 'jikz'
 
 export default function render(container: HTMLElement) {
-  picture()
+  picture({ shapes: allShapes })
     .node('E', { at: point(90, 70), shape: 'circle', width: 90, height: 60, text: '$e^{i\\pi}+1=0$' },
       { style: { stroke: '#2563eb', fill: '#dbeafe', strokeWidth: 2 } })
     .node('I', { at: point(270, 70), shape: 'rectangle', width: 130, height: 60, text: '$\\int_0^1 x^2\\,dx$' },

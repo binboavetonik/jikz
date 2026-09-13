@@ -1,4 +1,4 @@
-import { picture, tree, point } from 'jikz'
+import { allShapes, picture, point, tree } from 'jikz'
 
 // A BST built from an insertion sequence — the tree layout computes
 // positions from structure. The search path for one key is highlighted
@@ -28,7 +28,7 @@ export default function render(container: HTMLElement) {
     grow: 'down',
     levelDistance: 44,
     siblingDistance: 30,
-    nodeOptions: { shape: 'circle', minWidth: 30, minHeight: 30 },
+    nodeOptions: { shape: allShapes['circle'], minWidth: 30, minHeight: 30 },
   })
   const build = (t: ReturnType<typeof layout.root>, n: BNode | undefined): void => {
     if (!n) return
@@ -42,7 +42,7 @@ export default function render(container: HTMLElement) {
   build(t, root!.r)
   const { nodes } = t.build()
 
-  const pic = picture()
+  const pic = picture({ shapes: allShapes })
 
   // nodes first — edge endpoints resolve eagerly, by name
   for (const n of nodes) {

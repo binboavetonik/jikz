@@ -1,12 +1,10 @@
-import {
-  picture, AnchoredPolygon, registerShape, point,
-  type Point, type PointLike, type ShapeOptions,
-} from 'jikz'
+import { AnchoredPolygon, allShapes, defineShape, picture, point, type Point, type PointLike, type ShapeOptions } from 'jikz'
 
 // A custom shape, the full TikZ-library workflow: declare vertices,
 // get anchors/bounds/contains/SVG for free via AnchoredPolygon.
-// registerShape makes 'house' usable by name everywhere — including
-// boundary-resolving edges ('G' -- 'H' clips at the roofline).
+// defineShape turns the constructor into a shape kind; handing it to a
+// picture makes 'house' usable by name — including boundary-resolving
+// edges ('G' -- 'H' clips at the roofline).
 
 class House extends AnchoredPolygon {
   readonly type = 'house'
@@ -45,16 +43,13 @@ class House extends AnchoredPolygon {
   resize(width: number, height: number) { return new House({ center: this.center, width, height }) }
 }
 
-registerShape('house', (o) => new House(o))
-
-// Compile-time half of registration: the name now autocompletes in
-// node({ shape: … }) and misspellings are compile errors.
-declare module 'jikz' {
-  interface ShapeRegistry { house: Record<string, never> }
-}
+// The shape as a value. No registration, no module augmentation: the
+// picture that receives it knows the name, and misspellings are
+// compile errors because the name comes from the object below.
+const house = defineShape('house', (o: ShapeOptions) => new House(o))
 
 export default function render(container: HTMLElement) {
-  const pic = picture()
+  const pic = picture({ shapes: { ...allShapes, house } })
   const st = { stroke: '#b45309', fill: '#fef3c7', strokeWidth: 2 }
 
   pic.node('H', { shape: 'house', at: point(100, 110), width: 70, height: 60, text: 'home' }, { style: st })

@@ -5,11 +5,9 @@
  *
  * Usage:
  * ```ts
- * import { picture, registerGates, gates, point } from 'jikz'
+ * import { picture, gateShapes, gates, point } from 'jikz'
  *
- * registerGates()  // once, like \usetikzlibrary{shapes.gates.logic.US}
- *
- * const pic = picture()
+ * const pic = picture({ shapes: gateShapes })
  *   .node('A', gates.and({ at: point(60, 40) }))
  *   .node('B', gates.or({ at: point(60, 100) }))
  *   .node('N', gates.not({ at: point(180, 40) }))
@@ -25,14 +23,18 @@
  * for the `&`/`≥1`/`=1`/`1` symbol).
  */
 import type { Point } from '../../core/Point'
-import { registerShape } from '../../geometry/registry'
-import { assertType, type ShapeType } from '../../node/Node'
+import { defineShape } from '../../geometry/ShapeKind'
+import { assertType } from '../../node/Node'
 import {
   gate,
   type BinaryGate,
+  type GateKind,
   type LogicGateOptions,
   type UnaryGate,
 } from './gate'
+
+/** Gates have intrinsic sizes; text never stretches them. */
+const NO_AUTO = { textAutoSize: false }
 
 export {
   LogicGate,
@@ -61,20 +63,33 @@ export type {
 export { gates } from './builders'
 export type { GateBuilder } from './builders'
 
-/** Shape names registered by {@link registerGates}. */
-export const GATE_SHAPES = [
-  'and',
-  'nand',
-  'or',
-  'nor',
-  'xor',
-  'xnor',
-  'not',
-  'buffer',
-] as const
+/**
+ * The logic-gate shape set — jikz's `\usetikzlibrary{shapes.gates.logic.US}`.
+ * Hand it to a picture (alone or merged with others) and the names
+ * below resolve, with `shapeOptions` typed per gate:
+ *
+ * ```ts
+ * const pic = picture({ shapes: { ...basicShapes, ...gateShapes } })
+ * pic.node('A', { shape: 'and' })
+ * pic.node('B', { shape: 'not', shapeOptions: { variant: 'iec' } })
+ * ```
+ *
+ * Every gate opts out of text auto-sizing: they have intrinsic sizes
+ * and never stretch to fit text.
+ */
+export const gateShapes = {
+  and: defineShape('and', (o: LogicGateOptions) => gate('and', o), NO_AUTO),
+  nand: defineShape('nand', (o: LogicGateOptions) => gate('nand', o), NO_AUTO),
+  or: defineShape('or', (o: LogicGateOptions) => gate('or', o), NO_AUTO),
+  nor: defineShape('nor', (o: LogicGateOptions) => gate('nor', o), NO_AUTO),
+  xor: defineShape('xor', (o: LogicGateOptions) => gate('xor', o), NO_AUTO),
+  xnor: defineShape('xnor', (o: LogicGateOptions) => gate('xnor', o), NO_AUTO),
+  not: defineShape('not', (o: LogicGateOptions) => gate('not', o), NO_AUTO),
+  buffer: defineShape('buffer', (o: LogicGateOptions) => gate('buffer', o), NO_AUTO),
+} as const
 
-/** Gate shape names registered by {@link registerGates}. */
-export type GateShapeName = (typeof GATE_SHAPES)[number]
+/** Shape names in {@link gateShapes}. */
+export type GateShapeName = keyof typeof gateShapes
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Port-name vocabulary — compile-time constants mirroring the runtime
@@ -97,28 +112,6 @@ export type BinaryGatePort = (typeof BINARY_GATE_PORTS)[number]
 export const GATE_PORTS = ['in', 'in1', 'in2', 'out'] as const
 export type GatePort = (typeof GATE_PORTS)[number]
 
-/**
- * Type-level registration — the compile-time half of
- * `\usetikzlibrary{shapes.gates.logic.US}`. Adds the gate names to
- * `ShapeType` and types `shapeOptions.variant`. Runtime resolution still
- * requires {@link registerGates}.
- */
-declare module '../../node/Node' {
-  interface ShapeRegistry {
-    and: Pick<LogicGateOptions, 'variant'>
-    nand: Pick<LogicGateOptions, 'variant'>
-    or: Pick<LogicGateOptions, 'variant'>
-    nor: Pick<LogicGateOptions, 'variant'>
-    xor: Pick<LogicGateOptions, 'variant'>
-    xnor: Pick<LogicGateOptions, 'variant'>
-    not: Pick<LogicGateOptions, 'variant'>
-    buffer: Pick<LogicGateOptions, 'variant'>
-  }
-}
-
-// Compile-time guard: the augmentation above must cover GATE_SHAPES.
-assertType<(typeof GATE_SHAPES)[number] extends ShapeType ? true : false>()
-
 // Compile-time guards: a gate's TYPE exposes exactly the ports it has,
 // so reaching for the wrong arity's port is an error at the call site
 // rather than an AnchorError at render time.
@@ -127,26 +120,5 @@ assertType<UnaryGate extends { in1: Point } ? false : true>()
 assertType<BinaryGate extends { in1: Point; in2: Point } ? true : false>()
 assertType<BinaryGate extends { in: Point } ? false : true>()
 
-let registered = false
-
-/**
- * Register all logic-gate shapes in the global shape registry (TikZ:
- * `\usetikzlibrary{shapes.gates.logic.US}`). Idempotent. After calling,
- * `node({ shape: 'and' })` and `gates.*` builders accept gate names.
- *
- * All gates register with `textAutoSize: false` — intrinsic sizes, no
- * text stretching.
- */
-export function registerGates(): void {
-  if (registered) return
-  const noAuto = { textAutoSize: false }
-  for (const name of GATE_SHAPES) {
-    registerShape(name, (o) => gate(name, o), noAuto)
-  }
-  registered = true
-}
-
-/** Whether {@link registerGates} has been called. */
-export function gatesRegistered(): boolean {
-  return registered
-}
+// Compile-time guard: the set must cover every gate kind.
+assertType<GateKind extends GateShapeName ? true : false>()

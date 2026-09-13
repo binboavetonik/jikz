@@ -1,11 +1,11 @@
-import { picture, point, thick } from 'jikz'
+import { allShapes, picture, point, thick } from 'jikz'
 
 export default function render(container: HTMLElement) {
   const nodeStyle = { stroke: '#334155', fill: '#f8fafc', strokeWidth: 2 }
   // TikZ's \draw[thick, ...] as a typed array — later entries win
   const edgeStyle = [thick, { stroke: '#111827' }]
 
-  picture()
+  picture({ shapes: allShapes })
     .node('input', { at: point(70, 80), shape: 'rectangle', width: 110, height: 54, text: 'input' },
       { style: nodeStyle })
     .node('transform', { at: point(260, 80), shape: 'diamond', width: 140, height: 80, text: 'transform' },

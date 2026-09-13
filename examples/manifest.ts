@@ -54,7 +54,7 @@ export const CATEGORY_INFO: [DemoCategory, string, string][] = [
   ['paths-decorations', 'Paths, decorations & styles',
     'Feature tours of pen statements, path surgery, decorations, and the style vocabulary.'],
   ['custom-extension', 'Custom extensions',
-    'registerShape, registerPattern, clip paths — TikZ-library-style extension on public seams.'],
+    'defineShape, registerPattern, clip paths — TikZ-library-style extension on public seams.'],
   ['app-prototypes', 'Application prototypes',
     'Real app sketches (chess study tools) — diagrams derived from data, not coordinates.'],
 ]
@@ -184,8 +184,8 @@ const meta: DemoMeta[] = [
   {
     id: "shape-gallery",
     category: "nodes-edges",
-    title: "Shape gallery — all SHAPE_TYPES",
-    description: "Every shape-type string the library exports, iterated from jikz's own SHAPE_TYPES. Labels are placed from each shape's measured bounds, so pointers and arrow heads can't collide with them.",
+    title: "Shape gallery — every built-in shape",
+    description: "Every shape the library ships, iterated from jikz's own allShapes set. Labels are placed from each shape's measured bounds, so pointers and arrow heads can't collide with them.",
   },
   {
     id: "edge-routing",
@@ -556,7 +556,7 @@ const meta: DemoMeta[] = [
   {
     id: "custom-shape-house",
     category: "custom-extension",
-    title: "Custom shape — 'house' via registerShape",
+    title: "Custom shape — 'house' via defineShape",
     description: "The full TikZ-library workflow: extend AnchoredPolygon, declare five vertices, and anchors/bounds/contains/SVG come free. A custom 'apex' anchor via customAnchor; edges clip at the roofline automatically. This is the same seam ext/circuits is built on.",
   },
   {
@@ -635,19 +635,19 @@ const meta: DemoMeta[] = [
     id: "circuit-symbols",
     category: "physics-engineering",
     title: "Circuit symbol gallery — ext/circuits",
-    description: "The circuits extension (jikz's \\usetikzlibrary{circuits.ee} analogue) ships symbols built ONLY on public seams: registerShape, port anchors, rotate. registerCircuits() registers the names at runtime, while a ShapeRegistry augmentation makes them known to the IDE — shape names autocomplete and misspellings are compile errors. The circuit.* builders used below are the fully-typed route: variants autocomplete too. Every symbol has an intrinsic size and never stretches to fit text.",
+    description: "The circuits extension (jikz's \\usetikzlibrary{circuits.ee} analogue) ships symbols built ONLY on public seams: defineShape, port anchors, rotate. Handing circuitShapes to a picture is what makes the names resolve, and because the set is a value the IDE reads the names and their options off it — misspellings are compile errors. The circuit.* builders used below are the fully-typed route: variants autocomplete too. Every symbol has an intrinsic size and never stretches to fit text.",
   },
   {
     id: "logic-gates",
     category: "physics-engineering",
     title: "Logic gates — ext/gates",
-    description: "A half adder from the logic-gate extension (TikZ's shapes.gates.logic): XOR for the sum, AND for the carry. Gates expose typed ports (in1/in2/out) and rotate with node({ rotate }); negated gates draw their bubble. Built on the same registerShape seam as ext/circuits.",
+    description: "A half adder from the logic-gate extension (TikZ's shapes.gates.logic): XOR for the sum, AND for the carry. Gates expose typed ports (in1/in2/out) and rotate with node({ rotate }); negated gates draw their bubble. Built on the same defineShape seam as ext/circuits.",
   },
   {
     id: "circuit-typed-api",
     category: "physics-engineering",
     title: "Two ways to reference symbols — strings vs typed builders",
-    description: "The SAME circuit built twice. Top: string specs — shape names autocomplete via the ShapeRegistry augmentation, and 'R1.out'-style port strings resolve at runtime (typo'd ports throw AnchorError listing known names). Bottom: typed builders — circuit.resistor(...) returns ordinary NodeOptions with compile-checked variants, and symbol instances expose ports as Points (r1.out), so even port typos are compile errors. Both styles produce the same objects and mix freely; the RC-filter and op-amp cards use the typed style.",
+    description: "The SAME circuit built twice. Top: string specs — shape names come from the set handed to picture({ shapes }), and 'R1.out'-style port strings resolve at runtime (typo'd ports throw AnchorError listing known names). Bottom: typed builders — circuit.resistor(...) returns ordinary NodeOptions with compile-checked variants, and symbol instances expose ports as Points (r1.out), so even port typos are compile errors. Both styles produce the same objects and mix freely; the RC-filter and op-amp cards use the typed style.",
   },
   {
     id: "circuit-rc-filter",

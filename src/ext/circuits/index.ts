@@ -9,11 +9,9 @@
  *
  * Usage:
  * ```ts
- * import { picture, registerCircuits, wire, junctionDot, point } from 'jikz'
+ * import { picture, circuitShapes, wire, junctionDot, point } from 'jikz'
  *
- * registerCircuits()  // once, like \usetikzlibrary{circuits.ee}
- *
- * const pic = picture()
+ * const pic = picture({ shapes: circuitShapes })
  *   .node('V1', { shape: 'voltage source', at: point(60, 100), rotate: 90 })
  *   .node('R1', { shape: 'resistor', at: point(140, 40) })
  *   .node('C1', { shape: 'capacitor', at: point(220, 100), rotate: 90 })
@@ -31,12 +29,15 @@
  * `node({ at, anchor: 'in' })`. All symbols opt out of text
  * auto-sizing — annotate with `labels`, never `text`.
  */
-import { registerShape } from '../../geometry/registry'
-import { assertType, type ShapeType } from '../../node/Node'
+import { defineShape } from '../../geometry/ShapeKind'
 import type { ResistorOptions } from './symbols/resistor'
 import type { CapacitorOptions } from './symbols/capacitor'
 import type { DiodeOptions } from './symbols/diode'
 import type { SwitchOptions } from './symbols/switch'
+import type { InductorOptions } from './symbols/inductor'
+import type { SourceOptions } from './symbols/sources'
+import type { GroundOptions } from './symbols/ground'
+import type { OpAmpOptions } from './symbols/opamp'
 import { resistor } from './symbols/resistor'
 import { capacitor } from './symbols/capacitor'
 import { inductor } from './symbols/inductor'
@@ -109,75 +110,38 @@ export type { GroundOptions } from './symbols/ground'
 export { OpAmp, opAmp, OPAMP_DEFAULT_WIDTH, OPAMP_DEFAULT_HEIGHT } from './symbols/opamp'
 export type { OpAmpOptions } from './symbols/opamp'
 
-/** Shape names registered by {@link registerCircuits}. */
-export const CIRCUIT_SHAPES = [
-  'resistor',
-  'capacitor',
-  'inductor',
-  'diode',
-  'switch',
-  'voltage source',
-  'current source',
-  'ground',
-  'op amp',
-] as const
-
-/** Symbol shape names registered by {@link registerCircuits}. */
-export type CircuitShapeName = (typeof CIRCUIT_SHAPES)[number]
+/** Symbols have intrinsic sizes; text never stretches them. */
+const NO_AUTO = { textAutoSize: false }
 
 /**
- * Type-level registration — the compile-time half of
- * `\usetikzlibrary{circuits.ee}`. Adds the circuit names to
- * `ShapeType`, so `node({ shape: 'op amp' })` autocompletes in the IDE
- * and misspelled names are compile errors instead of runtime throws —
- * and the registry VALUES type `shapeOptions` per symbol
- * (`{ variant: 'iec' }` checks against ResistorVariant). Runtime
- * resolution still requires {@link registerCircuits}.
- */
-declare module '../../node/Node' {
-  interface ShapeRegistry {
-    resistor: Pick<ResistorOptions, 'variant'>
-    capacitor: Pick<CapacitorOptions, 'variant'>
-    inductor: {}
-    diode: Pick<DiodeOptions, 'variant'>
-    switch: Pick<SwitchOptions, 'variant'>
-    'voltage source': {}
-    'current source': {}
-    ground: {}
-    'op amp': {}
-  }
-}
-
-// Compile-time guard: the augmentation above must cover CIRCUIT_SHAPES.
-assertType<(typeof CIRCUIT_SHAPES)[number] extends ShapeType ? true : false>()
-
-let registered = false
-
-/**
- * Register all circuit symbol shapes in the global shape registry
- * (TikZ: `\usetikzlibrary{circuits.ee}`). Idempotent. After calling,
- * `node({ shape: 'resistor' })`, `Picture.node`, and layout builders
- * accept circuit shape names.
+ * The circuit shape set — jikz's `\usetikzlibrary{circuits.ee}`. Hand it
+ * to a picture and the names below resolve, with `shapeOptions` typed
+ * per symbol (`{ variant: 'iec' }` checks against ResistorVariant):
  *
- * All symbols register with `textAutoSize: false` — they have
- * intrinsic sizes and never stretch to fit text.
+ * ```ts
+ * const pic = picture({ shapes: circuitShapes })
+ * pic.node('R1', { shape: 'resistor', shapeOptions: { variant: 'iec' } })
+ * ```
  */
-export function registerCircuits(): void {
-  if (registered) return
-  const noAuto = { textAutoSize: false }
-  registerShape('resistor', (o) => resistor(o), noAuto)
-  registerShape('capacitor', (o) => capacitor(o), noAuto)
-  registerShape('inductor', (o) => inductor(o), noAuto)
-  registerShape('diode', (o) => diode(o), noAuto)
-  registerShape('switch', (o) => createSwitch(o), noAuto)
-  registerShape('voltage source', (o) => voltageSource(o), noAuto)
-  registerShape('current source', (o) => currentSource(o), noAuto)
-  registerShape('ground', (o) => ground(o), noAuto)
-  registerShape('op amp', (o) => opAmp(o), noAuto)
-  registered = true
-}
+export const circuitShapes = {
+  resistor: defineShape('resistor', (o: ResistorOptions) => resistor(o), NO_AUTO),
+  capacitor: defineShape('capacitor', (o: CapacitorOptions) => capacitor(o), NO_AUTO),
+  inductor: defineShape('inductor', (o: InductorOptions) => inductor(o), NO_AUTO),
+  diode: defineShape('diode', (o: DiodeOptions) => diode(o), NO_AUTO),
+  switch: defineShape('switch', (o: SwitchOptions) => createSwitch(o), NO_AUTO),
+  'voltage source': defineShape(
+    'voltage source',
+    (o: SourceOptions) => voltageSource(o),
+    NO_AUTO
+  ),
+  'current source': defineShape(
+    'current source',
+    (o: SourceOptions) => currentSource(o),
+    NO_AUTO
+  ),
+  ground: defineShape('ground', (o: GroundOptions) => ground(o), NO_AUTO),
+  'op amp': defineShape('op amp', (o: OpAmpOptions) => opAmp(o), NO_AUTO),
+} as const
 
-/** Whether {@link registerCircuits} has been called. */
-export function circuitsRegistered(): boolean {
-  return registered
-}
+/** Shape names in {@link circuitShapes}. */
+export type CircuitShapeName = keyof typeof circuitShapes

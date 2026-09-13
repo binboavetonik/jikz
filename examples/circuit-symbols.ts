@@ -1,8 +1,7 @@
-import { picture, registerCircuits, circuit, point, type NodeOptions } from 'jikz'
+import { allShapes, circuit, circuitShapes, picture, point, type NodeOptions } from 'jikz'
 
-export default function render(container: HTMLElement) {
-  registerCircuits() // once, like \usetikzlibrary{circuits.ee}
-  const pic = picture()
+export default function render(container: HTMLElement) { // once, like \usetikzlibrary{circuits.ee}
+  const pic = picture({ shapes: { ...allShapes, ...circuitShapes } })
   const sym = { stroke: '#0f172a', strokeWidth: 1.6 }
 
   // circuit.* option builders: symbol names and variants autocomplete

@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { chain, chainFrom } from '../../src/layout/Chain'
 import { point } from '../../src/core/Point'
 import { rectNode } from '../../src/node/Node'
+import { allShapes } from '../../src/geometry/shapes'
+const SHAPES = allShapes
 
 describe('Chain', () => {
   describe('basic chain creation', () => {
@@ -263,7 +265,7 @@ describe('Chain', () => {
   describe('node options', () => {
     it('applies global node options', () => {
       const result = chain(point(50, 100), {
-        nodeOptions: { shape: 'circle' }
+        nodeOptions: { shape: SHAPES['circle'] }
       })
         .node({ text: 'A' })
         .node({ text: 'B' })
@@ -275,10 +277,10 @@ describe('Chain', () => {
 
     it('per-node options override global options', () => {
       const result = chain(point(50, 100), {
-        nodeOptions: { shape: 'circle' }
+        nodeOptions: { shape: SHAPES['circle'] }
       })
         .node({ text: 'A' })
-        .node({ text: 'B', shape: 'rectangle' })
+        .node({ text: 'B', shape: SHAPES['rectangle'] })
         .build()
 
       expect(result.nodes[0]!.shape.type).toBe('circle')

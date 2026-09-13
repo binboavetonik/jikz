@@ -243,7 +243,7 @@ Principal rays from the arrow tip: parallel-then-focus, through-center-straight 
 
 ![Circuit symbol gallery — ext/circuits](img/circuit-symbols.svg)
 
-The circuits extension (jikz's \usetikzlibrary{circuits.ee} analogue) ships symbols built ONLY on public seams: registerShape, port anchors, rotate. registerCircuits() registers the names at runtime, while a ShapeRegistry augmentation makes them known to the IDE — shape names autocomplete and misspellings are compile errors. The circuit.* builders used below are the fully-typed route: variants autocomplete too. Every symbol has an intrinsic size and never stretches to fit text.
+The circuits extension (jikz's \usetikzlibrary{circuits.ee} analogue) ships symbols built ONLY on public seams: defineShape, port anchors, rotate. Handing circuitShapes to a picture is what makes the names resolve, and because the set is a value the IDE reads the names and their options off it — misspellings are compile errors. The circuit.* builders used below are the fully-typed route: variants autocomplete too. Every symbol has an intrinsic size and never stretches to fit text.
 
 **Source:** [`examples/circuit-symbols.ts`](../../examples/circuit-symbols.ts)
 
@@ -251,7 +251,7 @@ The circuits extension (jikz's \usetikzlibrary{circuits.ee} analogue) ships symb
 
 ![Logic gates — ext/gates](img/logic-gates.svg)
 
-A half adder from the logic-gate extension (TikZ's shapes.gates.logic): XOR for the sum, AND for the carry. Gates expose typed ports (in1/in2/out) and rotate with node({ rotate }); negated gates draw their bubble. Built on the same registerShape seam as ext/circuits.
+A half adder from the logic-gate extension (TikZ's shapes.gates.logic): XOR for the sum, AND for the carry. Gates expose typed ports (in1/in2/out) and rotate with node({ rotate }); negated gates draw their bubble. Built on the same defineShape seam as ext/circuits.
 
 **Source:** [`examples/logic-gates.ts`](../../examples/logic-gates.ts)
 
@@ -259,7 +259,7 @@ A half adder from the logic-gate extension (TikZ's shapes.gates.logic): XOR for 
 
 ![Two ways to reference symbols — strings vs typed builders](img/circuit-typed-api.svg)
 
-The SAME circuit built twice. Top: string specs — shape names autocomplete via the ShapeRegistry augmentation, and 'R1.out'-style port strings resolve at runtime (typo'd ports throw AnchorError listing known names). Bottom: typed builders — circuit.resistor(...) returns ordinary NodeOptions with compile-checked variants, and symbol instances expose ports as Points (r1.out), so even port typos are compile errors. Both styles produce the same objects and mix freely; the RC-filter and op-amp cards use the typed style.
+The SAME circuit built twice. Top: string specs — shape names come from the set handed to picture({ shapes }), and 'R1.out'-style port strings resolve at runtime (typo'd ports throw AnchorError listing known names). Bottom: typed builders — circuit.resistor(...) returns ordinary NodeOptions with compile-checked variants, and symbol instances expose ports as Points (r1.out), so even port typos are compile errors. Both styles produce the same objects and mix freely; the RC-filter and op-amp cards use the typed style.
 
 **Source:** [`examples/circuit-typed-api.ts`](../../examples/circuit-typed-api.ts)
 
@@ -588,11 +588,11 @@ Reference nodes by name in `edge(...)`. A bare name resolves to the boundary poi
 
 **Source:** [`examples/node-to-node-edge.ts`](../../examples/node-to-node-edge.ts)
 
-### Shape gallery — all SHAPE_TYPES
+### Shape gallery — every built-in shape
 
-![Shape gallery — all SHAPE_TYPES](img/shape-gallery.svg)
+![Shape gallery — every built-in shape](img/shape-gallery.svg)
 
-Every shape-type string the library exports, iterated from jikz's own SHAPE_TYPES. Labels are placed from each shape's measured bounds, so pointers and arrow heads can't collide with them.
+Every shape the library ships, iterated from jikz's own allShapes set. Labels are placed from each shape's measured bounds, so pointers and arrow heads can't collide with them.
 
 **Source:** [`examples/shape-gallery.ts`](../../examples/shape-gallery.ts)
 
@@ -746,11 +746,11 @@ A histogram silhouette as ONE filldraw pen statement: hvTo is TikZ's -| (horizon
 
 ## Custom extensions
 
-registerShape, registerPattern, clip paths — TikZ-library-style extension on public seams.
+defineShape, registerPattern, clip paths — TikZ-library-style extension on public seams.
 
-### Custom shape — 'house' via registerShape
+### Custom shape — 'house' via defineShape
 
-![Custom shape — 'house' via registerShape](img/custom-shape-house.svg)
+![Custom shape — 'house' via defineShape](img/custom-shape-house.svg)
 
 The full TikZ-library workflow: extend AnchoredPolygon, declare five vertices, and anchors/bounds/contains/SVG come free. A custom 'apex' anchor via customAnchor; edges clip at the roofline automatically. This is the same seam ext/circuits is built on.
 

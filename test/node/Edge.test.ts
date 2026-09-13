@@ -3,6 +3,8 @@ import { Edge, edge, arrow, biEdge, bentEdge, toEdge, bendLeft, bendRight, loopE
 import { node, rectNode } from '../../src/node/Node'
 import { point } from '../../src/core/Point'
 import { SVGRenderer } from '../../src/render/SVGRenderer'
+import { allShapes } from '../../src/geometry/shapes'
+const SHAPES = allShapes
 
 describe('Edge', () => {
   describe('constructor and factories', () => {
@@ -364,7 +366,7 @@ describe('Edge', () => {
   })
 
   describe('loopEdge', () => {
-    const A = node({ at: point(100, 100), shape: 'circle', width: 40, height: 40 })
+    const A = node({ at: point(100, 100), shape: SHAPES['circle'], width: 40, height: 40 })
 
     it('creates a self-loop with loop looseness', () => {
       const e = loopEdge(point(50, 50), 'above')
@@ -430,7 +432,7 @@ describe('Edge', () => {
   })
 
   describe('self-edges', () => {
-    const A = node({ at: point(100, 100), shape: 'circle', width: 40, height: 40 })
+    const A = node({ at: point(100, 100), shape: SHAPES['circle'], width: 40, height: 40 })
 
     it('draws a visible loop instead of a zero-length path', () => {
       const e = new Edge(A, A)
@@ -458,12 +460,12 @@ describe('Edge', () => {
     })
 
     it('treats two distinct nodes on the same centre as a self-edge', () => {
-      const B = node({ at: point(100, 100), shape: 'circle', width: 40, height: 40 })
+      const B = node({ at: point(100, 100), shape: SHAPES['circle'], width: 40, height: 40 })
       expect(new Edge(A, B).routing).toBe('bezier')
     })
 
     it('leaves ordinary edges alone', () => {
-      const B = node({ at: point(200, 100), shape: 'circle', width: 40, height: 40 })
+      const B = node({ at: point(200, 100), shape: SHAPES['circle'], width: 40, height: 40 })
       const e = new Edge(A, B)
       expect(e.routing).toBe('straight')
       expect(e.looseness).toBe(1)

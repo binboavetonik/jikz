@@ -138,7 +138,7 @@ pic.pen({ style: { stroke: '#0f172a', strokeWidth: 1.6 } })
 |---|---|
 | `core` | Immutable `Point` with TikZ operators (`toward` = `(A)!t!(B)`, `horAt`/`verAt` = `-\|`/`\|-`), affine `Transform` |
 | `geometry` | Line, Circle, Arc, Rectangle, Polygon, Triangle, Ellipse, Parabola, Hyperbola, function plotting (Cartesian/parametric/polar) with scatter plot marks (`circle`, `square`, `triangle`, `diamond`, `pentagon`, `plus`, `cross`, `asterisk`, `oplus`, `otimes` — open or `*Filled`), pairwise intersections |
-| `node` | `Node` (any shape + text + inner/outer sep + TikZ-style `labels` = `label=<angle>:<text>`), `Edge` (auto boundary anchors, bend/out/in/looseness, labels, arrow tips), **33 shape types** via `SHAPE_TYPES`, TikZ-style positioning (`nodeAbove`, …) |
+| `node` | `Node` (any shape + text + inner/outer sep + TikZ-style `labels` = `label=<angle>:<text>`), `Edge` (auto boundary anchors, bend/out/in/looseness, labels, arrow tips), **33 shape kinds** via `allShapes`, TikZ-style positioning (`nodeAbove`, …) |
 | `picture` | Named-node registry, named coordinates (`pic.coordinate('A', p)`), string anchor resolution (`'A.north'`), fluent path statements (`pic.pen()` — TikZ `\draw (a) -- (b) node[right]{x} -- cycle` as a chain, with `pos` labels, named endpoints, mid-statement restyling via `push`), `path`/`draw`/`fill`/`filldraw`/`shade` verbs with TikZ-style shape labels (`draw(l, { label: { text, at: 'east' } })` = `node[right]` inside a `\draw`), bare `text` with directional placement (`pic.text(p, 'h', { at: 'south east' })` = `\node[below right] at (p) {h}`), `toSVG`/`mount` with fixed or auto-fit viewBox (`{ fit: true }` sizes from content, TikZ-style) |
 | `path` | Chainable path builder, decorations (snake, zigzag, coil, bumps, saw, brace…), operations (offset, double, smooth, join), SVG path import (`pathFromSVG` parses any `d` string — absolute/relative, `H`/`V`/`S`/`T`, arcs — into a drawable/decoratable/measurable `Path`) |
 | `render` | `SVGRenderer` + `SVGBuilder` (string/DOM), 12 TikZ fill patterns, linear/radial gradients, named shadings (`axis`/`radial`/`ball` + TikZ `left color`/`ball color`/… keys), drop shadows, clip paths, double lines, layers, 10 arrow tip kinds — `stealth`, `latex`, `to`, `bar`, `||`, `circle`, `o`, `square`, `diamond`, `roundCap` — plus TikZ spellings `->`/`<-`/`<->`/`*` (color follows the edge stroke). Every geometry type is renderable — uncommon shapes fall back to their path outline |
@@ -210,12 +210,11 @@ math text falls back to plain italic.
 
 ## Extending jikz
 
-The TikZ-style extension points are registries — add your own shapes,
-arrow tips, fill patterns, and decorations without touching library
-source:
+Shapes are values, and arrow tips, fill patterns and decorations are
+registries — add your own without touching library source:
 
 ```ts
-import { AnchoredPolygon, registerShape, registerArrowTip, registerPattern, registerDecoration, point } from '@ozan.e/jikz'
+import { AnchoredPolygon, defineShape, registerArrowTip, registerPattern, registerDecoration, picture, point } from '@ozan.e/jikz'
 
 // 1. Custom shape: declare vertices, get anchors/bounds/contains/SVG for free
 class House extends AnchoredPolygon {
@@ -235,13 +234,13 @@ class House extends AnchoredPolygon {
   resize(width, height) { return new House({ center: this.center, width, height }) }
 }
 
-registerShape('house', (o) => new House(o))
-// Compile-time half of registration: augment ShapeRegistry so the name
-// autocompletes and misspellings are compile errors.
-declare module 'jikz' {
-  interface ShapeRegistry { house: {} }
-}
-picture().node('H', { shape: 'house', at: point(80, 60), width: 60, height: 50 })
+// A shape kind: the factory plus how it sizes. No registration and no
+// module augmentation — the name lives in whatever set you build.
+const house = defineShape('house', (o) => new House(o))
+
+picture({ shapes: { house } })
+  .node('H', { shape: 'house', at: point(80, 60), width: 60, height: 50 })
+// …or skip names entirely: .node('H', { shape: house, at: … })
 
 // 2. Custom arrow tip (marker artwork in a 10×10 box, +x = travel direction)
 registerArrowTip('pennant', {
@@ -261,16 +260,21 @@ registerPattern('wavy', {
 registerDecoration('heartbeat', (path, options) => myTransform(path, options))
 ```
 
-Registered names are accepted everywhere built-ins are — `node({ shape })`,
-`edge(a, b, { arrowEnd })`, `style: { fillPattern }`, `decoratePath` —
-and unknown names throw errors listing the known ones. Shape-specific
-options pass through `node({ shape: 'star', shapeOptions: { points: 8 } })`.
+Registered names for tips, patterns and decorations are accepted
+everywhere built-ins are — `edge(a, b, { arrowEnd })`,
+`style: { fillPattern }`, `decoratePath` — and unknown names throw
+errors listing the known ones.
 
-Shape names are type-checked: `ShapeType` is derived from the
-augmentable `ShapeRegistry` interface, so built-ins and extension
-names autocomplete in `node({ shape: … })` and misspellings are
-compile errors. (Prefer not to register a name at the type level?
-Pass a pre-constructed instance instead: `node({ shape: new House(...) })`.)
+Shapes work the other way round: a picture is given a **shape set**
+(`picture({ shapes: allShapes })`, or just the sets you use), and the
+names in it are what `node({ shape: … })` accepts. Because the set is
+an ordinary object, TypeScript reads both halves off it — the names
+autocomplete, misspellings are compile errors, and
+`shapeOptions` is typed per name (`{ shape: 'star', shapeOptions:
+{ points: 8 } }` checks against the star factory). Nothing is global,
+so two extensions can never disagree about what a name means, and a
+picture carries only the shapes you hand it. Passing the kind itself —
+`node({ shape: allShapes.star })` — skips names altogether.
 
 To compile pictures to a non-SVG backend, implement the 4-method
 `PictureRenderer` interface and call `picture().renderWith(yourRenderer)`.
@@ -281,11 +285,10 @@ Electrical symbols — jikz's analogue of `\usetikzlibrary{circuits.ee}` —
 live in the `ext/circuits` package and are opt-in:
 
 ```ts
-import { picture, registerCircuits, wire, junctionDot, circuit, point } from '@ozan.e/jikz'
+import { picture, circuitShapes, wire, junctionDot, circuit, point } from '@ozan.e/jikz'
 
-registerCircuits() // once, like \usetikzlibrary{circuits.ee}
-
-const pic = picture()
+// circuitShapes is jikz's \usetikzlibrary{circuits.ee}
+const pic = picture({ shapes: circuitShapes })
   .node('V1', circuit.voltageSource({ at: point(60, 120), rotate: 90 }))
   .node('R1', circuit.resistor({ at: point(140, 60), variant: 'iec' }))
   .node('C1', circuit.capacitor({ at: point(220, 120), rotate: 90 }))
@@ -326,7 +329,7 @@ from data, builders when they come from code.
 
 **Strings** remain the TikZ-familiar, data-driven route:
 `node({ shape: 'resistor' })` still works — the circuits extension
-augments `ShapeRegistry`, so its shape names autocomplete and are
+set gives the picture its shape names, so they autocomplete and are
 compile-checked too — but `"name.port"` endpoint specs resolve through
 `Picture` at runtime, where a typo'd port throws `AnchorError` (with
 the known names in the message).
@@ -334,14 +337,13 @@ the known names in the message).
 ## Logic gates (ext/gates)
 
 Digital logic — jikz's analogue of TikZ's `shapes.gates.logic` — ships
-as the opt-in `ext/gates` package, on the same `registerShape` seam:
+as the opt-in `ext/gates` package, as another shape set:
 
 ```ts
-import { picture, registerGates, gates, point } from '@ozan.e/jikz'
+import { picture, gateShapes, gates, point } from '@ozan.e/jikz'
 
-registerGates() // once, like \usetikzlibrary{shapes.gates.logic.US}
-
-const pic = picture()
+// gateShapes is jikz's \usetikzlibrary{shapes.gates.logic.US}
+const pic = picture({ shapes: gateShapes })
   .node('X', gates.xor({ at: point(90, 70) }))   // Sum
   .node('C', gates.and({ at: point(90, 150) }))  // Carry
   .coordinate('a', point(20, 50))

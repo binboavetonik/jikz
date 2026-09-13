@@ -6,6 +6,8 @@ import {
   LINE_HEIGHT,
 } from '../../src/text/measureText'
 import { node } from '../../src/node/Node'
+import { allShapes } from '../../src/geometry/shapes'
+const SHAPES = allShapes
 
 /**
  * The metrics backend is the default in every environment, so these
@@ -151,14 +153,14 @@ describe('measurement backend selection', () => {
 
 describe('Node text auto-sizing (Stage 6)', () => {
   it('auto-sizes from text when no width/height given', () => {
-    const n = node({ text: 'Hello', shape: 'rectangle', innerSep: 4 })
+    const n = node({ text: 'Hello', shape: SHAPES['rectangle'], innerSep: 4 })
     // measured 31.892 (Helvetica 'Hello' = 2278/1000 em at 14px) + 2×4
     expect(n.width).toBeCloseTo(expectWidth('Hello', HELVETICA, 14) + 8)
     expect(n.height).toBeCloseTo(14 * 1.25 + 8)
   })
 
   it('respects minWidth/minHeight as floor', () => {
-    const n = node({ text: 'A', shape: 'rectangle', minWidth: 40, minHeight: 30 })
+    const n = node({ text: 'A', shape: SHAPES['rectangle'], minWidth: 40, minHeight: 30 })
     expect(n.width).toBe(40)
     expect(n.height).toBe(30)
   })
@@ -166,7 +168,7 @@ describe('Node text auto-sizing (Stage 6)', () => {
   it('explicit textWidth/textHeight override measurement', () => {
     const n = node({
       text: 'Hello',
-      shape: 'rectangle',
+      shape: SHAPES['rectangle'],
       textWidth: 100,
       textHeight: 50,
       innerSep: 4,
@@ -176,19 +178,19 @@ describe('Node text auto-sizing (Stage 6)', () => {
   })
 
   it('explicit width/height skip measurement entirely', () => {
-    const n = node({ text: 'Hello', shape: 'rectangle', width: 120, height: 60 })
+    const n = node({ text: 'Hello', shape: SHAPES['rectangle'], width: 120, height: 60 })
     expect(n.width).toBe(120)
     expect(n.height).toBe(60)
   })
 
   it('textless nodes keep the old minimum-size behavior', () => {
-    const n = node({ shape: 'rectangle' })
+    const n = node({ shape: SHAPES['rectangle'] })
     expect(n.width).toBe(20) // default minWidth
     expect(n.height).toBe(20)
   })
 
   it('circle nodes fit the measured text box', () => {
-    const n = node({ text: 'Hello', shape: 'circle', innerSep: 4 })
+    const n = node({ text: 'Hello', shape: SHAPES['circle'], innerSep: 4 })
     // circle radius = max(w, h) / 2 — diameter spans the text box
     const expected = Math.max(expectWidth('Hello', HELVETICA, 14) + 8, 14 * 1.25 + 8)
     expect(n.width).toBeCloseTo(expected)

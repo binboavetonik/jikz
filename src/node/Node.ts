@@ -20,160 +20,26 @@ import { Rotated } from '../geometry/Rotated'
 import type { TextOptions } from '../render/Renderer'
 
 /**
- * Every built-in shape-type string, in gallery order. This array is the
- * RUNTIME source of truth for the built-in set: every entry is registered
- * in the shape registry (`geometry/registry`) — a string listed here
- * without a registration fails the registry consistency tests.
+ * Shape spec accepted by `node({ shape: … })`:
  *
- * The COMPILE-TIME source of truth is {@link BuiltinShapes} /
- * {@link ShapeRegistry} below; extension names (circuits, user shapes)
- * are not listed here — they join the type level by declaration merging.
+ *   - a {@link ShapeKind} — a factory value, from a shape set
+ *     (`basicShapes.circle`) or your own {@link defineShape}; the node
+ *     sizes it and calls it with `shapeOptions`, or
+ *   - a pre-constructed {@link Shape} instance, when you built it
+ *     yourself (`star({ points: 8 })`) and want it used as-is.
+ *
+ * Shape NAMES are resolved one level up, by the container that holds a
+ * shape set: `picture({ shapes }).node('A', { shape: 'circle' })`.
  */
-export const SHAPE_TYPES = [
-  'rectangle',
-  'circle',
-  'ellipse',
-  'diamond',
-  'trapezium',
-  'parallelogram',
-  'regular polygon',
-  'star',
-  'cylinder',
-  'isosceles triangle',
-  'single arrow',
-  'double arrow',
-  'callout',
-  'cloud',
-  'signal',
-  'tape',
-  'starburst',
-  // Geometric shapes
-  'semicircle',
-  'kite',
-  'dart',
-  'circular sector',
-  // Misc shapes
-  'rounded rectangle',
-  'chamfered rectangle',
-  'cross out',
-  'strike out',
-  // Symbol shapes
-  'forbidden sign',
-  'magnifying glass',
-  'magnetic tape',
-  // Callout shapes
-  'ellipse callout',
-  'cloud callout',
-  // Arrow shapes
-  'arrow box',
-  // Multipart shapes
-  'circle split',
-  'rectangle split',
-] as const
+export type ShapeSpec = ShapeKind<ShapeOptions> | Shape
 
 /**
- * The built-in shape names as an interface, so the augmentable
- * {@link ShapeRegistry} can extend it. Must mirror {@link SHAPE_TYPES}
- * exactly — the assertions at the bottom of this block enforce both
- * directions at compile time. Extension names do NOT go here; they
- * augment {@link ShapeRegistry} instead.
- *
- * The value type is reserved for future per-shape options typing; use `{}`.
+ * The `shapeOptions` type for a shape spec: the parameter type of the
+ * kind itself, so `{ points: 8 }` checks against the factory that will
+ * receive it. Pre-constructed {@link Shape} instances ignore the bag.
  */
-interface BuiltinShapes {
-  rectangle: {}
-  circle: {}
-  ellipse: {}
-  diamond: {}
-  trapezium: {}
-  parallelogram: {}
-  'regular polygon': Pick<RegularPolygonOptions, 'sides' | 'rotation'>
-  star: Pick<StarOptions, 'points' | 'innerRatio' | 'rotation'>
-  cylinder: {}
-  'isosceles triangle': {}
-  'single arrow': {}
-  'double arrow': {}
-  callout: {}
-  cloud: {}
-  signal: {}
-  tape: {}
-  starburst: {}
-  // Geometric shapes
-  semicircle: {}
-  kite: {}
-  dart: {}
-  'circular sector': {}
-  // Misc shapes
-  'rounded rectangle': Pick<RoundedRectangleOptions, 'cornerRadius'>
-  'chamfered rectangle': Pick<ChamferedRectangleOptions, 'chamferSize'>
-  'cross out': {}
-  'strike out': {}
-  // Symbol shapes
-  'forbidden sign': {}
-  'magnifying glass': {}
-  'magnetic tape': {}
-  // Callout shapes
-  'ellipse callout': {}
-  'cloud callout': {}
-  // Arrow shapes
-  'arrow box': {}
-  // Multipart shapes
-  'circle split': {}
-  'rectangle split': {}
-}
-
-/**
- * Shape names known to the type system — the autocomplete and
- * typo-checking source for `node({ shape: ... })`. Declared as an
- * interface (not a union) so extensions add their names by declaration
- * merging. The circuits extension does this for you: importing it
- * (directly or via the package root) adds `'resistor'`, `'op amp'`, …
- * to {@link ShapeType}.
- *
- * Note the type level mirrors TikZ: a name is valid SYNTAX once the
- * extension is imported, but runtime resolution still requires the
- * matching registration call (for circuits: `registerCircuits()`),
- * just as `op amp` needs `\usetikzlibrary{circuits.ee}`.
- *
- * Registering your own shape? Augment alongside `registerShape()`:
- *
- * @example
- * ```ts
- * registerShape('house', (o) => new House(o))
- * declare module '@ozan.e/jikz' {
- *   interface ShapeRegistry { house: {} }
- * }
- * ```
- * (Inside the library source tree, augment via the relative module
- * path, e.g. `declare module './Node'`.)
- */
-export interface ShapeRegistry extends BuiltinShapes {}
-
-/**
- * Shape-type string accepted by `node({ shape: ... })`: the built-ins
- * plus every name extensions added to {@link ShapeRegistry}.
- */
-export type ShapeType = keyof ShapeRegistry
-
-/**
- * Shape spec accepted by `node({ shape: ... })`: a registered
- * {@link ShapeType} string (autocomplete-friendly; misspellings are
- * compile errors), or a pre-constructed {@link Shape} instance when you
- * need full control (`star({ points: 8 })`) or never registered the
- * shape under a name.
- */
-export type ShapeSpec = ShapeType | Shape
-
-/**
- * The `shapeOptions` type for a given shape spec: the value stored in
- * {@link ShapeRegistry} under that name. Typed entries (e.g. `star`'s
- * `{ points, innerRatio, rotation }`, circuit variants via the
- * extension's augmentation) autocomplete and excess-key-check;
- * untyped entries (`{}`) and pre-constructed {@link Shape} instances
- * stay permissive.
- */
-export type ShapeOptionsFor<S> = S extends keyof ShapeRegistry
-  ? ShapeRegistry[S]
+export type ShapeOptionsFor<S> = S extends ShapeKind<infer O>
+  ? O
   : Record<string, unknown>
 
 /**
@@ -190,16 +56,8 @@ export function assertType<T extends true>(_phantom?: T): void {
   /* compile-time only */
 }
 
-// Compile-time guards: BuiltinShapes must mirror SHAPE_TYPES exactly.
-// (Asserted against BuiltinShapes, not ShapeRegistry — extensions
-// legitimately widen ShapeRegistry by declaration merging.)
-assertType<(typeof SHAPE_TYPES)[number] extends keyof BuiltinShapes ? true : false>()
-assertType<keyof BuiltinShapes extends (typeof SHAPE_TYPES)[number] ? true : false>()
-import { createShape, shapeTextAutoSize } from '../geometry/registry'
-import type { StarOptions } from '../geometry/complex/Star'
-import type { RegularPolygonOptions } from '../geometry/complex/RegularPolygon'
-import type { RoundedRectangleOptions } from '../geometry/complex/RoundedRectangle'
-import type { ChamferedRectangleOptions } from '../geometry/complex/ChamferedRectangle'
+import { isShapeKind, type ShapeKind } from '../geometry/ShapeKind'
+import { basicShapes, defaultShape } from '../geometry/shapes/basic'
 
 /**
  * A TikZ-style node label: `label=<spec>:<text>`.
@@ -262,13 +120,11 @@ export { DEFAULT_LABEL_DISTANCE, DEFAULT_LABEL_FONT_SIZE }
 /**
  * Options for creating a node.
  *
- * `shape` accepts either:
- *   - a shape-type string — any key of {@link ShapeRegistry}: a built-in
- *     or an extension name (circuits, user shapes) added by declaration
- *     merging (width/height/innerSep/outerSep drive sizing; pass
- *     shape-specific options through `shapeOptions`), or
- *   - a pre-constructed {@link Shape} instance (any `geometry.Shape`), when
- *     you need full control like `star({ points: 8 })`.
+ * `shape` accepts either a {@link ShapeKind} — a factory value such as
+ * `basicShapes.circle`, sized by the node and called with
+ * `shapeOptions` — or a pre-constructed {@link Shape} instance, used
+ * as-is. String NAMES are resolved by the container that holds a shape
+ * set: `picture({ shapes }).node('A', { shape: 'circle' })`.
  */
 export interface NodeOptions<S extends ShapeSpec = ShapeSpec> {
   name?: string
@@ -276,11 +132,10 @@ export interface NodeOptions<S extends ShapeSpec = ShapeSpec> {
   at?: PointLike
   shape?: S
   /**
-   * Shape-specific options forwarded to the shape factory when `shape`
-   * is a string — typed per shape name ({ points: 8 } for 'star',
-   * { sides: 3 } for 'regular polygon', { variant: 'iec' } for
-   * 'resistor', …). Ignored when `shape` is a pre-constructed
-   * {@link Shape} instance.
+   * Shape-specific options forwarded to the kind — typed by that
+   * kind's own parameter ({ points: 8 } for the star kind, { sides: 3 }
+   * for regular polygon, { variant: 'iec' } for a resistor). Ignored
+   * when `shape` is a pre-constructed {@link Shape} instance.
    */
   shapeOptions?: ShapeOptionsFor<S>
   width?: number
@@ -338,7 +193,7 @@ export interface NodeOptions<S extends ShapeSpec = ShapeSpec> {
 
 const DEFAULT_NODE_OPTIONS = {
   at: { x: 0, y: 0 } as PointLike,
-  shape: 'rectangle' as ShapeType,
+  shape: defaultShape as ShapeSpec,
   width: 0,
   height: 0,
   minWidth: 20,
@@ -395,19 +250,22 @@ export class Node implements Anchorable {
 
     let shape: Shape
 
-    if (opts.shape && typeof opts.shape !== 'string') {
+    if (opts.shape && !isShapeKind(opts.shape)) {
       // Pre-constructed Shape instance: honor it as-is. We don't resize
       // pre-constructed shapes: the caller is in charge of dimensions.
       shape = opts.shape
     } else {
-      // String shape-type path: derive width/height, auto-size from text
-      // if no explicit dimensions (and the shape opts into text
-      // auto-sizing — domain shapes with intrinsic sizes, like circuit
-      // symbols, opt out via the registry), apply minimums, then factory.
+      // Shape-kind path: derive width/height, auto-size from text if no
+      // explicit dimensions (and the kind opts into text auto-sizing —
+      // domain shapes with intrinsic sizes, like circuit symbols, set
+      // textAutoSize false), apply minimums, then call the kind.
+      // `?? defaultShape`: spreading options with an explicit
+      // `shape: undefined` must not lose the default.
+      const kind = (opts.shape ?? defaultShape) as ShapeKind<ShapeOptions>
       let width = opts.width
       let height = opts.height
 
-      const textAutoSize = shapeTextAutoSize(opts.shape as string)
+      const textAutoSize = kind.textAutoSize
       if ((width === 0 || height === 0) && this.text && textAutoSize) {
         const measured = measureText(this.text)
         if (width === 0) {
@@ -434,7 +292,7 @@ export class Node implements Anchorable {
         ...options.shapeOptions,
       }
 
-      shape = Node.createShape(opts.shape as string, shapeOpts)
+      shape = kind(shapeOpts)
     }
 
     // Rotate geometrically (anchors/border/hit-testing follow). Guard
@@ -455,17 +313,6 @@ export class Node implements Anchorable {
     }
 
     this.shape = shape
-  }
-
-  /**
-   * Build a shape from a type string and standard options.
-   *
-   * The 4 basic shapes (rectangle, circle, ellipse, diamond) are constructed
-   * from geometry primitives directly. All other shape types delegate to
-   * the shape-specific factory functions exported from `./shapes`.
-   */
-  private static createShape(type: string, options: ShapeOptions): Shape {
-    return createShape(type, options)
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -824,20 +671,20 @@ export function node(options: NodeOptions = {}): Node {
 
 /** Create a rectangle node. */
 export function rectNode(options: Omit<NodeOptions, 'shape'> = {}): Node {
-  return new Node({ ...options, shape: 'rectangle' })
+  return new Node({ ...options, shape: basicShapes.rectangle })
 }
 
 /** Create a circle node. */
 export function circleNode(options: Omit<NodeOptions, 'shape'> = {}): Node {
-  return new Node({ ...options, shape: 'circle' })
+  return new Node({ ...options, shape: basicShapes.circle })
 }
 
 /** Create an ellipse node. */
 export function ellipseNode(options: Omit<NodeOptions, 'shape'> = {}): Node {
-  return new Node({ ...options, shape: 'ellipse' })
+  return new Node({ ...options, shape: basicShapes.ellipse })
 }
 
 /** Create a diamond node. */
 export function diamondNode(options: Omit<NodeOptions, 'shape'> = {}): Node {
-  return new Node({ ...options, shape: 'diamond' })
+  return new Node({ ...options, shape: basicShapes.diamond })
 }

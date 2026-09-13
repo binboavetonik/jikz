@@ -4,7 +4,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import {
-  registerCircuits,
+  circuitShapes,
   capacitor,
   inductor,
   diode,
@@ -21,8 +21,9 @@ import { AnchorError } from '../../../src/core/Anchor'
 import { Node } from '../../../src/node/Node'
 import { picture } from '../../../src/picture/Picture'
 import { point } from '../../../src/core/Point'
-
-registerCircuits()
+import { allShapes } from '../../../src/geometry/shapes'
+import { circuitShapes } from '../../../src/ext/circuits'
+const SHAPES = { ...allShapes, ...circuitShapes }
 
 function expectPt(p: { x: number; y: number }, x: number, y: number, label = '') {
   expect(p.x, `${label} x`).toBeCloseTo(x, 6)
@@ -120,7 +121,7 @@ describe('sources', () => {
   })
 
   it('rotate 90 for vertical branches: ports follow', () => {
-    const n = new Node({ shape: 'voltage source', at: point(100, 100), rotate: 90 })
+    const n = new Node({ shape: SHAPES['voltage source'], at: point(100, 100), rotate: 90 })
     // 'out' (local east) → visual south lead tip: height 36 → but box
     // rotates: out is at local (cx+30, cy) → rotated (cx, cy+30).
     expectPt(n.anchor('out'), 100, 130, 'out')
@@ -170,7 +171,7 @@ describe('op amp (multi-port)', () => {
   })
 
   it('is a Node-usable registered shape', () => {
-    const n = new Node({ shape: 'op amp', at: point(100, 50) })
+    const n = new Node({ shape: SHAPES['op amp'], at: point(100, 50) })
     expect(n.shape).toBeInstanceOf(OpAmp)
     expectPt(n.anchor('out'), 130, 50, 'out')
   })
@@ -178,9 +179,9 @@ describe('op amp (multi-port)', () => {
 
 describe('wiring helpers', () => {
   it('wire() chains endpoints with arrows OFF', () => {
-    const pic = picture()
-      .node('R1', { shape: 'resistor', at: point(100, 50) })
-      .node('R2', { shape: 'resistor', at: point(100, 150), rotate: 90 })
+    const pic = picture({ shapes: SHAPES })
+      .node('R1', { shape: SHAPES['resistor'], at: point(100, 50) })
+      .node('R2', { shape: SHAPES['resistor'], at: point(100, 150), rotate: 90 })
     wire(pic, ['R1.out', point(170, 50), point(170, 150), 'R2.out'])
     const svg = pic.toSVG({ width: 240, height: 220 })
     // Three wire segments, none with markers.
@@ -189,9 +190,9 @@ describe('wiring helpers', () => {
   })
 
   it('wire() options can override routing', () => {
-    const pic = picture()
-      .node('A', { shape: 'resistor', at: point(50, 50) })
-      .node('B', { shape: 'resistor', at: point(150, 120), rotate: 90 })
+    const pic = picture({ shapes: SHAPES })
+      .node('A', { shape: SHAPES['resistor'], at: point(50, 50) })
+      .node('B', { shape: SHAPES['resistor'], at: point(150, 120), rotate: 90 })
     wire(pic, ['A.out', 'B.in'], { routing: 'horizontal-vertical' })
     expect(pic.toSVG({ width: 200, height: 200 })).toContain('<path')
   })
@@ -200,7 +201,7 @@ describe('wiring helpers', () => {
     const dot = junctionDot(point(50, 50))
     expect(dot.radius).toBe(2)
     expectPt(dot.center, 50, 50, 'center')
-    const pic = picture().fill(junctionDot(point(50, 50)))
+    const pic = picture({ shapes: SHAPES }).fill(junctionDot(point(50, 50)))
     expect(pic.toSVG({ width: 100, height: 100 })).toContain('<circle')
   })
 })

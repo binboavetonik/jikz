@@ -1,4 +1,4 @@
-import { picture, circle, point } from 'jikz'
+import { allShapes, circle, picture, point } from 'jikz'
 
 // The automata-textbook DFA: accepts binary strings ending in "01".
 // q2 is the double-circle acceptor (the node plus a slightly larger
@@ -7,7 +7,7 @@ import { picture, circle, point } from 'jikz'
 // endpoint kinds (name, anchor spec, raw point).
 
 export default function render(container: HTMLElement) {
-  const pic = picture()
+  const pic = picture({ shapes: allShapes })
   const st = { stroke: '#334155', fill: '#f8fafc', strokeWidth: 1.5 }
   const es = { stroke: '#64748b', strokeWidth: 1.2 }
 

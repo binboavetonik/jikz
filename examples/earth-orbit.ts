@@ -1,7 +1,7 @@
-import { picture, ellipse, point } from 'jikz'
+import { allShapes, ellipse, picture, point } from 'jikz'
 
 export default function render(container: HTMLElement) {
-  const pic = picture()
+  const pic = picture({ shapes: allShapes })
   const orbit = ellipse(point(220, 115), 160, 75)
   pic.draw(orbit, { style: { stroke: '#334155', strokeWidth: 1.5 } })
 

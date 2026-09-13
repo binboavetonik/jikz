@@ -1,7 +1,7 @@
-import { picture, point } from 'jikz'
+import { allShapes, picture, point } from 'jikz'
 
 export default function render(container: HTMLElement) {
-  picture()
+  picture({ shapes: allShapes })
     .node('A', { at: point(70, 100),  shape: 'circle',    width: 60,  height: 60, text: 'A' })
     .node('B', { at: point(260, 50),  shape: 'rectangle', width: 100, height: 50, text: 'B' })
     .node('C', { at: point(260, 150), shape: 'rectangle', width: 100, height: 50, text: 'C' })

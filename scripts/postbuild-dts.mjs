@@ -14,12 +14,10 @@
  *      shaped types instead of the ESM `.d.ts` (the package is
  *      `"type": "module"`, so a bare `.d.ts` is ESM-typed).
  *
- * Per-file output (not a rolled-up bundle) is deliberate: the
- * `declare module '../../node/Node'` augmentation in ext/* that adds
- * extension shape names to ShapeRegistry survives only in per-file
- * output — api-extractor drops it. The augmentation's module path is
- * rewritten here too, so it keeps pointing at the right file in both
- * the ESM and CJS trees.
+ * Per-file output (not a rolled-up bundle) is deliberate: it mirrors
+ * the per-module ES build, so a consumer's bundler can drop the
+ * modules they never import. Module-augmentation specifiers, should
+ * any return, are rewritten here too.
  *
  * Verified by `npm run check:pkg` (publint + arethetypeswrong).
  */

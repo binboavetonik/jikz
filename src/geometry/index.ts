@@ -116,8 +116,9 @@ export { DEFAULT_SHAPE_OPTIONS } from './Shape'
 export { AnchoredPolygon, rayEdgeIntersection, pointInPolygon, polygonBounds } from './AnchoredPolygon'
 
 // Shape registry (register your own shapes by name)
-export { registerShape, createShape, hasShape, registeredShapeNames, shapeTextAutoSize } from './registry'
-export type { ShapeFactory, ShapeRegistrationOptions } from './registry'
+export { defineShape, isShapeKind } from './ShapeKind'
+export type { ShapeKind, ShapeSet, ShapeOptionsOf } from './ShapeKind'
+export { basicShapes, complexShapes, allShapes, defaultShape } from './shapes'
 
 // Diamond (Polygon subclass)
 export { Diamond, diamond } from './Diamond'

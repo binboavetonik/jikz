@@ -19,6 +19,9 @@ import {
   getPatternDefinition,
   registeredPatternNames,
 } from '../../src/render/FillPattern'
+import { allShapes } from '../../src/geometry/shapes'
+
+const SHAPES = allShapes
 
 registerArrowTip('pennant', {
   filled: true,
@@ -55,8 +58,8 @@ describe('arrow tip registry', () => {
   })
 
   it('built-in geometric tips render through edges by name', () => {
-    const a = new Node({ shape: 'circle', at: point(40, 40), width: 30, height: 30, text: 'A' })
-    const b = new Node({ shape: 'circle', at: point(140, 40), width: 30, height: 30, text: 'B' })
+    const a = new Node({ shape: SHAPES['circle'], at: point(40, 40), width: 30, height: 30, text: 'A' })
+    const b = new Node({ shape: SHAPES['circle'], at: point(140, 40), width: 30, height: 30, text: 'B' })
     const renderer = new SVGRenderer()
     renderer.renderEdge(new Edge(a, b, { arrowEnd: 'circle' }))
     renderer.renderEdge(new Edge(a, b, { arrowEnd: 'doubleBar' }))
@@ -69,8 +72,8 @@ describe('arrow tip registry', () => {
   })
 
   it('user tips render through edges by name', () => {
-    const a = new Node({ shape: 'circle', at: point(40, 40), width: 30, height: 30, text: 'A' })
-    const b = new Node({ shape: 'circle', at: point(140, 40), width: 30, height: 30, text: 'B' })
+    const a = new Node({ shape: SHAPES['circle'], at: point(40, 40), width: 30, height: 30, text: 'A' })
+    const b = new Node({ shape: SHAPES['circle'], at: point(140, 40), width: 30, height: 30, text: 'B' })
     const renderer = new SVGRenderer()
     renderer.renderEdge(new Edge(a, b, { arrowEnd: 'pennant' }))
     const svg = renderer.toSVG({ width: 180, height: 80 })

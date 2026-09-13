@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { picture } from '../../src/picture/Picture'
 import { point } from '../../src/core/Point'
 import { circle } from '../../src/geometry/Circle'
+import { allShapes } from '../../src/geometry/shapes'
+const SHAPES = allShapes
 
 const PULSE = {
   attributeName: 'opacity',
@@ -12,7 +14,7 @@ const PULSE = {
 
 describe('SMIL animation emission', () => {
   it('emits <animate> as a child of a drawn shape', () => {
-    const svg = picture()
+    const svg = picture({ shapes: SHAPES })
       .draw(circle(point(10, 10), 5), { animate: PULSE })
       .toSVG({ width: 40, height: 40 })
 
@@ -24,7 +26,7 @@ describe('SMIL animation emission', () => {
   })
 
   it('emits into text elements via TextOptions', () => {
-    const svg = picture()
+    const svg = picture({ shapes: SHAPES })
       .text(point(0, 0), '?', { animate: PULSE })
       .toSVG({ width: 20, height: 20 })
     // text content first, then the animate child
@@ -32,14 +34,14 @@ describe('SMIL animation emission', () => {
   })
 
   it('emits into the group wrapping a node (shape + label pulse together)', () => {
-    const svg = picture()
+    const svg = picture({ shapes: SHAPES })
       .node('A', { at: point(0, 0), ...rectNodeOptions(), text: 'A' }, { animate: PULSE })
       .toSVG({ width: 40, height: 40 })
     expect(svg).toMatch(/<g><path [^>]*\/><text [^>]*>A<\/text><animate [^>]*\/><\/g>/)
   })
 
   it('supports an array of animations on one element', () => {
-    const svg = picture()
+    const svg = picture({ shapes: SHAPES })
       .draw(circle(point(0, 0), 5), {
         animate: [PULSE, { attributeName: 'fill', from: '#000', to: '#f00', dur: '2s', fill: 'freeze' }],
       })
@@ -51,7 +53,7 @@ describe('SMIL animation emission', () => {
   })
 
   it('kind: animateTransform switches the tag', () => {
-    const svg = picture()
+    const svg = picture({ shapes: SHAPES })
       .draw(circle(point(0, 0), 5), {
         animate: {
           kind: 'animateTransform',
@@ -66,7 +68,7 @@ describe('SMIL animation emission', () => {
   })
 
   it('passes keyTimes/calcMode/keySplines/begin through', () => {
-    const svg = picture()
+    const svg = picture({ shapes: SHAPES })
       .draw(circle(point(0, 0), 5), {
         animate: {
           attributeName: 'opacity',
@@ -86,7 +88,7 @@ describe('SMIL animation emission', () => {
   })
 
   it('leaves elements without animate untouched', () => {
-    const svg = picture()
+    const svg = picture({ shapes: SHAPES })
       .draw(circle(point(0, 0), 5))
       .toSVG({ width: 20, height: 20 })
     expect(svg).not.toContain('<animate')
@@ -94,5 +96,5 @@ describe('SMIL animation emission', () => {
 })
 
 function rectNodeOptions() {
-  return { shape: 'rectangle' as const, width: 20, height: 12, innerSep: 0, minWidth: 0, minHeight: 0 }
+  return { shape: SHAPES['rectangle'] as const, width: 20, height: 12, innerSep: 0, minWidth: 0, minHeight: 0 }
 }

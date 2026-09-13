@@ -1,4 +1,4 @@
-import { picture, registerCircuits, circuit, wire, junctionDot, point } from 'jikz'
+import { allShapes, circuit, circuitShapes, junctionDot, picture, point, wire } from 'jikz'
 
 // A series RLC tank driven by an AC source: source on the left rail,
 // R–L–C across the top and down the right, ground return on the
@@ -6,8 +6,7 @@ import { picture, registerCircuits, circuit, wire, junctionDot, point } from 'ji
 // connection is a name.port spec, not a coordinate.
 
 export default function render(container: HTMLElement) {
-  registerCircuits()
-  const pic = picture()
+  const pic = picture({ shapes: { ...allShapes, ...circuitShapes } })
   const sym = { stroke: '#0f172a', strokeWidth: 1.6 }
 
   pic.node('V1', circuit.voltageSource({ at: point(60, 130), rotate: 90 }), { style: sym })

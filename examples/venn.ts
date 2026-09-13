@@ -1,7 +1,7 @@
-import { picture, rect, point } from 'jikz'
+import { allShapes, picture, point, rect } from 'jikz'
 
 export default function render(container: HTMLElement) {
-  const pic = picture()
+  const pic = picture({ shapes: allShapes })
 
   // universal set
   pic.draw(rect(20, 12, 350, 180), { style: { stroke: '#94a3b8' } })

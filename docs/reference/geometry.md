@@ -91,7 +91,7 @@ All return `{ points: Point[] }` — empty when disjoint. Demoed by
 
 ## Complex shapes (node shapes)
 
-The 40+ entries of `SHAPE_TYPES` — `cylinder`, `diamond`, `star`,
+The 33 entries of `allShapes` — `cylinder`, `diamond`, `star`,
 `cloud`, `callout`, `chamfered rectangle`, `forbidden sign`,
 `magnifying glass`, `tape`, arrow shapes, split shapes, … — live in
 `src/geometry/complex/`. They're primarily **node shapes**
@@ -99,7 +99,7 @@ The 40+ entries of `SHAPE_TYPES` — `cylinder`, `diamond`, `star`,
 support. The complete visual gallery is
 [`examples/shape-gallery.ts`](../../examples/shape-gallery.ts).
 
-Custom shapes: `registerShape(name, factory)` — declare vertices, get
+Custom shapes: `defineShape(name, factory)` — declare vertices, get
 anchors/bounds/contains/SVG for free. See the README's *Extending
 jikz* section.
 

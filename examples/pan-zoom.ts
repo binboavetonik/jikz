@@ -1,4 +1,4 @@
-import { tree, picture, point } from 'jikz'
+import { allShapes, picture, point, tree } from 'jikz'
 
 export default function render(container: HTMLElement) {
   // mount({ panZoom: true }): the wheel zooms to the cursor, drag pans,
@@ -29,7 +29,7 @@ export default function render(container: HTMLElement) {
           .children(['3.Nc3 Nf6', '3.e5 c5'])
     .build()
 
-  const pic = picture()
+  const pic = picture({ shapes: allShapes })
   for (const e of edges) pic.draw(e, { style: { stroke: '#94a3b8', strokeWidth: 1.2 } })
   for (const n of nodes) {
     pic.node(n.name, {

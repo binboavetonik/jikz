@@ -1,4 +1,4 @@
-import { picture, circle, rect, point } from 'jikz'
+import { allShapes, circle, picture, point, rect } from 'jikz'
 
 // The styling vocabulary applied to nodes as "UI badges": rounded
 // corners via the 'rounded rectangle' shape's cornerRadius (style
@@ -7,7 +7,7 @@ import { picture, circle, rect, point } from 'jikz'
 // shadow, and TikZ's double border — what plain options buy you.
 
 export default function render(container: HTMLElement) {
-  const pic = picture()
+  const pic = picture({ shapes: allShapes })
 
   pic.node('plain', { at: point(60, 60), shape: 'rectangle', text: 'plain' },
     { style: { stroke: '#334155', fill: '#f1f5f9', strokeWidth: 1.5 } })

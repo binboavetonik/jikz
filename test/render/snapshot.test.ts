@@ -10,7 +10,9 @@ import { path } from '../../src/path/Path'
 import { snakePath } from '../../src/path/PathDecorations'
 import { rectNode, circleNode, node } from '../../src/node/Node'
 import { edge } from '../../src/node/Edge'
-import { SHAPE_TYPES } from '../../src/node/Node'
+import { } from '../../src/node/Node'
+import { allShapes } from '../../src/geometry/shapes'
+const SHAPES = allShapes
 /**
  * Snapshot safety net for the rendering pipeline.
  *
@@ -23,7 +25,7 @@ import { SHAPE_TYPES } from '../../src/node/Node'
  * Coverage: bare geometry, nodes, edges (auto + named anchors), path
  * decorations, dash styles, fill patterns, gradients, drop shadows,
  * layers, double lines, double-line paths, all SHAPE_TYPES via the
- * node dispatch, KaTeX (stubbed), and one full picture() scene.
+ * node dispatch, KaTeX (stubbed), and one full picture({ shapes: SHAPES }) scene.
  */
 
 function render(
@@ -223,19 +225,20 @@ describe('snapshot: double lines', () => {
 })
 
 describe('snapshot: all node shapes', () => {
-  it('renders every entry of SHAPE_TYPES through the node dispatch', () => {
+  it('renders every entry of allShapes through the node dispatch', () => {
     const cols = 6
     const cellW = 90
     const cellH = 70
-    const rows = Math.ceil(SHAPE_TYPES.length / cols)
+    const names = Object.keys(SHAPES) as (keyof typeof SHAPES)[]
+    const rows = Math.ceil(names.length / cols)
     const svg = render(
       { width: cols * cellW + 20, height: rows * cellH + 20 },
       (r) => {
-        SHAPE_TYPES.forEach((shape, i) => {
+        names.forEach((name, i) => {
           const cx = 10 + (i % cols) * cellW + cellW / 2
           const cy = 10 + Math.floor(i / cols) * cellH + cellH / 2
           r.renderNode(
-            node({ at: point(cx, cy), shape, width: 60, height: 44 }),
+            node({ at: point(cx, cy), shape: SHAPES[name], width: 60, height: 44 }),
             { style: { stroke: '#334155', fill: '#e0e7ff', strokeWidth: 1.5 } }
           )
         })
@@ -270,11 +273,11 @@ describe('snapshot: KaTeX math', () => {
 
 describe('snapshot: full picture', () => {
   it('renders nodes, named-anchor edges, and bare geometry in one scene', () => {
-    const svg = picture()
+    const svg = picture({ shapes: SHAPES })
       .draw(circle(point(200, 60), 16), { style: { stroke: '#94a3b8', dash: 'dotted' } })
-      .node('A', { at: point(50, 60), shape: 'circle', width: 44, height: 44, text: 'A' })
-      .node('B', { at: point(200, 60), shape: 'rectangle', width: 70, height: 40, text: 'B' })
-      .node('C', { at: point(125, 150), shape: 'diamond', width: 70, height: 50, text: 'C' })
+      .node('A', { at: point(50, 60), shape: SHAPES['circle'], width: 44, height: 44, text: 'A' })
+      .node('B', { at: point(200, 60), shape: SHAPES['rectangle'], width: 70, height: 40, text: 'B' })
+      .node('C', { at: point(125, 150), shape: SHAPES['diamond'], width: 70, height: 50, text: 'C' })
       .edge('A', 'B', { arrowEnd: 'stealth', label: 'ab' })
       .edge('A.south', 'C.west', { arrowEnd: 'latex' })
       .edge('C.east', 'B.south', { arrowEnd: 'to' }, { style: { stroke: '#2563eb' } })
@@ -288,7 +291,7 @@ describe('snapshot: auto-sized node', () => {
     // No width/height supplied — the node measures its own text.
     const svg = render({ width: 120, height: 60 }, (r) => {
       r.renderNode(
-        node({ at: point(60, 30), shape: 'rectangle', text: 'auto' }),
+        node({ at: point(60, 30), shape: SHAPES['rectangle'], text: 'auto' }),
         { style: { stroke: '#334155', fill: '#f1f5f9' } }
       )
     })

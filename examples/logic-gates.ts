@@ -1,9 +1,7 @@
-import { picture, registerGates, gates, point } from 'jikz'
-
-registerGates()
+import { allShapes, gateShapes, gates, picture, point } from 'jikz'
 
 export default function render(container: HTMLElement) {
-  const pic = picture()
+  const pic = picture({ shapes: { ...allShapes, ...gateShapes } })
 
   // Half adder: Sum = A XOR B, Carry = A AND B.
   pic.node('X', gates.xor({ at: point(90, 70) }))

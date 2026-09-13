@@ -1,21 +1,26 @@
 /**
  * Typed node-option builders — the code-first API for logic gates,
  * mirroring {@link circuit} in ext/circuits. Each returns ordinary
- * {@link NodeOptions}; string specs (`node({ shape: 'and' })`) remain
- * the data-driven route.
+ * {@link NodeOptions} carrying the gate's shape kind, so they need no
+ * shape set; string specs (`node({ shape: 'and' })` against a picture
+ * holding {@link gateShapes}) remain the data-driven route.
  */
 import type { NodeOptions } from '../../node/Node'
+import { gateShapes } from './index'
 import type { GateKind, GateVariant } from './gate'
 
 /** NodeOptions minus the fields a builder fills in for you. */
 type BaseOptions = Omit<NodeOptions, 'shape' | 'shapeOptions'>
 
 function build(
-  shape: GateKind,
+  kind: GateKind,
   base: BaseOptions,
   variant?: GateVariant
 ): NodeOptions {
-  return variant ? { ...base, shape, shapeOptions: { variant } } : { ...base, shape }
+  const shape = gateShapes[kind]
+  return variant
+    ? { ...base, shape, shapeOptions: { variant } }
+    : { ...base, shape }
 }
 
 /**

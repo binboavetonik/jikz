@@ -1,60 +1,25 @@
 import { describe, it, expect } from 'vitest'
-import type { ShapeType } from '../../src/node/Node'
 import type { Shape } from '../../src/geometry/Shape'
 import { point } from '../../src/core/Point'
 import { node } from '../../src/node/Node'
 import { circle } from '../../src/geometry/Circle'
+import { allShapes } from '../../src/geometry/shapes'
+const SHAPES = allShapes
 
 /**
- * Stage 2 verification: every ShapeType string dispatches to a distinct
- * shape (no silent rectangle fallback), and the instance form of the
- * `shape` option passes through.
+ * Every entry of a shape set builds its own shape (no silent rectangle
+ * fallback), and the instance form of the `shape` option passes through.
  *
- * Before the refactor, `Node.createShape` switched on only 4 cases and
- * fell through to rectangle for everything else — so `node({ shape: 'star' })`
- * silently produced a rectangle. This test locks in that all 33 string
- * shape types now reach their intended factory.
+ * The hazard this guards is old but real: a dispatcher that handled a
+ * few names and fell through to rectangle for the rest made
+ * `node({ shape: 'star' })` silently rectangular. With kinds the
+ * factory comes from the set itself, and this pins that every one of
+ * them reaches a distinct implementation.
  */
 
-// The authoritative list of shape-type strings. If a new ShapeType is
-// added to the union, this list must grow; TypeScript's exhaustiveness
-// check in `Node.createShape` will have already forced the dispatch,
-// but we add the string here to also cover it at runtime.
-const ALL_SHAPE_TYPES: readonly ShapeType[] = [
-  'rectangle',
-  'circle',
-  'ellipse',
-  'diamond',
-  'trapezium',
-  'parallelogram',
-  'regular polygon',
-  'star',
-  'cylinder',
-  'isosceles triangle',
-  'single arrow',
-  'double arrow',
-  'callout',
-  'cloud',
-  'signal',
-  'tape',
-  'starburst',
-  'semicircle',
-  'kite',
-  'dart',
-  'circular sector',
-  'rounded rectangle',
-  'chamfered rectangle',
-  'cross out',
-  'strike out',
-  'forbidden sign',
-  'magnifying glass',
-  'magnetic tape',
-  'ellipse callout',
-  'cloud callout',
-  'arrow box',
-  'circle split',
-  'rectangle split',
-]
+// The set IS the authoritative list now: a shape that joins allShapes
+// is covered here automatically.
+const ALL_SHAPE_NAMES = Object.keys(SHAPES) as (keyof typeof SHAPES)[]
 
 // Shapes whose underlying implementation may report a shape.type tag that
 // differs from the ShapeType string (e.g. shapes backed by Polygon report
@@ -67,10 +32,10 @@ const SHAPE_TYPE_TAG_EXCEPTIONS: ReadonlySet<string> = new Set([
   'circle split',
 ])
 
-describe('Node.createShape dispatch', () => {
-  for (const type of ALL_SHAPE_TYPES) {
-    it(`string shape '${type}' reaches its factory (not a rectangle fallback)`, () => {
-      const n = node({ shape: type, at: point(0, 0), width: 40, height: 40 })
+describe('shape-kind dispatch', () => {
+  for (const type of ALL_SHAPE_NAMES) {
+    it(`'${type}' reaches its own factory (not a rectangle fallback)`, () => {
+      const n = node({ shape: SHAPES[type], at: point(0, 0), width: 40, height: 40 })
 
       // The resulting shape should be non-null and have some kind of
       // type tag. The specific tag format varies — what matters is that
@@ -103,16 +68,16 @@ describe('Node.createShape dispatch', () => {
     // The 4 basic shapes were rewired to geometry primitives in Stage 2.
     // Their `type` tags should match what `geometry.*` reports.
     expect(
-      node({ shape: 'rectangle', width: 10, height: 10 }).shape.type
+      node({ shape: SHAPES['rectangle'], width: 10, height: 10 }).shape.type
     ).toBe('rectangle')
     expect(
-      node({ shape: 'circle', width: 10, height: 10 }).shape.type
+      node({ shape: SHAPES['circle'], width: 10, height: 10 }).shape.type
     ).toBe('circle')
     expect(
-      node({ shape: 'ellipse', width: 10, height: 10 }).shape.type
+      node({ shape: SHAPES['ellipse'], width: 10, height: 10 }).shape.type
     ).toBe('ellipse')
     expect(
-      node({ shape: 'diamond', width: 10, height: 10 }).shape.type
+      node({ shape: SHAPES['diamond'], width: 10, height: 10 }).shape.type
     ).toBe('diamond')
   })
 

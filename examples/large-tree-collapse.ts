@@ -1,4 +1,4 @@
-import { treeFromSpec, picture, type TreeNodeSpec } from 'jikz'
+import { allShapes, picture, treeFromSpec, type TreeNodeSpec } from 'jikz'
 
 /**
  * Large-tree drill-in: the tree is laid out only down to MAX_LEVELS; at
@@ -58,7 +58,7 @@ export default function render(container: HTMLElement) {
       { grow: 'right', levelDistance: 14, siblingDistance: 6 }
     )
 
-    const pic = picture()
+    const pic = picture({ shapes: allShapes })
     for (const e of edges) pic.draw(e, { style: { stroke: '#94a3b8', strokeWidth: 1.2 } })
     const collapsedNames = new Set(collapsed.map((c) => c.node.name))
     for (const n of nodes) {

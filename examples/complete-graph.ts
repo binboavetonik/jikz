@@ -1,7 +1,7 @@
-import { picture, nodeCircle, point } from 'jikz'
+import { allShapes, nodeCircle, picture, point } from 'jikz'
 
 export default function render(container: HTMLElement) {
-  const pic = picture()
+  const pic = picture({ shapes: allShapes })
   const names = ['v1', 'v2', 'v3', 'v4', 'v5']
 
   // Vertices evenly on a ring

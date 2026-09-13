@@ -1,4 +1,5 @@
 import { Point, point } from '../core/Point'
+import type { ShapeSet } from '../geometry/ShapeKind'
 import { Transform } from '../core/Transform'
 import { estimateLabelSize } from '../text/placeText'
 import type { Node } from '../node/Node'
@@ -80,7 +81,15 @@ export interface MountOptions extends PictureViewBox {
 /**
  * Options for a {@link Picture}.
  */
-export interface PictureOptions {
+export interface PictureOptions<S extends ShapeSet = {}> {
+  /**
+   * Shape kinds this picture resolves string shape names against —
+   * `picture({ shapes: allShapes })` for the whole catalogue, or just
+   * the sets you use. Names not in the set are compile errors, and the
+   * per-name `shapeOptions` type comes from the set itself.
+   */
+  shapes?: S
+
   /**
    * Canvas-level transform applied to the entire scene at render time
    * (TikZ canvas transformation). All geometry — coordinates, anchors,
@@ -145,7 +154,10 @@ export interface PictureRenderer {
  * scope is addressable from anywhere, and resolves into the coordinate
  * system of whichever container asks for it.
  */
-export class Picture extends ItemContainer implements ContainerRoot {
+export class Picture<S extends ShapeSet = {}>
+  extends ItemContainer<S>
+  implements ContainerRoot
+{
   private readonly nodesByName = new Map<
     string,
     { node: Node; transform: Transform | undefined }
@@ -154,9 +166,9 @@ export class Picture extends ItemContainer implements ContainerRoot {
     string,
     { at: Point; transform: Transform | undefined }
   >()
-  private readonly options: PictureOptions
+  private readonly options: PictureOptions<S>
 
-  constructor(options: PictureOptions = {}) {
+  constructor(options: PictureOptions<S> = {}) {
     super()
     this.options = options
   }
@@ -170,6 +182,15 @@ export class Picture extends ItemContainer implements ContainerRoot {
 
   protected get registry(): ContainerRoot {
     return this
+  }
+
+  /** The shape set in scope (see {@link PictureOptions.shapes}). */
+  shapeSet(): ShapeSet | undefined {
+    return this.options.shapes
+  }
+
+  protected get shapes(): S | undefined {
+    return this.options.shapes
   }
 
   protected get ownTransform(): Transform | undefined {
@@ -417,7 +438,10 @@ function renderItem(
   }
 }
 
-function renderScope(renderer: PictureRenderer, scope: Scope): void {
+// Renders a scope over any shape set; Scope<S> is invariant in S, and
+// rendering never resolves a shape name.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function renderScope(renderer: PictureRenderer, scope: Scope<any>): void {
   const grouped = scope.needsGroup
   if (grouped) {
     if (!renderer.beginGroup || !renderer.endGroup) {
@@ -506,6 +530,8 @@ function growBounds(
  * Create a new, empty picture. Accepts optional {@link PictureOptions}
  * (canvas transform/scale).
  */
-export function picture(options: PictureOptions = {}): Picture {
+export function picture<S extends ShapeSet = {}>(
+  options: PictureOptions<S> = {}
+): Picture<S> {
   return new Picture(options)
 }

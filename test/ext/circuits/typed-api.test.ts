@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   circuit,
-  registerCircuits,
+  circuitShapes,
   resistor,
   opAmp,
   ground,
@@ -22,8 +22,9 @@ import { Node } from '../../../src/node/Node'
 import { picture } from '../../../src/picture/Picture'
 import { edge } from '../../../src/node/Edge'
 import { point } from '../../../src/core/Point'
-
-registerCircuits()
+import { allShapes } from '../../../src/geometry/shapes'
+import { circuitShapes } from '../../../src/ext/circuits'
+const SHAPES = { ...allShapes, ...circuitShapes }
 
 function expectPt(p: { x: number; y: number }, x: number, y: number, label = '') {
   expect(p.x, `${label} x`).toBeCloseTo(x, 6)
@@ -33,7 +34,7 @@ function expectPt(p: { x: number; y: number }, x: number, y: number, label = '')
 describe('circuit.* option builders', () => {
   it('produce NodeOptions with the right shape + shapeOptions', () => {
     const opts = circuit.resistor({ at: point(50, 50), rotate: 90, variant: 'iec' })
-    expect(opts.shape).toBe('resistor')
+    expect(opts.shape).toBe(circuitShapes['resistor'])
     expect(opts.shapeOptions).toEqual({ variant: 'iec' })
     expect(opts.rotate).toBe(90)
     expect(opts.at).toEqual(point(50, 50))
@@ -45,15 +46,15 @@ describe('circuit.* option builders', () => {
   })
 
   it('all nine symbols have builders (including switch, a JS keyword)', () => {
-    expect(circuit.resistor().shape).toBe('resistor')
-    expect(circuit.capacitor().shape).toBe('capacitor')
-    expect(circuit.inductor().shape).toBe('inductor')
-    expect(circuit.diode().shape).toBe('diode')
-    expect(circuit.switch().shape).toBe('switch')
-    expect(circuit.voltageSource().shape).toBe('voltage source')
-    expect(circuit.currentSource().shape).toBe('current source')
-    expect(circuit.ground().shape).toBe('ground')
-    expect(circuit.opAmp().shape).toBe('op amp')
+    expect(circuit.resistor().shape).toBe(circuitShapes['resistor'])
+    expect(circuit.capacitor().shape).toBe(circuitShapes['capacitor'])
+    expect(circuit.inductor().shape).toBe(circuitShapes['inductor'])
+    expect(circuit.diode().shape).toBe(circuitShapes['diode'])
+    expect(circuit.switch().shape).toBe(circuitShapes['switch'])
+    expect(circuit.voltageSource().shape).toBe(circuitShapes['voltage source'])
+    expect(circuit.currentSource().shape).toBe(circuitShapes['current source'])
+    expect(circuit.ground().shape).toBe(circuitShapes['ground'])
+    expect(circuit.opAmp().shape).toBe(circuitShapes['op amp'])
   })
 
   it('variant passthrough: capacitor/diode/switch', () => {
@@ -67,9 +68,9 @@ describe('circuit.* option builders', () => {
   })
 
   it('builders compose with Picture.node exactly like hand-written options', () => {
-    const viaBuilder = picture().node('R1', circuit.resistor({ at: point(100, 50), variant: 'iec' }))
-    const viaStrings = picture().node('R1', {
-      shape: 'resistor',
+    const viaBuilder = picture({ shapes: SHAPES }).node('R1', circuit.resistor({ at: point(100, 50), variant: 'iec' }))
+    const viaStrings = picture({ shapes: SHAPES }).node('R1', {
+      shape: SHAPES['resistor'],
       at: point(100, 50),
       shapeOptions: { variant: 'iec' },
     })
@@ -128,7 +129,7 @@ describe('typed port accessors', () => {
 
   it('typed instances still work as Node shapes (mixed workflow)', () => {
     const u = opAmp({ center: point(200, 120) })
-    const pic = picture().node('U1', { shape: u })
+    const pic = picture({ shapes: SHAPES }).node('U1', { shape: u })
     // String resolution against the same instance also works.
     expectPt(pic.resolve('U1.out'), 230, 120, 'U1.out')
     // …and the node's shape IS the typed instance.

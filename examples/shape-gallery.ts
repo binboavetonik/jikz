@@ -1,11 +1,12 @@
-import { picture, point, SHAPE_TYPES } from 'jikz'
+import { allShapes, picture, point } from 'jikz'
 
 export default function render(container: HTMLElement) {
-  const pic = picture()
+  const pic = picture({ shapes: allShapes })
   const cols = 5, cellW = 116, cellH = 92, margin = 20
-  const rows = Math.ceil(SHAPE_TYPES.length / cols)
+  const names = Object.keys(allShapes) as (keyof typeof allShapes)[]
+  const rows = Math.ceil(names.length / cols)
 
-  SHAPE_TYPES.forEach((shape, i) => {
+  names.forEach((shape, i) => {
     const cx = margin + (i % cols) * cellW + cellW / 2
     const cy = margin + Math.floor(i / cols) * cellH + 32
 

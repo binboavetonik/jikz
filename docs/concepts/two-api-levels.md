@@ -82,4 +82,4 @@ separate engine. Consequences:
 | Node/SSR string output | `picture().toSVG()` |
 | Named layers / paint order | `SVGRenderer` |
 | Layout builders (`chain`, `matrix`, `tree`) | either — they return geometry you render yourself |
-| Custom shapes via `registerShape` | either — registered shapes work in `pic.node` too |
+| Custom shapes via `defineShape` | either — a kind works in `pic.node` by value, or by name once the set is passed to `picture({ shapes })` |

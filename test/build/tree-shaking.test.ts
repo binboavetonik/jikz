@@ -14,21 +14,19 @@
  * import-time side effect (a top-level `registerX(...)`, a module-level
  * mutation of shared state), esbuild will still tree-shake — but
  * consumers' bundlers, trusting `sideEffects: false`, may then DROP
- * that side effect and break `shape: 'star'` at runtime. The lazy
+ * that side effect and break `shape: SHAPES['star']` at runtime. The lazy
  * registry tests in test/render/LazyBuiltins.test.ts guard that half.
  */
 import { describe, it, expect } from 'vitest'
 import { build } from 'esbuild'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..')
 
 async function bundle(named: string): Promise<{ bytes: number; code: string }> {
-  const first = named.split(',')[0]!.trim()
   const result = await build({
     stdin: {
-      contents: `import { ${named} } from './src/index.ts'\nconsole.log(${first})\n`,
+      contents: `import { ${named} } from './src/index.ts'\nconsole.log(${named})\n`,
       resolveDir: ROOT,
       loader: 'ts',
     },
@@ -57,9 +55,19 @@ describe('package is tree-shakeable', () => {
     expect(bytes, `bundle is ${bytes} bytes`).toBeLessThan(8_000)
   })
 
-  it('picture() still carries the full shape registry (string lookup needs it)', async () => {
-    const { code } = await bundle('picture, point')
-    expect(code).toContain('Unknown shape type')
-    expect(code).toContain('circle split')
+  it('picture() carries no shape catalogue — shapes are values now', async () => {
+    const { bytes, code } = await bundle('picture, point')
+    // The renderer core, without 33 shapes welded on by a global table.
+    expect(bytes, `bundle is ${bytes} bytes`).toBeLessThan(130_000)
+    expect(code).not.toContain('circle split')
+  })
+
+  it('a picture pays only for the set it is handed', async () => {
+    const small = await bundle('picture, basicShapes')
+    expect(small.code).not.toContain('circle split')
+
+    const full = await bundle('picture, allShapes')
+    expect(full.code).toContain('circle split')
+    expect(full.bytes).toBeGreaterThan(small.bytes)
   })
 })

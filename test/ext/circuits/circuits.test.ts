@@ -8,52 +8,45 @@
  */
 import { describe, it, expect } from 'vitest'
 import {
-  registerCircuits,
-  circuitsRegistered,
-  CIRCUIT_SHAPES,
+  circuitShapes,
   Resistor,
   resistor,
 } from '../../../src/ext/circuits'
 import { AnchorError } from '../../../src/core/Anchor'
-import { hasShape, createShape } from '../../../src/geometry/registry'
 import { Node } from '../../../src/node/Node'
 import { picture } from '../../../src/picture/Picture'
 import { point } from '../../../src/core/Point'
 import { SVGRenderer } from '../../../src/render/SVGRenderer'
-
-registerCircuits()
+import { allShapes } from '../../../src/geometry/shapes'
+import { circuitShapes } from '../../../src/ext/circuits'
+const SHAPES = { ...allShapes, ...circuitShapes }
 
 function expectPt(p: { x: number; y: number }, x: number, y: number, label = '') {
   expect(p.x, `${label} x`).toBeCloseTo(x, 6)
   expect(p.y, `${label} y`).toBeCloseTo(y, 6)
 }
 
-describe('registerCircuits', () => {
-  it('registers circuit shape names in the global registry', () => {
-    expect(circuitsRegistered()).toBe(true)
-    for (const name of CIRCUIT_SHAPES) {
-      expect(hasShape(name)).toBe(true)
+describe('circuitShapes', () => {
+  it('carries a kind per symbol, none of them text-sizing', () => {
+    for (const [name, kind] of Object.entries(circuitShapes)) {
+      expect(kind.kindName).toBe(name)
+      expect(kind.textAutoSize).toBe(false)
     }
   })
 
-  it('is idempotent', () => {
-    registerCircuits()
-    registerCircuits()
-    expect(hasShape('resistor')).toBe(true)
-  })
 })
 
 describe('resistor symbol', () => {
   it('has an intrinsic default size of 60×20 (including leads)', () => {
     // Node coerces unset dimensions to minWidth/minHeight (20) — the
     // symbol must treat those as "unset" and use its own default.
-    const n = new Node({ shape: 'resistor', at: point(100, 100) })
+    const n = new Node({ shape: SHAPES['resistor'], at: point(100, 100) })
     expect(n.width).toBeCloseTo(60, 6)
     expect(n.height).toBeCloseTo(20, 6)
   })
 
   it('honors explicit width/height', () => {
-    const n = new Node({ shape: 'resistor', at: point(0, 0), width: 90, height: 30 })
+    const n = new Node({ shape: SHAPES['resistor'], at: point(0, 0), width: 90, height: 30 })
     expect(n.width).toBeCloseTo(90, 6)
     expect(n.height).toBeCloseTo(30, 6)
   })
@@ -90,7 +83,7 @@ describe('resistor symbol', () => {
 
   it('IEC variant: closed rect body + leads, via shapeOptions passthrough', () => {
     const n = new Node({
-      shape: 'resistor',
+      shape: SHAPES['resistor'],
       at: point(100, 50),
       shapeOptions: { variant: 'iec' },
     })
@@ -103,7 +96,7 @@ describe('resistor symbol', () => {
   })
 
   it('registry factory builds it by name', () => {
-    const s = createShape('resistor', { center: point(0, 0) })
+    const s = circuitShapes['resistor']({ center: point(0, 0) })
     expect(s).toBeInstanceOf(Resistor)
     expect(s.type).toBe('resistor')
   })
@@ -117,7 +110,7 @@ describe('resistor symbol', () => {
 
 describe('resistor + node features (dogfooding P0/P1)', () => {
   it('rotate 90: ports rotate with the symbol, bounds swap', () => {
-    const n = new Node({ shape: 'resistor', at: point(100, 100), rotate: 90 })
+    const n = new Node({ shape: SHAPES['resistor'], at: point(100, 100), rotate: 90 })
     expect(n.bounds).toEqual([90, 70, 110, 130])
     // 'out' (local east) rotates 90° cw → visual south lead tip.
     expectPt(n.anchor('out'), 100, 130, 'out')
@@ -127,14 +120,14 @@ describe('resistor + node features (dogfooding P0/P1)', () => {
   })
 
   it('toSVGPath is rotated with the symbol', () => {
-    const n = new Node({ shape: 'resistor', at: point(100, 100), rotate: 90 })
+    const n = new Node({ shape: SHAPES['resistor'], at: point(100, 100), rotate: 90 })
     // West lead tip (70,100) rotates 90° cw about (100,100) → (100,70).
     expect(n.toSVGPath().startsWith('M 100 70')).toBe(true)
   })
 
   it('placement by port: at + anchor puts the lead tip on `at`', () => {
     const n = new Node({
-      shape: 'resistor',
+      shape: SHAPES['resistor'],
       at: point(100, 50),
       anchor: 'in',
     })
@@ -144,7 +137,7 @@ describe('resistor + node features (dogfooding P0/P1)', () => {
 
   it('renders through SVGRenderer like any node', () => {
     const r = new SVGRenderer()
-    r.renderNode(new Node({ shape: 'resistor', at: point(100, 50), text: 'R1' }))
+    r.renderNode(new Node({ shape: SHAPES['resistor'], at: point(100, 50), text: 'R1' }))
     const svg = r.toSVG({ width: 200, height: 100 })
     expect(svg).toContain('<path')
     expect(svg).toContain('M 70 50')
@@ -154,9 +147,9 @@ describe('resistor + node features (dogfooding P0/P1)', () => {
 
 describe('resistor + Picture wiring', () => {
   it('edges connect ports by name; wires continue the leads', () => {
-    const pic = picture()
-      .node('R1', { shape: 'resistor', at: point(100, 50) })
-      .node('R2', { shape: 'resistor', at: point(100, 150), rotate: 90 })
+    const pic = picture({ shapes: SHAPES })
+      .node('R1', { shape: SHAPES['resistor'], at: point(100, 50) })
+      .node('R2', { shape: SHAPES['resistor'], at: point(100, 150), rotate: 90 })
       .edge('R1.out', 'R2.in')
 
     // R1.out at (130,50); R2.in (rotated 'in' = local west → visual north).

@@ -1,4 +1,4 @@
-import { picture, circle, star, point, type GradientSpec } from 'jikz'
+import { allShapes, circle, picture, point, star, type GradientSpec } from 'jikz'
 
 // Clipping: a gradient burst clipped to a star silhouette, next to the
 // unclipped pair. The clip spec is plain data on the style — it
@@ -6,7 +6,7 @@ import { picture, circle, star, point, type GradientSpec } from 'jikz'
 // Node/SSR output exactly as in the browser.
 
 export default function render(container: HTMLElement) {
-  const pic = picture()
+  const pic = picture({ shapes: allShapes })
   const burst: GradientSpec = {
     type: 'radial',
     stops: [

@@ -12,13 +12,16 @@
  * which put 'north' BELOW center on star/cloud/signal/arrow/… shapes.
  */
 import { describe, it, expect } from 'vitest'
-import { Node, SHAPE_TYPES, type ShapeType } from '../../src/node/Node'
+import { Node } from '../../src/node/Node'
+import { allShapes } from '../../src/geometry/shapes'
+const SHAPES = allShapes
+const SHAPE_NAMES = Object.keys(SHAPES) as (keyof typeof SHAPES)[]
 
 const EPS = 1e-6
 
-function makeNode(shape: ShapeType): Node {
+function makeNode(name: keyof typeof SHAPES): Node {
   return new Node({
-    shape,
+    shape: SHAPES[name],
     at: { x: 100, y: 100 },
     width: 80,
     height: 60,
@@ -26,39 +29,39 @@ function makeNode(shape: ShapeType): Node {
   })
 }
 
-describe('anchor compass consistency (all SHAPE_TYPES)', () => {
-  it.each(SHAPE_TYPES)('%s: north is at or above center', (shape) => {
+describe('anchor compass consistency (every built-in shape)', () => {
+  it.each(SHAPE_NAMES)('%s: north is at or above center', (shape) => {
     const n = makeNode(shape)
     expect(n.anchor('north').y).toBeLessThanOrEqual(n.center.y + EPS)
   })
 
-  it.each(SHAPE_TYPES)('%s: south is at or below center', (shape) => {
+  it.each(SHAPE_NAMES)('%s: south is at or below center', (shape) => {
     const n = makeNode(shape)
     expect(n.anchor('south').y).toBeGreaterThanOrEqual(n.center.y - EPS)
   })
 
-  it.each(SHAPE_TYPES)('%s: east is at or right of center', (shape) => {
+  it.each(SHAPE_NAMES)('%s: east is at or right of center', (shape) => {
     const n = makeNode(shape)
     expect(n.anchor('east').x).toBeGreaterThanOrEqual(n.center.x - EPS)
   })
 
-  it.each(SHAPE_TYPES)('%s: west is at or left of center', (shape) => {
+  it.each(SHAPE_NAMES)('%s: west is at or left of center', (shape) => {
     const n = makeNode(shape)
     expect(n.anchor('west').x).toBeLessThanOrEqual(n.center.x + EPS)
   })
 
-  it.each(SHAPE_TYPES)('%s: north is above south', (shape) => {
+  it.each(SHAPE_NAMES)('%s: north is above south', (shape) => {
     const n = makeNode(shape)
     expect(n.anchor('north').y).toBeLessThanOrEqual(n.anchor('south').y + EPS)
   })
 
-  it.each(SHAPE_TYPES)('%s: west is left of east', (shape) => {
+  it.each(SHAPE_NAMES)('%s: west is left of east', (shape) => {
     const n = makeNode(shape)
     expect(n.anchor('west').x).toBeLessThanOrEqual(n.anchor('east').x + EPS)
   })
 })
 
-describe('anchor alias equivalence (all SHAPE_TYPES)', () => {
+describe('anchor alias equivalence (every built-in shape)', () => {
   const aliases: [string, string][] = [
     ['n', 'north'],
     ['s', 'south'],
@@ -71,7 +74,7 @@ describe('anchor alias equivalence (all SHAPE_TYPES)', () => {
     ['c', 'center'],
   ]
 
-  it.each(SHAPE_TYPES)('%s: aliases match full names', (shape) => {
+  it.each(SHAPE_NAMES)('%s: aliases match full names', (shape) => {
     const n = makeNode(shape)
     for (const [alias, full] of aliases) {
       const a = n.anchor(alias)
@@ -83,7 +86,7 @@ describe('anchor alias equivalence (all SHAPE_TYPES)', () => {
 })
 
 describe('diagonal anchors sit between cardinals', () => {
-  it.each(SHAPE_TYPES)('%s: north east is right-and-up', (shape) => {
+  it.each(SHAPE_NAMES)('%s: north east is right-and-up', (shape) => {
     const n = makeNode(shape)
     const ne = n.anchor('north east')
     expect(ne.x).toBeGreaterThanOrEqual(n.center.x - EPS)
@@ -94,7 +97,7 @@ describe('diagonal anchors sit between cardinals', () => {
   // to make room for the south pointer — its 'south west' body point can
   // sit a hair above the node center. Legitimate callout geometry, not a
   // convention violation, so it is exempt from the strict diagonal check.
-  const SW_STRICT = SHAPE_TYPES.filter((s) => s !== 'ellipse callout')
+  const SW_STRICT = SHAPE_NAMES.filter((s) => s !== 'ellipse callout')
 
   it.each(SW_STRICT)('%s: south west is left-and-down', (shape) => {
     const n = makeNode(shape)
@@ -114,7 +117,7 @@ describe('diagonal anchors sit between cardinals', () => {
 describe('regression: star north/south (2026-08 inversion bug)', () => {
   it('star north is the top tip, south is the bottom valley', () => {
     const n = new Node({
-      shape: 'star',
+      shape: SHAPES['star'],
       at: { x: 100, y: 100 },
       width: 40,
       height: 40,

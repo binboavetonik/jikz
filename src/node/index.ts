@@ -22,8 +22,10 @@ export type {
 // Shapes
 export type { Shape, ShapeOptions } from '../geometry/Shape'
 export { DEFAULT_SHAPE_OPTIONS } from '../geometry/Shape'
-export type { ShapeType, ShapeRegistry, ShapeOptionsFor } from './Node'
-export { SHAPE_TYPES } from './Node'
+export type { ShapeSpec, ShapeOptionsFor } from './Node'
+export type { ShapeKind, ShapeSet, ShapeOptionsOf } from '../geometry/ShapeKind'
+export { defineShape, isShapeKind } from '../geometry/ShapeKind'
+export { basicShapes, complexShapes, allShapes } from '../geometry/shapes'
 // The 4 basic shapes have no node-level wrappers: geometry primitives
 // (Circle, Rectangle, Ellipse, Diamond) implement Shape directly —
 // import circle/rect/ellipse/diamond from the geometry layer.

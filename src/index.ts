@@ -137,11 +137,11 @@ export {
   pointInPolygon,
   polygonBounds,
   // Shape registry
-  registerShape,
-  createShape,
-  hasShape,
-  registeredShapeNames,
-  shapeTextAutoSize,
+  defineShape,
+  isShapeKind,
+  basicShapes,
+  complexShapes,
+  allShapes,
   // Geometric rotation decorator
   Rotated,
   rotated,
@@ -241,7 +241,6 @@ export {
   RectangleSplit,
   rectangleSplit,
   DEFAULT_SHAPE_OPTIONS,
-  SHAPE_TYPES,
   // Node
   Node,
   node,
@@ -286,8 +285,6 @@ export type {
   AnchorSpec,
   Anchorable,
   Shape,
-  ShapeType,
-  ShapeRegistry,
   ShapeOptionsFor,
   ShapeOptions,
   TrapeziumOptions,
@@ -672,9 +669,6 @@ export type {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export {
-  registerCircuits,
-  circuitsRegistered,
-  CIRCUIT_SHAPES,
   circuit,
   CircuitSymbol,
   TwoTerminalSymbol,
@@ -685,6 +679,7 @@ export {
   GROUND_PORTS,
   CIRCUIT_PORTS,
   junctionDot,
+  circuitShapes,
   wire,
   Resistor,
   resistor,
@@ -732,13 +727,11 @@ export type {
 // Logic gates (TikZ shapes.gates.logic) — opt-in registration
 
 export {
-  registerGates,
-  gatesRegistered,
-  GATE_SHAPES,
   GATE_PORTS,
   UNARY_GATE_PORTS,
   BINARY_GATE_PORTS,
   gates,
+  gateShapes,
   LogicGate,
   UnaryGate,
   BinaryGate,

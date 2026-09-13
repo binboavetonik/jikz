@@ -18,7 +18,7 @@
  * ```
  */
 import type { NodeOptions } from '../../node/Node'
-import type { CircuitShapeName } from './index'
+import { circuitShapes, type CircuitShapeName } from './index'
 import type { ResistorVariant } from './symbols/resistor'
 import type { CapacitorVariant } from './symbols/capacitor'
 import type { DiodeVariant } from './symbols/diode'
@@ -28,10 +28,11 @@ import type { SwitchVariant } from './symbols/switch'
 type BaseOptions = Omit<NodeOptions, 'shape' | 'shapeOptions'>
 
 function build(
-  shape: CircuitShapeName,
+  name: CircuitShapeName,
   base: BaseOptions,
   shapeOptions?: Record<string, unknown>
 ): NodeOptions {
+  const shape = circuitShapes[name]
   return shapeOptions ? { ...base, shape, shapeOptions } : { ...base, shape }
 }
 

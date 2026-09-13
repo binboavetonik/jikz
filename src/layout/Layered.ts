@@ -1,5 +1,6 @@
 import { point } from '../core/Point'
 import type { PointLike } from '../core/types'
+import { basicShapes } from '../geometry/shapes/basic'
 import { Node, type NodeOptions } from '../node/Node'
 import { Edge, edge, type EdgeOptions, type LoopDirection } from '../node/Edge'
 import {
@@ -650,7 +651,7 @@ class LayeredBuilderImpl implements LayeredBuilder {
       const { result, pad } = sized.get(c.name)!
       const [x0, y0, x1, y1] = result.bounds
       parent.node(placeholderName(c.name), {
-        shape: 'rectangle',
+        shape: basicShapes.rectangle,
         text: '',
         width: x1 - x0 + 2 * pad,
         height: y1 - y0 + 2 * pad,

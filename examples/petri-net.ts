@@ -1,11 +1,11 @@
-import { picture, circle, point } from 'jikz'
+import { allShapes, circle, picture, point } from 'jikz'
 
 // The Petri net classic: places (circles), transitions (bars), tokens
 // (filled dots), and a marked net that can fire. t1 is enabled — one
 // token in each input place — so its edges get the highlight.
 
 export default function render(container: HTMLElement) {
-  const pic = picture()
+  const pic = picture({ shapes: allShapes })
   const es = { stroke: '#64748b', strokeWidth: 1.2 }
   const hot = { stroke: '#dc2626', strokeWidth: 1.8 }
 

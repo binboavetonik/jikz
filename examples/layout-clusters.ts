@@ -1,13 +1,13 @@
-import { layered, picture, point, rect } from 'jikz'
+import { allShapes, layered, picture, point, rect } from 'jikz'
 
 export default function render(container: HTMLElement) {
   const g = layered({ at: point(24, 30), grow: 'down', nodeSep: 26, rankSep: 40, clusterPadding: 14 })
-    .node('req', { shape: 'rectangle', text: 'request', minWidth: 74 })
-    .node('auth', { shape: 'rectangle', text: 'auth', minWidth: 66 })
-    .node('rate', { shape: 'rectangle', text: 'rate limit', minWidth: 66 })
-    .node('route', { shape: 'rectangle', text: 'route', minWidth: 66 })
-    .node('svc', { shape: 'rectangle', text: 'service', minWidth: 74 })
-    .node('log', { shape: 'rectangle', text: 'audit log', minWidth: 74 })
+    .node('req', { shape: allShapes['rectangle'], text: 'request', minWidth: 74 })
+    .node('auth', { shape: allShapes['rectangle'], text: 'auth', minWidth: 66 })
+    .node('rate', { shape: allShapes['rectangle'], text: 'rate limit', minWidth: 66 })
+    .node('route', { shape: allShapes['rectangle'], text: 'route', minWidth: 66 })
+    .node('svc', { shape: allShapes['rectangle'], text: 'service', minWidth: 74 })
+    .node('log', { shape: allShapes['rectangle'], text: 'audit log', minWidth: 74 })
     .edge('req', 'auth')
     .edge('auth', 'rate')
     .edge('rate', 'route')
@@ -20,7 +20,7 @@ export default function render(container: HTMLElement) {
     .cluster('gateway', ['policy', 'route'], { label: 'gateway' })
     .build()
 
-  const pic = picture()
+  const pic = picture({ shapes: allShapes })
 
   // Boxes first, outermost first, so nested boxes paint on top of their
   // parents and the nodes on top of everything.

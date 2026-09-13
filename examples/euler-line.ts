@@ -1,4 +1,4 @@
-import { picture, triangle, line, circle, point, polar } from 'jikz'
+import { allShapes, circle, line, picture, point, polar, triangle } from 'jikz'
 
 // The Euler line: centroid, circumcenter, and orthocenter of any
 // (non-equilateral) triangle are collinear. All three centers come
@@ -6,7 +6,7 @@ import { picture, triangle, line, circle, point, polar } from 'jikz'
 // derived, not placed — the figure proves itself.
 
 export default function render(container: HTMLElement) {
-  const pic = picture()
+  const pic = picture({ shapes: allShapes })
   const tri = triangle(point(60, 190), point(320, 180), point(150, 40))
 
   pic.draw(tri, { style: { stroke: '#334155', strokeWidth: 2 } })

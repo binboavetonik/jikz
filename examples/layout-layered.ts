@@ -1,4 +1,4 @@
-import { layered, point, SVGRenderer } from 'jikz'
+import { SVGRenderer, allShapes, layered, point } from 'jikz'
 
 export default function render(container: HTMLElement) {
   // Layered (Sugiyama) layout for DAGs: unlike tree(), a node may have
@@ -9,11 +9,11 @@ export default function render(container: HTMLElement) {
     rankSep: 40,
     nodeSep: 24,
   })
-    .node('config', { shape: 'circle', minWidth: 56, minHeight: 56 })
-    .node('db', { shape: 'circle', minWidth: 40, minHeight: 40 })
-    .node('cache', { shape: 'circle', minWidth: 40, minHeight: 40 })
-    .node('api', { shape: 'circle', minWidth: 40, minHeight: 40 })
-    .node('web', { shape: 'circle', minWidth: 40, minHeight: 40 })
+    .node('config', { shape: allShapes['circle'], minWidth: 56, minHeight: 56 })
+    .node('db', { shape: allShapes['circle'], minWidth: 40, minHeight: 40 })
+    .node('cache', { shape: allShapes['circle'], minWidth: 40, minHeight: 40 })
+    .node('api', { shape: allShapes['circle'], minWidth: 40, minHeight: 40 })
+    .node('web', { shape: allShapes['circle'], minWidth: 40, minHeight: 40 })
     .edge('config', 'db')
     .edge('config', 'cache')
     .edge('db', 'api')

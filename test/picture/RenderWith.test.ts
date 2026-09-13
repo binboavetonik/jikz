@@ -15,6 +15,8 @@ import type { Renderable, RenderOptions, TextOptions } from '../../src/render/Re
 import { isLine, isCircle, isPoint, isEdge } from '../../src/render/Renderer'
 import { Edge } from '../../src/node/Edge'
 import type { Node } from '../../src/node/Node'
+import { allShapes } from '../../src/geometry/shapes'
+const SHAPES = allShapes
 
 /** A toy "backend" that records draw calls as strings. */
 class RecordingRenderer implements PictureRenderer {
@@ -38,8 +40,8 @@ class RecordingRenderer implements PictureRenderer {
 describe('Picture.renderWith', () => {
   it('compiles through a non-SVG backend', () => {
     const backend = new RecordingRenderer()
-    picture()
-      .node('A', { at: point(0, 0), shape: 'circle', text: 'A' })
+    picture({ shapes: SHAPES })
+      .node('A', { at: point(0, 0), shape: SHAPES['circle'], text: 'A' })
       .draw(circle(point(0, 0), 10))
       .fill(circle(point(20, 0), 5))
       .text(point(5, 5), 'hello')
@@ -56,16 +58,16 @@ describe('Picture.renderWith', () => {
   })
 
   it('returns the picture for chaining', () => {
-    const pic = picture().node('A', { at: point(0, 0), text: 'A' })
+    const pic = picture({ shapes: SHAPES }).node('A', { at: point(0, 0), text: 'A' })
     expect(pic.renderWith(new RecordingRenderer())).toBe(pic)
   })
 
   it('desugars node labels into renderText calls after their node', () => {
     const backend = new RecordingRenderer()
-    picture()
+    picture({ shapes: SHAPES })
       .node('A', {
         at: point(100, 100),
-        shape: 'circle',
+        shape: SHAPES['circle'],
         width: 60,
         height: 60,
         text: 'A',
@@ -90,10 +92,10 @@ describe('Picture.renderWith', () => {
         texts.push({ text, at, options })
       },
     }
-    picture()
+    picture({ shapes: SHAPES })
       .node('A', {
         at: point(100, 100),
-        shape: 'circle',
+        shape: SHAPES['circle'],
         width: 60,
         height: 60,
         labels: [{ text: 'L' }],

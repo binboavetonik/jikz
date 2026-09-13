@@ -7,12 +7,12 @@ reference](../api/) (`npm run docs:api`).
 ## Setup
 
 ```ts
-import { registerCircuits } from '@ozan.e/jikz'
+import { circuitShapes, picture } from '@ozan.e/jikz'
 
-registerCircuits()  // once, like \usetikzlibrary{circuits.ee}
+const pic = picture({ shapes: circuitShapes })  // like \usetikzlibrary{circuits.ee}
 ```
 
-Registers the symbol names in the shape registry. A `ShapeRegistry`
+Gives the picture the symbol names. The set itself types them, so a
 module augmentation makes the names known to the IDE: `shape:
 'resistor'` autocompletes, and `'resitor'` is a compile error.
 
@@ -71,7 +71,7 @@ points in one chain. Full schematics:
 
 ## Under the hood
 
-Symbols are built only on **public seams** — `registerShape`, port
+Symbols are built only on **public seams** — `defineShape`, port
 anchors, `rotate` — so the extension doubles as the proof that jikz's
 extensibility API is sufficient for a real TikZ-library-sized domain.
 `CircuitSymbol` (in `ports.ts`) is the base class: a box with a port

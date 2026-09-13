@@ -1,4 +1,6 @@
 import { Point, point } from '../core/Point'
+import type { ShapeOptions } from '../geometry/Shape'
+import type { ShapeKind, ShapeSet } from '../geometry/ShapeKind'
 import type { PointLike } from '../core/types'
 import { Transform } from '../core/Transform'
 import { type AnchorSpec, type Anchorable } from '../core/Anchor'
@@ -140,7 +142,10 @@ export type PictureItem =
   | { kind: 'bare'; obj: Renderable; mode: PathMode; options?: RenderOptions }
   | { kind: 'text'; at: Point; text: string; options?: PictureTextOptions }
   | { kind: 'pen'; pen: Pen }
-  | { kind: 'scope'; scope: Scope }
+  // A picture holds scopes over any shape set, and Scope<S> is
+  // invariant in S — the set only matters while nodes are being added.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  | { kind: 'scope'; scope: Scope<any> }
 
 /**
  * A scope's own settings — TikZ's `\begin{scope}[…]`.
@@ -194,6 +199,8 @@ export interface ContainerRoot {
   lookupCoordinate(name: string): { at: Point; transform: Transform | undefined } | undefined
   hasName(name: string): boolean
   knownNames(): string
+  /** The shape set string shape names resolve against, if any. */
+  shapeSet(): ShapeSet | undefined
 }
 
 /**
@@ -235,7 +242,24 @@ export function composeTransform(
  * and {@link Scope} (a nested group). The verbs live here so a scope
  * accepts exactly the same calls as the picture it sits in.
  */
-export abstract class ItemContainer {
+/**
+ * Options for {@link ItemContainer.node}, typed against the container's
+ * shape set: `shape` is one of the set's names (or a kind/instance
+ * directly), and `shapeOptions` is whatever that entry accepts.
+ */
+export type NodeOptionsFor<S extends ShapeSet, K> = Omit<
+  NodeOptions,
+  'name' | 'shape' | 'shapeOptions'
+> & {
+  shape?: K
+  shapeOptions?: K extends keyof S
+    ? Parameters<S[K]>[0]
+    : K extends ShapeKind<infer O>
+      ? O
+      : Record<string, unknown>
+}
+
+export abstract class ItemContainer<S extends ShapeSet = {}> {
   protected readonly itemList: PictureItem[] = []
 
   /**
@@ -244,6 +268,33 @@ export abstract class ItemContainer {
    * `Picture` *is* its own registry and cannot pass `this` to `super`.
    */
   protected abstract get registry(): ContainerRoot
+
+  /**
+   * The shape set in scope for string shape names. Scopes borrow the
+   * root picture's set, so a name means the same thing everywhere in
+   * one picture.
+   */
+  protected abstract get shapes(): S | undefined
+
+  /**
+   * Resolve a string shape name against the set in scope. Unknown names
+   * throw here — at the call site that used the name, naming what IS in
+   * scope — rather than surfacing later as a missing shape.
+   */
+  protected resolveShape(name: string): ShapeKind<ShapeOptions> {
+    const kind = this.shapes?.[name]
+    if (!kind) {
+      const known = Object.keys(this.shapes ?? {})
+        .map((n) => `"${n}"`)
+        .join(', ')
+      throw new Error(
+        `Picture: unknown shape "${name}" ` +
+          `(shapes in scope: ${known || 'none'}). Pass the shape set to ` +
+          `picture({ shapes }), or hand the shape value to node() directly.`
+      )
+    }
+    return kind
+  }
 
   /**
    * Transform from this container's coordinates up to picture space —
@@ -273,13 +324,13 @@ export abstract class ItemContainer {
    *   .draw(axis)
    * ```
    */
-  scope(options: ScopeOptions, build: (scope: Scope) => void): this {
+  scope(options: ScopeOptions, build: (scope: Scope<S>) => void): this {
     const local = composeTransform(options.transform, options.scale)
     const accumulated =
       local && this.ownTransform
         ? this.ownTransform.compose(local)
         : (local ?? this.ownTransform)
-    const s = new Scope(
+    const s = new Scope<S>(
       this.registry,
       accumulated,
       [...this.inheritedStyles, ...styleList(options.style)],
@@ -296,9 +347,9 @@ export abstract class ItemContainer {
    * Any `name` in the supplied options is ignored — the registry name
    * is authoritative.
    */
-  node<S extends ShapeSpec = ShapeSpec>(
+  node<K extends (keyof S & string) | ShapeSpec = ShapeSpec>(
     name: string,
-    options: Omit<NodeOptions<S>, 'name'> = {},
+    options: NodeOptionsFor<S, K> = {},
     renderOptions?: RenderOptions
   ): this {
     if (this.registry.hasName(name)) {
@@ -306,7 +357,16 @@ export abstract class ItemContainer {
         `Picture: node name "${name}" already exists in this picture.`
       )
     }
-    const n = new Node({ ...options, name })
+    // Resolve a string name against the set in scope; a kind or an
+    // instance passes straight through, and an absent shape stays
+    // absent so Node applies its own default.
+    const spec = options.shape
+    const shape = typeof spec === 'string' ? this.resolveShape(spec) : spec
+    const n = new Node({
+      ...options,
+      ...(shape ? { shape } : {}),
+      name,
+    } as NodeOptions)
     this.registry.registerNode(name, n, this.ownTransform)
     this.itemList.push({ kind: 'node', node: n, name, options: renderOptions })
 
@@ -562,9 +622,15 @@ export abstract class ItemContainer {
  * needs to record it in paint order and hand it the accumulated
  * transform and style chain.
  */
-export class Scope extends ItemContainer {
+export class Scope<S extends ShapeSet = {}> extends ItemContainer<S> {
   protected readonly registry: ContainerRoot
   protected readonly ownTransform: Transform | undefined
+
+  /** Scopes borrow the root picture's shape set. */
+  protected get shapes(): S | undefined {
+    return this.registry.shapeSet() as S | undefined
+  }
+
   protected readonly inheritedStyles: readonly Partial<RenderStyle>[]
 
   constructor(

@@ -1,4 +1,4 @@
-import { picture, point } from 'jikz'
+import { allShapes, picture, point } from 'jikz'
 
 // The neural-net diagram every ML slide needs: layered nodes with
 // dense inter-layer edges. Layers come from arrays of y-positions;
@@ -8,7 +8,7 @@ import { picture, point } from 'jikz'
 const LAYERS = [3, 5, 4, 1] // input, hidden×2, output
 
 export default function render(container: HTMLElement) {
-  const pic = picture()
+  const pic = picture({ shapes: allShapes })
   const layerX = [60, 180, 300, 410]
   const spacing = 62
 

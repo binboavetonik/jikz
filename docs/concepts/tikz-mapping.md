@@ -80,7 +80,7 @@ Named endpoints work too: `pen.moveTo('P').vhTo('Q')` is
 | `minimum width=1cm` | `minWidth: 10` (px) |
 | `inner sep=4pt` / `outer sep=2pt` | `innerSep: 4` / `outerSep: 4` |
 | no size given → fits text | omit `width`/`height` — the node measures its text |
-| `\usetikzlibrary{shapes.geometric}` shapes | `SHAPE_TYPES` — 40+ shapes, no imports needed |
+| `\usetikzlibrary{shapes.geometric}` shapes | `allShapes` — 33 shapes, handed to `picture({ shapes })` |
 | `rotate=45` | `rotate: 45` |
 | `at=(p), anchor=north` | `{ at: p, anchor: 'north' }` |
 
@@ -189,7 +189,7 @@ plain italic text — the diagram still works.
 
 ## Circuits (`circuitikz` / `circuits.ee`)
 
-`registerCircuits()` is the `\usetikzlibrary{circuits.ee}` analogue.
+`circuitShapes` is the `\usetikzlibrary{circuits.ee}` analogue.
 Symbols via typed builders (`circuit.resistor({ variant: 'iec' })`) or
 string specs (`shape: 'resistor'`); ports resolve as `'R1.out'` or
 typed `r1.out` Points; `wire()` chains endpoints. See

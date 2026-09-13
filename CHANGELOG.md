@@ -69,6 +69,38 @@
 
 ### Changed
 
+- **Shapes are values; the global shape registry is gone.** A shape is
+  now a `ShapeKind` — a factory plus the one flag Node needs to size it
+  — and a *name* is a key in an ordinary object:
+
+  ```ts
+  const pic = picture({ shapes: { ...allShapes, ...gateShapes } })
+  pic.node('A', { shape: 'and' })                 // resolved from the set
+  pic.node('B', { shape: allShapes.star, shapeOptions: { points: 8 } })
+  ```
+
+  Because the set is a value, TypeScript reads the names *and* the
+  per-name option types straight off it, so `ShapeRegistry`,
+  `ShapeType`, `SHAPE_TYPES` and the `declare module` recipe are gone
+  along with `registerShape`/`createShape`/`hasShape`/
+  `registeredShapeNames`/`shapeTextAutoSize`. Two libraries can no
+  longer disagree about what a name means — that collision used to be a
+  TS2717 error in the consumer's build, unfixable without patching one
+  of them. Unknown names throw at the `node()` call that used them,
+  naming what IS in scope.
+
+  Extensions are plain exports: `registerCircuits()` and
+  `registerGates()` are replaced by the `circuitShapes` and `gateShapes`
+  sets, and a custom shape is `defineShape('house', (o) => new House(o))`
+  with no registration step. `picture()` and `Scope` are generic in
+  their shape set; a helper that takes any picture types it as
+  `Picture<any>`.
+
+  This is what drops the floor a `picture()` import costs: 104 kB
+  minified / 31 kB gzipped, down from 195 kB / 45 kB, because the
+  catalogue is no longer welded onto `Node` by a global table. Ask for
+  `allShapes` and you are back at the old size — by choice, now.
+
 - **JavaScript sourcemaps ship with the ES modules.** Each `dist/**/*.js`
   has a `.js.map` beside it, and `src/` is included in the package so
   the maps (and the existing `.d.ts.map` files) resolve to real source

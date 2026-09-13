@@ -1,7 +1,7 @@
-import { picture, rect, rectFit, point } from 'jikz'
+import { allShapes, picture, point, rect, rectFit } from 'jikz'
 
 export default function render(container: HTMLElement) {
-  const pic = picture()
+  const pic = picture({ shapes: allShapes })
   const box = { stroke: '#334155', fill: '#f1f5f9', strokeWidth: 1.5 }
 
   pic.node('db',    { at: point(70, 90),   shape: 'cylinder',  width: 50, height: 44, text: 'db' },    { style: box })

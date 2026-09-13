@@ -1,7 +1,7 @@
-import { picture, point } from 'jikz'
+import { allShapes, picture, point } from 'jikz'
 
 export default function render(container: HTMLElement) {
-  const pic = picture()
+  const pic = picture({ shapes: allShapes })
   pic.node('N', { at: point(150, 85), shape: 'rectangle', width: 140, height: 90, text: 'N' },
     { style: { stroke: '#334155', fill: '#f1f5f9', strokeWidth: 2 } })
 

@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { tree, treeFromSpec } from '../../src/layout/Tree'
 import { point } from '../../src/core/Point'
+import { allShapes } from '../../src/geometry/shapes'
+const SHAPES = allShapes
 
 describe('Tree', () => {
   describe('basic tree creation', () => {
@@ -421,7 +423,7 @@ describe('Tree', () => {
     it('applies global node options', () => {
       const result = tree({
         at: point(100, 30),
-        nodeOptions: { shape: 'circle' }
+        nodeOptions: { shape: SHAPES['circle'] }
       })
         .root('Root')
           .child('A')
@@ -433,10 +435,10 @@ describe('Tree', () => {
 
     it('allows per-node options', () => {
       const result = tree({ at: point(100, 30) })
-        .root({ text: 'Root', name: 'Root', shape: 'ellipse' })
-          .child({ text: 'A', name: 'A', shape: 'circle' })
+        .root({ text: 'Root', name: 'Root', shape: SHAPES['ellipse'] })
+          .child({ text: 'A', name: 'A', shape: SHAPES['circle'] })
           .parent()
-          .child({ text: 'B', name: 'B', shape: 'diamond' })
+          .child({ text: 'B', name: 'B', shape: SHAPES['diamond'] })
         .build()
 
       expect(result.root.shape.type).toBe('ellipse')
@@ -584,9 +586,9 @@ describe('Tree', () => {
 
     it('handles spec with node options', () => {
       const result = treeFromSpec({
-        content: { text: 'Root', name: 'Root', shape: 'ellipse' },
+        content: { text: 'Root', name: 'Root', shape: SHAPES['ellipse'] },
         children: [
-          { content: { text: 'A', name: 'A', shape: 'circle' } },
+          { content: { text: 'A', name: 'A', shape: SHAPES['circle'] } },
         ]
       }, { at: point(100, 30) })
 
@@ -798,7 +800,7 @@ describe('Tree', () => {
     }
 
     const spec = (name: string, w: number, h = 15) =>
-      ({ name, text: '', shape: 'rectangle' as const, width: w, height: h, innerSep: 0, minWidth: 0, minHeight: 0 })
+      ({ name, text: '', shape: SHAPES['rectangle'] as const, width: w, height: h, innerSep: 0, minWidth: 0, minHeight: 0 })
 
     it('pushes a deep child clear of a wide uncle in a neighbouring branch, in all four growth directions', () => {
       // A is a long row whose short children end early; B's branch is

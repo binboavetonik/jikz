@@ -2,12 +2,14 @@ import { describe, it, expect } from 'vitest'
 import { picture } from '../../src/picture/Picture'
 import { point } from '../../src/core/Point'
 import { circle } from '../../src/geometry/Circle'
+import { allShapes } from '../../src/geometry/shapes'
+const SHAPES = allShapes
 
 describe('Picture', () => {
   describe('node registry', () => {
     it('registers a node by name and makes it available via getNode', () => {
-      const pic = picture()
-        .node('A', { at: point(10, 20), shape: 'rectangle', width: 30, height: 20 })
+      const pic = picture({ shapes: SHAPES })
+        .node('A', { at: point(10, 20), shape: SHAPES['rectangle'], width: 30, height: 20 })
 
       const a = pic.getNode('A')
       expect(a).toBeDefined()
@@ -17,40 +19,40 @@ describe('Picture', () => {
     })
 
     it('returns undefined for an unknown node', () => {
-      const pic = picture()
+      const pic = picture({ shapes: SHAPES })
       expect(pic.getNode('ghost')).toBeUndefined()
     })
 
     it('throws on duplicate node names', () => {
-      const pic = picture().node('A', { at: point(0, 0) })
+      const pic = picture({ shapes: SHAPES }).node('A', { at: point(0, 0) })
       expect(() => pic.node('A', { at: point(10, 10) })).toThrow(/already exists/)
     })
 
     it('exposes the list of registered names', () => {
-      const pic = picture()
+      const pic = picture({ shapes: SHAPES })
         .node('A', { at: point(0, 0) })
         .node('B', { at: point(20, 0) })
       expect(pic.names).toEqual(['A', 'B'])
     })
 
     it('Picture name overrides any NodeOptions.name if passed', () => {
-      const pic = picture().node('A', { at: point(0, 0) })
+      const pic = picture({ shapes: SHAPES }).node('A', { at: point(0, 0) })
       // The registry name is authoritative; the Node gets it.
       expect(pic.getNode('A')!.name).toBe('A')
     })
   })
 
   describe('resolve()', () => {
-    const pic = picture()
+    const pic = picture({ shapes: SHAPES })
       .node('A', {
         at: point(100, 100),
-        shape: 'rectangle',
+        shape: SHAPES['rectangle'],
         width: 80,
         height: 40,
       })
       .node('B', {
         at: point(200, 100),
-        shape: 'circle',
+        shape: SHAPES['circle'],
         width: 40,
         height: 40,
       })
@@ -103,9 +105,9 @@ describe('Picture', () => {
 
   describe('edges', () => {
     const mk = () =>
-      picture()
-        .node('A', { at: point(0, 0), shape: 'circle', width: 30, height: 30 })
-        .node('B', { at: point(100, 0), shape: 'circle', width: 30, height: 30 })
+      picture({ shapes: SHAPES })
+        .node('A', { at: point(0, 0), shape: SHAPES['circle'], width: 30, height: 30 })
+        .node('B', { at: point(100, 0), shape: SHAPES['circle'], width: 30, height: 30 })
 
     it('edge("A", "B") boundary-resolves through both nodes (auto)', () => {
       const pic = mk().edge('A', 'B')
@@ -126,7 +128,7 @@ describe('Picture', () => {
     })
 
     it('edge accepts raw points', () => {
-      const pic = picture().edge(point(0, 0), point(100, 50))
+      const pic = picture({ shapes: SHAPES }).edge(point(0, 0), point(100, 50))
       const edge = pic.items.find((i) => i.kind === 'edge')!
       // @ts-expect-error -- PictureItem union is not narrowed by find()
       expect(edge.edge.from.x).toBe(0)
@@ -143,7 +145,7 @@ describe('Picture', () => {
 
   describe('bare-geometry verbs (path/draw/fill/filldraw)', () => {
     it('text() adds centered bare text (TikZ \\node at (x,y) {…})', () => {
-      const svg = picture()
+      const svg = picture({ shapes: SHAPES })
         .text(point(50, 30), 'hello')
         .toSVG({ width: 100, height: 60 })
       expect(svg).toContain('>hello</text>')
@@ -154,7 +156,7 @@ describe('Picture', () => {
     })
 
     it('records bare renderables in insertion order', () => {
-      const pic = picture()
+      const pic = picture({ shapes: SHAPES })
         .draw(circle(point(0, 0), 10))
         .node('A', { at: point(50, 0) })
       expect(pic.items.length).toBe(2)
@@ -163,7 +165,7 @@ describe('Picture', () => {
     })
 
     it('tags each verb with its TikZ-style path mode', () => {
-      const pic = picture()
+      const pic = picture({ shapes: SHAPES })
         .path(circle(point(0, 0), 10))
         .draw(circle(point(20, 0), 10))
         .fill(circle(point(40, 0), 10))
@@ -175,7 +177,7 @@ describe('Picture', () => {
     })
 
     it('draw() renders stroked with no fill', () => {
-      const svg = picture()
+      const svg = picture({ shapes: SHAPES })
         .draw(circle(point(50, 50), 20))
         .toSVG({ width: 100, height: 100 })
       expect(svg).toContain('stroke="#000000"')
@@ -183,7 +185,7 @@ describe('Picture', () => {
     })
 
     it('fill() renders filled with no stroke', () => {
-      const svg = picture()
+      const svg = picture({ shapes: SHAPES })
         .fill(circle(point(50, 50), 20))
         .toSVG({ width: 100, height: 100 })
       expect(svg).toContain('stroke="none"')
@@ -191,7 +193,7 @@ describe('Picture', () => {
     })
 
     it('filldraw() renders both stroke and fill', () => {
-      const svg = picture()
+      const svg = picture({ shapes: SHAPES })
         .filldraw(circle(point(50, 50), 20))
         .toSVG({ width: 100, height: 100 })
       expect(svg).toContain('stroke="#000000"')
@@ -200,14 +202,14 @@ describe('Picture', () => {
 
     it('user style in options overrides the mode baseline', () => {
       // draw() baseline: stroke=black, fill=none. Overriding fill wins.
-      const svg = picture()
+      const svg = picture({ shapes: SHAPES })
         .draw(circle(point(50, 50), 20), { style: { fill: '#ff00ff' } })
         .toSVG({ width: 100, height: 100 })
       expect(svg).toContain('fill="#ff00ff"')
     })
 
     it('shade() renders a gradient fill (TikZ \\shade)', () => {
-      const svg = picture()
+      const svg = picture({ shapes: SHAPES })
         .shade(circle(point(50, 50), 20), { leftColor: '#2563eb', rightColor: '#7c3aed' })
         .toSVG({ width: 100, height: 100 })
       expect(svg).toContain('<linearGradient')
@@ -216,7 +218,7 @@ describe('Picture', () => {
     })
 
     it('shade() supports ballColor and radial shadings', () => {
-      const svg = picture()
+      const svg = picture({ shapes: SHAPES })
         .shade(circle(point(50, 50), 20), { ballColor: '#dc2626' })
         .toSVG({ width: 100, height: 100 })
       expect(svg).toContain('<radialGradient')
@@ -225,7 +227,7 @@ describe('Picture', () => {
     })
 
     it('shade() accepts an explicit gradient spec', () => {
-      const svg = picture()
+      const svg = picture({ shapes: SHAPES })
         .shade(circle(point(50, 50), 20), {
           gradient: { type: 'radial', stops: [{ offset: 0, color: '#fff' }, { offset: 1, color: '#000' }] },
         })
@@ -236,18 +238,18 @@ describe('Picture', () => {
 
   describe('toSVG() — end-to-end', () => {
     it('emits nodes, edges, and bare geometry in insertion order', () => {
-      const svg = picture()
+      const svg = picture({ shapes: SHAPES })
         .draw(circle(point(200, 50), 20))
         .node('A', {
           at: point(30, 50),
-          shape: 'circle',
+          shape: SHAPES['circle'],
           width: 30,
           height: 30,
           text: 'A',
         })
         .node('B', {
           at: point(120, 50),
-          shape: 'rectangle',
+          shape: SHAPES['rectangle'],
           width: 40,
           height: 30,
           text: 'B',
@@ -265,12 +267,12 @@ describe('Picture', () => {
     })
 
     it('per-item render options override defaults', () => {
-      const svg = picture()
+      const svg = picture({ shapes: SHAPES })
         .node(
           'A',
           {
             at: point(50, 50),
-            shape: 'circle',
+            shape: SHAPES['circle'],
             width: 40,
             height: 40,
           },
@@ -282,7 +284,7 @@ describe('Picture', () => {
     })
 
     it('renders an empty picture without throwing', () => {
-      const svg = picture().toSVG({ width: 10, height: 10 })
+      const svg = picture({ shapes: SHAPES }).toSVG({ width: 10, height: 10 })
       // No items → no defs either: markers/patterns/gradients are all
       // defined lazily on first use now.
       expect(svg).toContain('<svg')

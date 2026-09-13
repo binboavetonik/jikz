@@ -5,6 +5,8 @@ import { circle } from '../../src/geometry/Circle'
 import { rect } from '../../src/geometry/Rectangle'
 import { rectNode, circleNode } from '../../src/node/Node'
 import { edge } from '../../src/node/Edge'
+import { allShapes } from '../../src/geometry/shapes'
+const SHAPES = allShapes
 
 /**
  * Stage 4 flagship: the library renders to an SVG string in pure Node
@@ -113,7 +115,7 @@ describe('Node-side rendering: zero-dependency toSVG()', () => {
     const r = new SVGRenderer()
     r.renderRect(rect(0, 0, 100, 60), {
       style: {
-        clip: { shape: 'circle', cx: 50, cy: 30, r: 25 },
+        clip: { shape: SHAPES['circle'], cx: 50, cy: 30, r: 25 },
       },
     })
     const svg = r.toSVG({ width: 100, height: 100 })

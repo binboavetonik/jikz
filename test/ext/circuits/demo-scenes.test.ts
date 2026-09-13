@@ -4,7 +4,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import {
-  registerCircuits,
+  circuitShapes,
   wire,
   junctionDot,
   circuit,
@@ -13,8 +13,9 @@ import {
 } from '../../../src/ext/circuits'
 import { picture } from '../../../src/picture/Picture'
 import { point } from '../../../src/core/Point'
-
-registerCircuits()
+import { allShapes } from '../../../src/geometry/shapes'
+import { circuitShapes } from '../../../src/ext/circuits'
+const SHAPES = { ...allShapes, ...circuitShapes }
 
 function expectPt(p: { x: number; y: number }, x: number, y: number, label = '') {
   expect(p.x, `${label} x`).toBeCloseTo(x, 6)
@@ -23,7 +24,7 @@ function expectPt(p: { x: number; y: number }, x: number, y: number, label = '')
 
 describe('demo card: symbol gallery', () => {
   it('all 12 gallery cells render', () => {
-    const pic = picture()
+    const pic = picture({ shapes: SHAPES })
     const cells = [
       circuit.resistor(),
       circuit.resistor({ variant: 'iec' }),
@@ -51,7 +52,7 @@ describe('demo card: symbol gallery', () => {
 
 describe('demo card: RC low-pass filter', () => {
   it('ports land where the card claims; scene renders', () => {
-    const pic = picture()
+    const pic = picture({ shapes: SHAPES })
     pic.node('V1', circuit.voltageSource({ at: point(60, 120), rotate: 90 }))
     pic.node('R1', circuit.resistor({ at: point(140, 60) }))
     pic.node('C1', circuit.capacitor({ at: point(220, 120), rotate: 90 }))
@@ -83,7 +84,7 @@ describe('demo card: RC low-pass filter', () => {
 
 describe('demo card: inverting amplifier', () => {
   it('op-amp ports resolve as typed Points; scene renders', () => {
-    const pic = picture()
+    const pic = picture({ shapes: SHAPES })
     const u1 = opAmp({ center: point(200, 120) })
     const rin = resistor({ center: point(95, 104) })
     const rf = resistor({ center: point(150, 55) })
@@ -124,12 +125,12 @@ describe('demo card: two ways to reference symbols', () => {
 
   /** The card's Style-1 scene: string shape names + string port specs. */
   function buildWithStrings(): string {
-    const pic = picture()
-    pic.node('V1', { shape: 'voltage source', at: point(50, 110), rotate: 90 }, { style: sym })
-    pic.node('R1', { shape: 'resistor', at: point(150, 55) }, { style: sym })
-    pic.node('D1', { shape: 'diode', shapeOptions: { variant: 'led' }, at: point(240, 110), rotate: 90 }, { style: sym })
-    pic.node('G1', { shape: 'ground', at: point(50, 165), anchor: 'in' }, { style: sym })
-    pic.node('G2', { shape: 'ground', at: point(240, 165), anchor: 'in' }, { style: sym })
+    const pic = picture({ shapes: SHAPES })
+    pic.node('V1', { shape: SHAPES['voltage source'], at: point(50, 110), rotate: 90 }, { style: sym })
+    pic.node('R1', { shape: SHAPES['resistor'], at: point(150, 55) }, { style: sym })
+    pic.node('D1', { shape: SHAPES['diode'], shapeOptions: { variant: 'led' }, at: point(240, 110), rotate: 90 }, { style: sym })
+    pic.node('G1', { shape: SHAPES['ground'], at: point(50, 165), anchor: 'in' }, { style: sym })
+    pic.node('G2', { shape: SHAPES['ground'], at: point(240, 165), anchor: 'in' }, { style: sym })
     wire(pic, ['V1.in', point(50, 55), 'R1.in'])
     wire(pic, ['R1.out', point(240, 55), 'D1.in'])
     wire(pic, ['V1.out', point(50, 165), point(240, 165), 'D1.out'])
@@ -138,7 +139,7 @@ describe('demo card: two ways to reference symbols', () => {
 
   /** The card's Style-2 scene: typed builders + typed port Points. */
   function buildWithTyped(): string {
-    const pic = picture()
+    const pic = picture({ shapes: SHAPES })
     pic.node('V1', circuit.voltageSource({ at: point(50, 110), rotate: 90 }), { style: sym })
     const r1 = resistor({ center: point(150, 55) })
     pic.node('R1', { shape: r1 }, { style: sym })

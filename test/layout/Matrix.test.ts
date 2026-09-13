@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { matrix, matrixFromData } from '../../src/layout/Matrix'
 import { point } from '../../src/core/Point'
+import { allShapes } from '../../src/geometry/shapes'
+const SHAPES = allShapes
 
 describe('Matrix', () => {
   describe('basic matrix creation', () => {
@@ -184,7 +186,7 @@ describe('Matrix', () => {
     it('applies global node options', () => {
       const result = matrix({
         at: point(50, 50),
-        nodeOptions: { shape: 'circle' }
+        nodeOptions: { shape: SHAPES['circle'] }
       })
         .rows([['A', 'B']])
         .build()
@@ -195,8 +197,8 @@ describe('Matrix', () => {
 
     it('allows per-cell options', () => {
       const result = matrix({ at: point(50, 50) })
-        .cell(0, 0, { text: 'A', shape: 'circle' })
-        .cell(0, 1, { text: 'B', shape: 'rectangle' })
+        .cell(0, 0, { text: 'A', shape: SHAPES['circle'] })
+        .cell(0, 1, { text: 'B', shape: SHAPES['rectangle'] })
         .build()
 
       expect(result.cell(0, 0)!.shape.type).toBe('circle')
@@ -206,10 +208,10 @@ describe('Matrix', () => {
     it('per-cell options override global options', () => {
       const result = matrix({
         at: point(50, 50),
-        nodeOptions: { shape: 'circle' }
+        nodeOptions: { shape: SHAPES['circle'] }
       })
         .cell(0, 0, 'A')
-        .cell(0, 1, { text: 'B', shape: 'diamond' })
+        .cell(0, 1, { text: 'B', shape: SHAPES['diamond'] })
         .build()
 
       expect(result.cell(0, 0)!.shape.type).toBe('circle')

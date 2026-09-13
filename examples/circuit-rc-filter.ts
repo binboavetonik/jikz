@@ -1,8 +1,7 @@
-import { picture, registerCircuits, circuit, wire, junctionDot, point } from 'jikz'
+import { allShapes, circuit, circuitShapes, junctionDot, picture, point, wire } from 'jikz'
 
 export default function render(container: HTMLElement) {
-  registerCircuits()
-  const pic = picture()
+  const pic = picture({ shapes: { ...allShapes, ...circuitShapes } })
   const sym = { stroke: '#0f172a', strokeWidth: 1.6 }
 
   // Typed builders place every symbol — no shape-name strings to

@@ -5,9 +5,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import {
-  registerGates,
-  gatesRegistered,
-  GATE_SHAPES,
+  gateShapes,
   GATE_PORTS,
   UNARY_GATE_PORTS,
   BINARY_GATE_PORTS,
@@ -23,44 +21,44 @@ import {
   gates,
 } from '../../../src/ext/gates'
 import { AnchorError } from '../../../src/core/Anchor'
-import { hasShape, createShape } from '../../../src/geometry/registry'
 import { pathFromSVG } from '../../../src/path/svgPath'
 import { Node } from '../../../src/node/Node'
 import { picture } from '../../../src/picture/Picture'
 import { point } from '../../../src/core/Point'
-
-registerGates()
+import { allShapes } from '../../../src/geometry/shapes'
+import { gateShapes } from '../../../src/ext/gates'
+const SHAPES = { ...allShapes, ...gateShapes }
 
 function expectPt(p: { x: number; y: number }, x: number, y: number, label = '') {
   expect(p.x, `${label} x`).toBeCloseTo(x, 6)
   expect(p.y, `${label} y`).toBeCloseTo(y, 6)
 }
 
-describe('registerGates', () => {
-  it('registers gate shape names in the global registry', () => {
-    expect(gatesRegistered()).toBe(true)
-    for (const name of GATE_SHAPES) {
-      expect(hasShape(name)).toBe(true)
+describe('gateShapes', () => {
+  it('carries a kind per gate, none of them text-sizing', () => {
+    for (const [name, kind] of Object.entries(gateShapes)) {
+      expect(kind.kindName).toBe(name)
+      expect(kind.textAutoSize).toBe(false)
     }
   })
 
-  it('is idempotent', () => {
-    registerGates()
-    registerGates()
-    expect(hasShape('and')).toBe(true)
+  it('resolves by name once handed to a picture', () => {
+    const pic = picture({ shapes: gateShapes })
+    pic.node('A', { shape: 'nand', at: point(50, 50) })
+    expect(pic.toSVG({ width: 100, height: 100 })).toContain('A 5 5 0 1 0')
   })
 })
 
 describe('gate symbol', () => {
   it('has an intrinsic default size of 70×50', () => {
-    const n = new Node({ shape: 'and', at: point(100, 100) })
+    const n = new Node({ shape: SHAPES['and'], at: point(100, 100) })
     expect(n.width).toBeCloseTo(70, 6)
     expect(n.height).toBeCloseTo(50, 6)
   })
 
   it('honors explicit width/height and variant via shapeOptions', () => {
     const n = new Node({
-      shape: 'and',
+      shape: SHAPES['and'],
       at: point(0, 0),
       width: 90,
       height: 40,
@@ -114,9 +112,9 @@ describe('gate arity', () => {
   })
 
   it('builds the right class through the shape registry', () => {
-    expect(createShape('or', { center: point(0, 0) })).toBeInstanceOf(BinaryGate)
-    expect(createShape('not', { center: point(0, 0) })).toBeInstanceOf(UnaryGate)
-    expect(new Node({ shape: 'buffer', at: point(0, 0) }).shape).toBeInstanceOf(
+    expect(gateShapes.or({ center: point(0, 0) })).toBeInstanceOf(BinaryGate)
+    expect(gateShapes.not({ center: point(0, 0) })).toBeInstanceOf(UnaryGate)
+    expect(new Node({ shape: SHAPES['buffer'], at: point(0, 0) }).shape).toBeInstanceOf(
       UnaryGate
     )
   })
@@ -134,7 +132,7 @@ describe('gate arity', () => {
   })
 
   it('isUnaryGate matches the classes it picks', () => {
-    for (const kind of GATE_SHAPES) {
+    for (const kind of Object.keys(gateShapes) as (keyof typeof gateShapes)[]) {
       const g = gate(kind)
       expect(isUnaryGate(kind)).toBe(g instanceof UnaryGate)
     }
@@ -224,7 +222,7 @@ describe('gate geometry invariants', () => {
   const variants = ['ansi', 'iec'] as const
 
   for (const variant of variants) {
-    for (const kind of GATE_SHAPES) {
+    for (const kind of Object.keys(gateShapes) as (keyof typeof gateShapes)[]) {
       describe(`${kind} (${variant})`, () => {
         const g = gate(kind, { variant })
         // Box: 70×50 centered on the origin; body spans x1…x2.
@@ -275,7 +273,7 @@ describe('gate geometry invariants', () => {
 
 describe('gates through the picture', () => {
   it('renders gates and wires ports by name', () => {
-    const pic = picture()
+    const pic = picture({ shapes: SHAPES })
     pic.node('A', gates.and({ at: point(60, 40) }))
     pic.node('N', gates.not({ at: point(160, 40) }))
     pic.edge('A.out', 'N.in', { arrowEnd: 'none' })
@@ -287,7 +285,7 @@ describe('gates through the picture', () => {
   })
 
   it('createShape builds gates by name', () => {
-    const g = createShape('and', { center: point(0, 0) }) as LogicGate
+    const g = gateShapes.and({ center: point(0, 0) }) as LogicGate
     expect(g.type).toBe('and')
     expectPt(g.out, 35, 0)
   })

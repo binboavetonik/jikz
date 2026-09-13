@@ -15,12 +15,14 @@ import {
 } from '../../src/node/Node'
 import { point } from '../../src/core/Point'
 import { measureText } from '../../src/text/measureText'
+import { allShapes } from '../../src/geometry/shapes'
+const SHAPES = allShapes
 
 describe('Node labels', () => {
   const mkNode = (extra: Partial<NodeOptions> = {}) =>
     new Node({
       at: point(100, 100),
-      shape: 'circle',
+      shape: SHAPES['circle'],
       width: 60,
       height: 60,
       text: 'A',
@@ -121,7 +123,7 @@ describe('Node labels', () => {
     // angle, not from a center→anchor ray.
     const n = new Node({
       at: point(230, 50),
-      shape: 'rectangle',
+      shape: SHAPES['rectangle'],
       width: 0,
       height: 0,
       minWidth: 0,
@@ -140,7 +142,7 @@ describe('Node label frame', () => {
   const rotated = () =>
     new Node({
       at: point(100, 100),
-      shape: 'rectangle',
+      shape: SHAPES['rectangle'],
       width: 60,
       height: 20,
       rotate: 90,
@@ -169,7 +171,7 @@ describe('Node label frame', () => {
   it('unrotated node: both frames coincide for compass directions', () => {
     const n = new Node({
       at: point(100, 100),
-      shape: 'circle',
+      shape: SHAPES['circle'],
       width: 60,
       height: 60,
     })

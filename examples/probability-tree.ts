@@ -1,4 +1,4 @@
-import { picture, tree, point } from 'jikz'
+import { allShapes, picture, point, tree } from 'jikz'
 
 export default function render(container: HTMLElement) {
   // tree() computes the layout; nodes come back named by their text
@@ -7,7 +7,7 @@ export default function render(container: HTMLElement) {
     grow: 'right',
     levelDistance: 40, // edge-to-edge gap (was 115 center-to-center)
     siblingDistance: 34,
-    nodeOptions: { shape: 'circle', minWidth: 36, minHeight: 36 },
+    nodeOptions: { shape: allShapes['circle'], minWidth: 36, minHeight: 36 },
   })
     .root('start')
       .child('H').children(['HH', 'HT']).parent()
@@ -15,7 +15,7 @@ export default function render(container: HTMLElement) {
       .child('T').children(['TH', 'TT'])
     .build()
 
-  const pic = picture()
+  const pic = picture({ shapes: allShapes })
   for (const n of t.nodes) {
     pic.node(n.text, { at: n.center, shape: 'circle', minWidth: 36, minHeight: 36, text: n.text },
       { style: { stroke: '#334155', fill: '#f1f5f9', strokeWidth: 1.5 }, textStyle: { fontSize: 11 } })

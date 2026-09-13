@@ -1,4 +1,5 @@
 import type { Picture, PictureEndpoint } from '../../picture/Picture'
+import type { ShapeSet } from '../../geometry/ShapeKind'
 import type { EdgeOptions } from '../../node/Edge'
 import type { PointLike } from '../../core/types'
 import { circle, type Circle } from '../../geometry/Circle'
@@ -24,11 +25,11 @@ export function junctionDot(center: PointLike, radius = 2): Circle {
  * wire(pic, ['R1.out', point(160, 50), 'C1.in'])  // routed via a corner
  * ```
  */
-export function wire(
-  pic: Picture,
+export function wire<S extends ShapeSet>(
+  pic: Picture<S>,
   points: readonly PictureEndpoint[],
   options: EdgeOptions = {}
-): Picture {
+): Picture<S> {
   for (let i = 0; i + 1 < points.length; i++) {
     pic.edge(points[i]!, points[i + 1]!, {
       arrowStart: 'none',

@@ -5,6 +5,8 @@ import { Transform } from '../../src/core/Transform'
 import { circle } from '../../src/geometry/Circle'
 import { line } from '../../src/geometry/Line'
 import type { PictureRenderer } from '../../src/picture/Picture'
+import { allShapes } from '../../src/geometry/shapes'
+const SHAPES = allShapes
 
 /** Records what reaches the backend, so cascade order is observable. */
 function recorder() {
@@ -30,8 +32,8 @@ describe('Scope', () => {
   describe('purely additive', () => {
     it('emits byte-identical SVG when no scope is used', () => {
       const build = () =>
-        picture()
-          .node('A', { at: point(30, 30), shape: 'circle', width: 20, height: 20 })
+        picture({ shapes: SHAPES })
+          .node('A', { at: point(30, 30), shape: SHAPES['circle'], width: 20, height: 20 })
           .draw(circle(point(70, 30), 10))
           .toSVG({ width: 120, height: 60 })
       expect(build()).toBe(build())
@@ -39,7 +41,7 @@ describe('Scope', () => {
     })
 
     it('adds no group for a style-only scope', () => {
-      const svg = picture()
+      const svg = picture({ shapes: SHAPES })
         .scope({ style: { stroke: '#f00' } }, (s) => s.draw(circle(point(30, 30), 10)))
         .toSVG({ width: 60, height: 60 })
       expect(svg).not.toContain('<g transform')
@@ -47,7 +49,7 @@ describe('Scope', () => {
     })
 
     it('returns the container so the chain continues', () => {
-      const pic = picture()
+      const pic = picture({ shapes: SHAPES })
       const back = pic.scope({ style: { stroke: '#f00' } }, (s) => s.draw(circle(point(0, 0), 1)))
       expect(back).toBe(pic)
     })
@@ -56,10 +58,10 @@ describe('Scope', () => {
   describe('style cascade', () => {
     it('applies the scope style to nodes, edges and bare shapes', () => {
       const b = recorder()
-      picture()
+      picture({ shapes: SHAPES })
         .scope({ style: { stroke: '#00f', strokeWidth: 3 } }, (s) => {
-          s.node('A', { at: point(0, 0), shape: 'circle', width: 10, height: 10 })
-            .node('B', { at: point(40, 0), shape: 'circle', width: 10, height: 10 })
+          s.node('A', { at: point(0, 0), shape: SHAPES['circle'], width: 10, height: 10 })
+            .node('B', { at: point(40, 0), shape: SHAPES['circle'], width: 10, height: 10 })
             .edge('A', 'B')
             .draw(circle(point(20, 20), 5))
         })
@@ -71,7 +73,7 @@ describe('Scope', () => {
 
     it("lets an item's own style override the scope, key by key", () => {
       const b = recorder()
-      picture()
+      picture({ shapes: SHAPES })
         .scope({ style: { stroke: '#00f', strokeWidth: 3 } }, (s) => {
           s.draw(circle(point(0, 0), 5), { style: { stroke: '#f00' } })
         })
@@ -82,7 +84,7 @@ describe('Scope', () => {
 
     it('lets an inner scope override an outer one', () => {
       const b = recorder()
-      picture()
+      picture({ shapes: SHAPES })
         .scope({ style: { stroke: '#00f', strokeWidth: 3 } }, (outer) => {
           outer.draw(circle(point(0, 0), 5))
           outer.scope({ style: { stroke: '#0f0' } }, (inner) => {
@@ -96,7 +98,7 @@ describe('Scope', () => {
 
     it('beats the path-mode baseline, so scope colors actually show', () => {
       const b = recorder()
-      picture()
+      picture({ shapes: SHAPES })
         .scope({ style: { stroke: '#0f0' } }, (s) => s.draw(circle(point(0, 0), 5)))
         .renderWith(b)
       // Not the `draw` baseline's #000000.
@@ -105,7 +107,7 @@ describe('Scope', () => {
 
     it('keeps `path` invisible even inside a styling scope', () => {
       const b = recorder()
-      picture()
+      picture({ shapes: SHAPES })
         .scope({ style: { stroke: '#0f0', fill: '#0f0' } }, (s) => {
           s.path(circle(point(0, 0), 5))
           s.path(circle(point(20, 0), 5), { style: { stroke: '#f00' } })
@@ -118,7 +120,7 @@ describe('Scope', () => {
     })
 
     it('does not restyle text — a scope fill must not recolor labels', () => {
-      const svg = picture()
+      const svg = picture({ shapes: SHAPES })
         .scope({ style: { fill: '#00f' } }, (s) => s.text(point(20, 20), 'hi'))
         .toSVG({ width: 60, height: 40 })
       const text = svg.slice(svg.indexOf('<text'))
@@ -128,7 +130,7 @@ describe('Scope', () => {
 
   describe('transform', () => {
     it('wraps the scope in a transform group and leaves geometry local', () => {
-      const svg = picture()
+      const svg = picture({ shapes: SHAPES })
         .scope({ transform: Transform.translation(100, 0) }, (s) => {
           s.draw(circle(point(20, 20), 10))
         })
@@ -139,7 +141,7 @@ describe('Scope', () => {
 
     it('composes nested transforms', () => {
       const b = recorder()
-      picture()
+      picture({ shapes: SHAPES })
         .scope({ transform: Transform.translation(100, 0) }, (outer) => {
           outer.scope({ transform: Transform.translation(10, 5) }, (inner) => {
             inner.draw(circle(point(0, 0), 1))
@@ -152,14 +154,14 @@ describe('Scope', () => {
     })
 
     it('accepts `scale` as sugar', () => {
-      const svg = picture()
+      const svg = picture({ shapes: SHAPES })
         .scope({ scale: 2 }, (s) => s.draw(circle(point(10, 10), 5)))
         .toSVG({ width: 60, height: 60 })
       expect(svg).toContain('<g transform="matrix(2 0 0 2 0 0)">')
     })
 
     it('emits group opacity, class and id', () => {
-      const svg = picture()
+      const svg = picture({ shapes: SHAPES })
         .scope({ opacity: 0.5, className: 'sub', id: 'g1' }, (s) =>
           s.draw(circle(point(20, 20), 10))
         )
@@ -172,8 +174,8 @@ describe('Scope', () => {
 
   describe('names across scopes', () => {
     it('registers scope nodes globally and resolves them in picture space', () => {
-      const pic = picture().scope({ transform: Transform.translation(100, 0) }, (s) => {
-        s.node('inner', { at: point(20, 30), shape: 'circle', width: 10, height: 10 })
+      const pic = picture({ shapes: SHAPES }).scope({ transform: Transform.translation(100, 0) }, (s) => {
+        s.node('inner', { at: point(20, 30), shape: SHAPES['circle'], width: 10, height: 10 })
       })
       expect(pic.names).toEqual(['inner'])
       expect(pic.resolve('inner').x).toBeCloseTo(120)
@@ -182,7 +184,7 @@ describe('Scope', () => {
 
     it('rejects a duplicate name declared inside a scope', () => {
       expect(() =>
-        picture()
+        picture({ shapes: SHAPES })
           .node('A', { at: point(0, 0) })
           .scope({}, (s) => s.node('A', { at: point(10, 0) }))
       ).toThrow(/already exists/)
@@ -192,9 +194,9 @@ describe('Scope', () => {
       // 'outer' is at picture (20,30); inside a scope translated by
       // (100,0) the same point must read as (-80,30), so that after the
       // group transform it lands back on (20,30).
-      const pic = picture().node('outer', {
+      const pic = picture({ shapes: SHAPES }).node('outer', {
         at: point(20, 30),
-        shape: 'circle',
+        shape: SHAPES['circle'],
         width: 10,
         height: 10,
       })
@@ -208,10 +210,10 @@ describe('Scope', () => {
 
     it('keeps a same-scope edge in local coordinates', () => {
       const b = recorder()
-      const pic = picture()
+      const pic = picture({ shapes: SHAPES })
       pic.scope({ transform: Transform.translation(100, 0) }, (s) => {
-        s.node('A', { at: point(0, 0), shape: 'circle', width: 10, height: 10 })
-          .node('B', { at: point(40, 0), shape: 'circle', width: 10, height: 10 })
+        s.node('A', { at: point(0, 0), shape: SHAPES['circle'], width: 10, height: 10 })
+          .node('B', { at: point(40, 0), shape: SHAPES['circle'], width: 10, height: 10 })
           .edge('A.center', 'B.center')
       })
       pic.renderWith(b)
@@ -228,11 +230,11 @@ describe('Scope', () => {
     })
 
     it('resolves a cross-scope edge drawn at picture level', () => {
-      const pic = picture()
+      const pic = picture({ shapes: SHAPES })
         .scope({ transform: Transform.translation(100, 0) }, (s) => {
-          s.node('inner', { at: point(0, 0), shape: 'circle', width: 10, height: 10 })
+          s.node('inner', { at: point(0, 0), shape: SHAPES['circle'], width: 10, height: 10 })
         })
-        .node('outer', { at: point(0, 0), shape: 'circle', width: 10, height: 10 })
+        .node('outer', { at: point(0, 0), shape: SHAPES['circle'], width: 10, height: 10 })
         .edge('outer.center', 'inner.center')
       const e = pic.items.find((i) => i.kind === 'edge') as {
         edge: { from: { x: number }; to: { x: number } }
@@ -244,11 +246,11 @@ describe('Scope', () => {
     it('keeps boundary auto-resolution for a bare cross-scope name', () => {
       // A bare name must stay Anchorable so the edge trims to the
       // boundary; wrapping it for the transform must not lose that.
-      const pic = picture()
+      const pic = picture({ shapes: SHAPES })
         .scope({ transform: Transform.translation(100, 0) }, (s) => {
-          s.node('inner', { at: point(0, 0), shape: 'circle', width: 20, height: 20 })
+          s.node('inner', { at: point(0, 0), shape: SHAPES['circle'], width: 20, height: 20 })
         })
-        .node('outer', { at: point(0, 0), shape: 'circle', width: 20, height: 20 })
+        .node('outer', { at: point(0, 0), shape: SHAPES['circle'], width: 20, height: 20 })
         .edge('outer', 'inner')
       const e = pic.items.find((i) => i.kind === 'edge') as {
         edge: { from: { x: number }; to: { x: number } }
@@ -261,7 +263,7 @@ describe('Scope', () => {
 
   describe('bounds and fit', () => {
     it('folds scope transforms into contentBounds', () => {
-      const pic = picture().scope({ transform: Transform.translation(100, 0) }, (s) => {
+      const pic = picture({ shapes: SHAPES }).scope({ transform: Transform.translation(100, 0) }, (s) => {
         s.draw(circle(point(20, 20), 10))
       })
       const [minX, minY, maxX, maxY] = pic.contentBounds()!
@@ -272,7 +274,7 @@ describe('Scope', () => {
     })
 
     it('fits a viewBox around transformed scope content', () => {
-      const svg = picture()
+      const svg = picture({ shapes: SHAPES })
         .scope({ transform: Transform.translation(100, 0) }, (s) => {
           s.draw(circle(point(20, 20), 10))
         })
@@ -296,7 +298,7 @@ describe('Scope', () => {
 
     it('still applies the style cascade, flattened', () => {
       const b = plain()
-      picture()
+      picture({ shapes: SHAPES })
         .scope({ style: { stroke: '#0f0' } }, (s) => s.draw(circle(point(0, 0), 5)))
         .renderWith(b)
       expect(b.calls).toEqual(['bare'])
@@ -305,7 +307,7 @@ describe('Scope', () => {
     it('throws rather than silently dropping a scope transform', () => {
       const b = plain()
       expect(() =>
-        picture()
+        picture({ shapes: SHAPES })
           .scope({ transform: Transform.translation(10, 0) }, (s) =>
             s.draw(circle(point(0, 0), 5))
           )
@@ -315,7 +317,7 @@ describe('Scope', () => {
   })
 
   it('supports pen statements inside a scope', () => {
-    const svg = picture()
+    const svg = picture({ shapes: SHAPES })
       .scope({ style: { stroke: '#0f0' }, transform: Transform.translation(50, 0) }, (s) => {
         s.pen().moveTo(0, 0).lineTo(20, 20)
       })
@@ -326,7 +328,7 @@ describe('Scope', () => {
 
   it('paints scopes in insertion order with their siblings', () => {
     const b = recorder()
-    picture()
+    picture({ shapes: SHAPES })
       .draw(line(point(0, 0), point(1, 1)))
       .scope({ transform: Transform.translation(1, 0) }, (s) => s.draw(circle(point(0, 0), 1)))
       .draw(line(point(2, 2), point(3, 3)))
