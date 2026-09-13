@@ -14,6 +14,23 @@ export type { PathSegment, PathSegmentType, PathOptions } from './Path'
 
 export { pathFromSVG, parsePathData } from './svgPath'
 
+// Guide acceptance: Path or anything with an SVG outline
+export { toPath } from './PathLike'
+export type { PathLike } from './PathLike'
+
+// Markings along a path (TikZ decorations.markings)
+export { MarkedPath, markPath } from './MarkedPath'
+export type {
+  MarkingSpec,
+  MarkSpec,
+  CustomMarkArtwork,
+  ResolvedPathMark,
+} from './MarkedPath'
+
+// Text along a path (TikZ decorations.text)
+export { TextPath, textAlongPath } from './TextPath'
+export type { TextPathOptions } from './TextPath'
+
 export { bezierControlPoints } from './bezier'
 export type { BezierRouteOptions } from './bezier'
 

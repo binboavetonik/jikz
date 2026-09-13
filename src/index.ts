@@ -385,11 +385,19 @@ export {
   registerDecoration,
   hasDecoration,
   registeredDecorations,
+  // Markings along a path (TikZ decorations.markings)
+  MarkedPath,
+  markPath,
+  // Text along a path (TikZ decorations.text)
+  TextPath,
+  textAlongPath,
   // Path data transforms
   rotatePathData,
   // SVG path import (parsePathData / pathFromSVG)
   pathFromSVG,
   parsePathData,
+  // Guide acceptance for markPath / textAlongPath
+  toPath,
   // Bézier control points (TikZ out/in/bend/looseness)
   bezierControlPoints,
 } from './path'
@@ -409,6 +417,12 @@ export type {
   BraceOptions,
   PathDecorationType,
   BezierRouteOptions,
+  PathLike,
+  MarkingSpec,
+  MarkSpec,
+  CustomMarkArtwork,
+  ResolvedPathMark,
+  TextPathOptions,
 } from './path'
 
 // Renderer
@@ -416,6 +430,8 @@ export {
   // Type guards
   isPoint,
   isPath,
+  isMarkedPath,
+  isTextPath,
   isLine,
   isCircle,
   isArc,
@@ -763,3 +779,39 @@ export type {
   GateVariant,
   LogicGateOptions,
 } from './ext/gates'
+
+// Data visualization (TikZ datavisualization) — axes, ticks, legends,
+// and line/scatter/bar series builders. Pure drawing helpers; no
+// shape registration needed.
+
+export {
+  chart,
+  axes,
+  ChartFrame,
+  legend,
+  legendSize,
+  linearScale,
+  niceNumber,
+  niceTicks,
+  dataDomain,
+  includeInDomain,
+  formatTick,
+  mapSeries,
+} from './ext/dataviz'
+
+export type {
+  ChartOptions,
+  ChartSeriesSpec,
+  ChartAxisOptions,
+  ChartLegendOptions,
+  AxesOptions,
+  AxisOptions,
+  FrameLineOptions,
+  FrameScatterOptions,
+  FrameBarOptions,
+  LegendOptions,
+  LegendEntry,
+  Scale,
+  NiceTicks,
+  DataSeries,
+} from './ext/dataviz'

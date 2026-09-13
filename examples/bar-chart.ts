@@ -1,8 +1,9 @@
-import { picture, rect, line, point } from 'jikz'
+import { picture, point, axes, legend } from 'jikz'
 
-// The chart-library staple, drawn from raw data: axes as one pen
-// statement, dashed gridlines, and bars as a rect loop. jikz doesn't
-// chart for you — it gives you the skeleton precisely where you put it.
+// The chart-library staple, now on ext/dataviz: axes() owns the y
+// gridlines and nice ticks, the x ticks are categorical (format maps
+// slot 1..4 to Q1..Q4), and the two series are bar groups shifted
+// half a slot left/right around each quarter's tick.
 
 const DATA: [label: string, a: number, b: number][] = [
   ['Q1', 42, 35],
@@ -11,37 +12,37 @@ const DATA: [label: string, a: number, b: number][] = [
   ['Q4', 71, 66],
 ]
 
+const BLUE = { stroke: '#2563eb', fill: '#2563eb', fillOpacity: 0.75, strokeWidth: 1 }
+const AMBER = { stroke: '#f59e0b', fill: '#f59e0b', fillOpacity: 0.75, strokeWidth: 1 }
+
 export default function render(container: HTMLElement) {
   const pic = picture()
-  const x0 = 50, yBase = 220, yScale = 2.2, groupW = 90, barW = 32, gap = 6
 
-  // gridlines + y ticks (dashed, behind the bars)
-  for (let v = 0; v <= 80; v += 20) {
-    const y = yBase - v * yScale
-    pic.draw(line(point(x0, y), point(430, y)),
-      { style: { stroke: '#e2e8f0', dash: v === 0 ? 'solid' : 'dashed' } })
-    pic.text(point(x0 - 8, y), String(v), { fontSize: 9, textAnchor: 'end' })
-  }
-
-  // axes — one pen statement
-  pic.pen({ style: { stroke: '#334155', strokeWidth: 1.5 } })
-    .moveTo(x0, 20).lineTo(x0, yBase).lineTo(430, yBase)
-
-  // bars
-  DATA.forEach(([label, a, b], i) => {
-    const gx = x0 + 25 + i * groupW
-    pic.filldraw(rect(gx, yBase - a * yScale, barW, a * yScale),
-      { style: { stroke: '#2563eb', fill: '#2563eb', 'fill-opacity': 0.75, strokeWidth: 1 } })
-    pic.filldraw(rect(gx + barW + gap, yBase - b * yScale, barW, b * yScale),
-      { style: { stroke: '#f59e0b', fill: '#f59e0b', 'fill-opacity': 0.75, strokeWidth: 1 } })
-    pic.text(point(gx + barW + gap / 2, yBase + 14), label, { fontSize: 10 })
+  const frame = axes(pic, {
+    at: point(50, 220),
+    width: 360,
+    height: 180,
+    x: {
+      domain: [0.5, 4.5],
+      exact: true,
+      tickValues: [1, 2, 3, 4],
+      format: (v) => DATA[v - 1]?.[0] ?? '',
+    },
+    y: { domain: [0, 80], grid: true },
   })
 
-  // legend
-  pic.filldraw(rect(300, 26, 10, 10), { style: { stroke: '#2563eb', fill: '#2563eb', 'fill-opacity': 0.75 } })
-  pic.text(point(314, 31), '2025', { at: 'east', distance: 2, fontSize: 10 })
-  pic.filldraw(rect(350, 26, 10, 10), { style: { stroke: '#f59e0b', fill: '#f59e0b', 'fill-opacity': 0.75 } })
-  pic.text(point(364, 31), '2026', { at: 'east', distance: 2, fontSize: 10 })
+  // Grouped bars: each quarter's slot is 1 data unit (90px) wide; the
+  // two series sit ±0.2 units off the tick, 30px bars with a 6px gap.
+  frame.bars(DATA.map((d, i) => [i + 1 - 0.2, d[1]]), { width: 30, style: BLUE })
+  frame.bars(DATA.map((d, i) => [i + 1 + 0.2, d[2]]), { width: 30, style: AMBER })
+
+  legend(pic, {
+    at: point(330, 30),
+    entries: [
+      { label: '2025', style: BLUE, sample: 'box' },
+      { label: '2026', style: AMBER, sample: 'box' },
+    ],
+  })
 
   pic.mount(container, { width: 450, height: 250 })
 }

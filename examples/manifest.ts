@@ -119,7 +119,13 @@ const meta: DemoMeta[] = [
     id: "bar-chart",
     category: "statistics-data",
     title: "Grouped bar chart",
-    description: "The chart-library staple drawn from raw data: dashed gridlines, axes as one pen statement, bars as a rect loop, legend chips as tiny filldraws. jikz doesn't chart for you — it puts the skeleton exactly where you put it.",
+    description: "The chart-library staple on ext/dataviz: axes() owns the y gridlines and nice ticks, the x ticks are categorical (format maps slot 1..4 to Q1..Q4), two bar series group ±0.2 data units around each quarter's tick, and legend() draws the swatch chips. No hand-computed gridline or bar x anywhere.",
+  },
+  {
+    id: "dataviz-chart",
+    category: "statistics-data",
+    title: "chart() — ext/dataviz",
+    description: "The datavisualization extension: chart() infers domains from the series (nice 1/2/5 ticks, bar baselines pinned at 0), draws axes with gridlines and labels, paints line/scatter/bar series through the frame's scales, and collects labeled series into a legend at the north-east corner. axes() and legend() stay available separately for layouts the builder doesn't anticipate.",
   },
   {
     id: "derivative-sketch",
@@ -155,7 +161,7 @@ const meta: DemoMeta[] = [
     id: "box-plot",
     category: "statistics-data",
     title: "Box plot from raw data",
-    description: "Quartiles computed in code; whiskers as one multi-subpath pen statement, boxes as filldraw pens, medians as thick lines. The point is the pipeline — data in, diagram out, no chart library between.",
+    description: "Quartiles computed in code; whiskers as one multi-subpath pen statement, boxes as filldraw pens, medians as thick lines. ext/dataviz owns the axis system — nice y ticks, group names as categorical x labels — and the boxes map through the frame's scales so medians sit exactly on the grid.",
   },
   {
     id: "node-auto-size",
@@ -222,6 +228,18 @@ const meta: DemoMeta[] = [
     category: "paths-decorations",
     title: "Path decorations",
     description: "TikZ decorations: transform any base path into snakes, zigzags, and coils.",
+  },
+  {
+    id: "path-markings",
+    category: "paths-decorations",
+    title: "Markings — arrows & marks along a path",
+    description: "TikZ decorations.markings: markPath places arrow tips or plot marks at positions along any guide (Path, Arc, shapes) — at: 0.5 for one mark, between: [a, b] + step for repeated ones. Tips rotate with the tangent, plot marks stay upright, and every mark inherits the path's stroke color. Names resolve arrow-tip first; { plotMark } forces the scatter namespace.",
+  },
+  {
+    id: "text-on-path",
+    category: "paths-decorations",
+    title: "Text along a path",
+    description: "TikZ decorations.text via SVG textPath: the guide goes into defs (never painted) and the text rides it, staying selectable, crisp type. anchor: 'middle' centers on the midpoint; side: 'right' walks the guide backwards to flip to the other side — arcs included, via dense resampling.",
   },
   {
     id: "dash-patterns",
@@ -617,7 +635,7 @@ const meta: DemoMeta[] = [
     id: "chess-rating-chart",
     category: "app-prototypes",
     title: "Chess prototype — rating history chart",
-    description: "Rapid rating over 12 months as a line chart with a dashed 1500 goal line: gridlines, ticks, and series all derive from one data array — the chess-theme radar's cartesian sibling.",
+    description: "Rapid rating over 12 months as a line chart with a dashed 1500 goal line: ext/dataviz owns the axes (nice y ticks every 50, month letters via the tick formatter), the series is frame.line with open-circle marks, and the goal line maps through the frame's scales so it can't drift from the grid.",
   },
   {
     id: "chess-heatmap",

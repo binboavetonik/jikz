@@ -1,8 +1,10 @@
-import { picture, line, point } from 'jikz'
+import { picture, line, point, axes } from 'jikz'
 
 // A box plot computed from raw arrays: quartiles in code, boxes and
-// whiskers as pen statements. The point is the pipeline — data in,
-// diagram out, no chart library in between.
+// whiskers as pen statements. ext/dataviz owns the axis system — nice
+// y ticks every 20 and group names as categorical x tick labels — and
+// the boxes map through the frame's scales, so the medians sit exactly
+// on the grid. The point is the pipeline — data in, diagram out.
 
 const SAMPLES: [label: string, values: number[]][] = [
   ['control', [12, 18, 22, 25, 27, 29, 31, 33, 36, 41, 48]],
@@ -20,20 +22,27 @@ function quartiles(sorted: number[]): [q1: number, med: number, q3: number] {
 
 export default function render(container: HTMLElement) {
   const pic = picture()
-  const yBase = 200, yScale = 3, xOff = 70
-  const Y = (v: number) => yBase - v * yScale
 
-  // axis
-  pic.edge(point(45, yBase), point(45, 20), { arrowEnd: 'stealth' }, { style: { stroke: '#334155' } })
-  for (let v = 0; v <= 60; v += 20) {
-    pic.text(point(38, Y(v) + 3), String(v), { fontSize: 9, textAnchor: 'end' })
-  }
+  const frame = axes(pic, {
+    at: point(50, 200),
+    width: 190,
+    height: 180,
+    fontSize: 9,
+    x: {
+      domain: [0.5, 2.5],
+      exact: true,
+      tickValues: [1, 2],
+      format: (v) => SAMPLES[v - 1]?.[0] ?? '',
+    },
+    y: { domain: [0, 60], grid: true },
+  })
 
-  SAMPLES.forEach(([label, values], i) => {
+  SAMPLES.forEach(([, values], i) => {
     const sorted = [...values].sort((a, b) => a - b)
     const [q1, med, q3] = quartiles(sorted)
     const lo = sorted[0]!, hi = sorted[sorted.length - 1]!
-    const cx = xOff + i * 110, hw = 26   // center x, half box width
+    const cx = frame.x(i + 1), hw = 26   // center x, half box width
+    const Y = (v: number) => frame.y(v)
     const color = i === 0 ? '#2563eb' : '#16a34a'
 
     // whiskers: center line + caps, one pen statement
@@ -43,11 +52,9 @@ export default function render(container: HTMLElement) {
       .moveTo(cx - 12, Y(lo)).lineTo(cx + 12, Y(lo))
 
     // box + median line
-    pic.pen({ mode: 'filldraw', style: { stroke: color, strokeWidth: 1.5, fill: color, 'fill-opacity': 0.15 } })
+    pic.pen({ mode: 'filldraw', style: { stroke: color, strokeWidth: 1.5, fill: color, fillOpacity: 0.15 } })
       .moveTo(cx - hw, Y(q1)).lineTo(cx + hw, Y(q1)).lineTo(cx + hw, Y(q3)).lineTo(cx - hw, Y(q3)).close()
     pic.draw(line(point(cx - hw, Y(med)), point(cx + hw, Y(med))), { style: { stroke: color, strokeWidth: 2.5 } })
-
-    pic.text(point(cx, yBase + 16), label, { fontSize: 11 })
   })
 
   pic.mount(container, { width: 280, height: 235 })

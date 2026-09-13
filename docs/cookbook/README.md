@@ -348,9 +348,17 @@ Charts and distributions built from raw arrays — data in, diagram out, no char
 
 ![Grouped bar chart](img/bar-chart.svg)
 
-The chart-library staple drawn from raw data: dashed gridlines, axes as one pen statement, bars as a rect loop, legend chips as tiny filldraws. jikz doesn't chart for you — it puts the skeleton exactly where you put it.
+The chart-library staple on ext/dataviz: axes() owns the y gridlines and nice ticks, the x ticks are categorical (format maps slot 1..4 to Q1..Q4), two bar series group ±0.2 data units around each quarter's tick, and legend() draws the swatch chips. No hand-computed gridline or bar x anywhere.
 
 **Source:** [`examples/bar-chart.ts`](../../examples/bar-chart.ts)
+
+### chart() — ext/dataviz
+
+![chart() — ext/dataviz](img/dataviz-chart.svg)
+
+The datavisualization extension: chart() infers domains from the series (nice 1/2/5 ticks, bar baselines pinned at 0), draws axes with gridlines and labels, paints line/scatter/bar series through the frame's scales, and collects labeled series into a legend at the north-east corner. axes() and legend() stay available separately for layouts the builder doesn't anticipate.
+
+**Source:** [`examples/dataviz-chart.ts`](../../examples/dataviz-chart.ts)
 
 ### Function & derivative with tangent
 
@@ -396,7 +404,7 @@ x = sin(a·t + δ), y = sin(b·t) through plotParametric — the 3:2, 3:4, and 5
 
 ![Box plot from raw data](img/box-plot.svg)
 
-Quartiles computed in code; whiskers as one multi-subpath pen statement, boxes as filldraw pens, medians as thick lines. The point is the pipeline — data in, diagram out, no chart library between.
+Quartiles computed in code; whiskers as one multi-subpath pen statement, boxes as filldraw pens, medians as thick lines. ext/dataviz owns the axis system — nice y ticks, group names as categorical x labels — and the boxes map through the frame's scales so medians sit exactly on the grid.
 
 **Source:** [`examples/box-plot.ts`](../../examples/box-plot.ts)
 
@@ -648,6 +656,22 @@ TikZ decorations: transform any base path into snakes, zigzags, and coils.
 
 **Source:** [`examples/path-decorations.ts`](../../examples/path-decorations.ts)
 
+### Markings — arrows & marks along a path
+
+![Markings — arrows & marks along a path](img/path-markings.svg)
+
+TikZ decorations.markings: markPath places arrow tips or plot marks at positions along any guide (Path, Arc, shapes) — at: 0.5 for one mark, between: [a, b] + step for repeated ones. Tips rotate with the tangent, plot marks stay upright, and every mark inherits the path's stroke color. Names resolve arrow-tip first; { plotMark } forces the scatter namespace.
+
+**Source:** [`examples/path-markings.ts`](../../examples/path-markings.ts)
+
+### Text along a path
+
+![Text along a path](img/text-on-path.svg)
+
+TikZ decorations.text via SVG textPath: the guide goes into defs (never painted) and the text rides it, staying selectable, crisp type. anchor: 'middle' centers on the midpoint; side: 'right' walks the guide backwards to flip to the other side — arcs included, via dense resampling.
+
+**Source:** [`examples/text-on-path.ts`](../../examples/text-on-path.ts)
+
 ### Dash patterns
 
 ![Dash patterns](img/dash-patterns.svg)
@@ -804,7 +828,7 @@ The textbook pawn-skeleton diagram (French Advance structure), auto-derived from
 
 ![Chess prototype — rating history chart](img/chess-rating-chart.svg)
 
-Rapid rating over 12 months as a line chart with a dashed 1500 goal line: gridlines, ticks, and series all derive from one data array — the chess-theme radar's cartesian sibling.
+Rapid rating over 12 months as a line chart with a dashed 1500 goal line: ext/dataviz owns the axes (nice y ticks every 50, month letters via the tick formatter), the series is frame.line with open-circle marks, and the goal line maps through the frame's scales so it can't drift from the grid.
 
 **Source:** [`examples/chess-rating-chart.ts`](../../examples/chess-rating-chart.ts)
 
