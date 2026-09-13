@@ -436,8 +436,14 @@ const meta: DemoMeta[] = [
   {
     id: "dfa-acceptor",
     category: "cs-automata",
-    title: "DFA acceptor",
-    description: "The automata-textbook DFA for strings ending in \"01\": double-circle acceptor (node + concentric ring), symbol-labeled bend transitions, self-loops, and a start arrow from a bare point — all three endpoint kinds in one card.",
+    title: "DFA acceptor (automata library)",
+    description: "The automata-textbook DFA for strings ending in \"01\", on ext/automata — jikz's port of TikZ's automata styles. automata.state() is the circle with minimum size=2.5em, automata.accepting() the doubled border (separation = line width + TikZ's double distance), and initialArrow() works out where the start arrow begins and where its label sits, so the edge is an ordinary edge from a bare point. Symbol-labeled bend transitions and self-loops round out the card.",
+  },
+  {
+    id: "er-diagram",
+    category: "diagram-layout",
+    title: "ER diagram (er library)",
+    description: "ext/er, jikz's port of TikZ's er library — the smallest library in the tree: entity is a rectangle at 4x2 baselineskips, relationship a diamond with inner sep=1pt, attribute an ellipse, and the minimums live in the shape factories so { shape: 'entity' } and er.entity() size identically. Student takes Course, with key and plain attributes hung underneath.",
   },
   {
     id: "binary-search-tree",
@@ -478,8 +484,8 @@ const meta: DemoMeta[] = [
   {
     id: "angle-marking",
     category: "geometry-math",
-    title: "Angle marking (angles & quotes)",
-    description: "The TikZ angles library idiom: rays from one vertex via polar() — one pen statement with mid-path moves, \\draw (O) -- (A) (O) -- (B) (O) -- (C) — and each angle arc a pen statement whose KaTeX label rides the arc itself via pos/offset (TikZ's node[midway]) — everything derived from the ray angles, no hand-placed label points.",
+    title: "Angle marking (angles library)",
+    description: "ext/angles, jikz's port of TikZ's \\pic {angle = A--B--C}: angleMark() hands back the pieces of the pic separately — the fillable wedge (its background code), the strokable arc (its foreground code), and labelAt, the text node at angle eccentricity along the bisector — so paint order is just the order you draw them in. Four rays trisect a right angle; rightAngleMark() draws the square that encloses all three, and sweep reports its 90°."
   },
   {
     id: "unit-circle-derivative",
@@ -524,10 +530,40 @@ const meta: DemoMeta[] = [
     description: "Biology's favorite spiral: 250 florets on a Vogel spiral — radius c·√n, angle n·137.508° (the golden angle). Ten lines of math, and the alternating fills make the Fibonacci arms visible.",
   },
   {
+    id: "path-fading",
+    category: "paths-decorations",
+    title: "Path fading (fadings library)",
+    description: "TikZ's path fading over a checkerboard, so what you see is real transparency rather than a fade to white. ext/fadings ports PGF's predeclared fadings exactly \u2014 the axial four hold full opacity for the first quarter and full transparency for the last, the circular ones put the rim at half the shading radius with the fuzzy band eating inward \u2014 and each becomes an SVG `<mask>` read by luminance, fitted to its element the way fit fading=true fits a shading.",
+  },
+  {
+    id: "spy-magnifier",
+    category: "geometry-math",
+    title: "Spy \u2014 magnified inset",
+    description: "TikZ's spy library: \\spy on (coord) in node draws a region twice, outlined where it lives and magnified where there is room. ext/spy replays the picture's own items into a clipped, scaled scope \u2014 the clip is written in the scope's coordinates, since SVG scales a clip-path by the element's own transform, so clipping the spied region is what lands it on the inset. Magnifying the Koch snowflake's edge shows it is the whole curve again; strokes thicken with the lens, as TikZ's canvas transform thickens them.",
+  },
+  {
+    id: "mindmap",
+    category: "graphs-networks",
+    title: "Mind map (mindmap library)",
+    description: "TikZ's mindmap library: concept circles joined by the circle connection bar decoration \u2014 a cap flaring out of one rim, a constant-height bar at 0.175 of the smaller radius, and a mirrored cap flaring into the other. mindmap() lays the tree out radially with TikZ's own per-level sizes, level distances and sibling angles (small mindmap here) and returns plain values: where each concept sits and a fillable path per link. Bars are filled and never stroked, so they go down first and vanish under the circles they join.",
+  },
+  {
     id: "koch-snowflake",
     category: "geometry-math",
-    title: "Koch snowflake",
-    description: "The texample fractal classic, at recursion depth 4. The whole construction is point arithmetic: toward() splits each segment in thirds, polar() at (direction − 60°) places the equilateral bump. One pen statement paints the 768-segment outline as a single filldraw path.",
+    title: "Koch snowflake (L-system)",
+    description: "The texample fractal classic on ext/lindenmayer, declared the way the PGF manual declares it: kochCurve is the single rule F -> F-F++F-F with axiom F++F++F, and order 4 at step 4 expands to the same 768-segment outline the hand-rolled recursion used to build. One filldraw paints it.",
+  },
+  {
+    id: "fractal-plant",
+    category: "geometry-math",
+    title: "Fractal plant \u2014 branching L-system",
+    description: "The thing plain recursion cannot do neatly: [ and ] save and restore the turtle, so one string describes a whole branching tree, and X rewrites without ever drawing. Angle and step randomization are seeded, so the plant looks organic while the SVG stays byte-for-byte reproducible \u2014 unlike PGF, whose randomization is an absolute amount that can hand back a negative step.",
+  },
+  {
+    id: "turtle-spiral",
+    category: "geometry-math",
+    title: "Turtle spiral",
+    description: "TikZ's turtle library as a fluent builder: fd/rt over a heading and a step, tracing an ordinary Path. Turning 89\u00b0 instead of 90\u00b0 each leg makes the square spiral precess \u2014 110 legs, no coordinates computed by hand.",
   },
   {
     id: "euler-line",

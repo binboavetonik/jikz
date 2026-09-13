@@ -815,3 +815,151 @@ export type {
   NiceTicks,
   DataSeries,
 } from './ext/dataviz'
+
+// Angle marks (TikZ angles) — the `angle` and `right angle` pics as
+// plain values: a fillable wedge, a strokable outline, a label point.
+// Nothing to register; draw the pieces in the order you want them.
+
+export {
+  angleMark,
+  rightAngleMark,
+  ANGLE_RADIUS_DEFAULT,
+  ANGLE_RADIUS_FALLBACK,
+  ANGLE_ECCENTRICITY_DEFAULT,
+  RIGHT_ANGLE_LABEL_FACTOR,
+} from './ext/angles'
+
+export type { AngleMark, AngleMarkOptions } from './ext/angles'
+
+// Finite automata (TikZ automata) — state / accepting / state with
+// output as a shape set, plus the entry-arrow geometry. TikZ ships
+// these as \tikzset styles over circle and circle split; the one new
+// shape is the doubled border of an accepting state.
+
+export {
+  automataShapes,
+  automata,
+  initialArrow,
+  DoubleCircle,
+  DOUBLE_DISTANCE,
+  DOUBLE_SEPARATION_DEFAULT,
+  STATE_MIN_SIZE,
+  INITIAL_DISTANCE_DEFAULT,
+  INITIAL_TEXT_DEFAULT,
+} from './ext/automata'
+
+export type {
+  AutomataShapeName,
+  AutomataBuilder,
+  StateNodeOptions,
+  DoubleCircleOptions,
+  InitialArrow,
+  InitialArrowOptions,
+  InitialWhere,
+} from './ext/automata'
+
+// Entity-relationship diagrams (TikZ er) — entity / relationship /
+// attribute as rectangles, diamonds and ellipses carrying the
+// library's minimum sizes.
+
+export {
+  erShapes,
+  er,
+  BASELINE_SKIP,
+  ENTITY_MIN_WIDTH,
+  ENTITY_MIN_HEIGHT,
+  ER_MIN_SIZE,
+  RELATIONSHIP_INNER_SEP,
+} from './ext/er'
+
+export type { ERShapeName, ERBuilder } from './ext/er'
+
+// Turtle graphics (TikZ turtle) — forward/back/left/right over a
+// heading and a step, tracing a Path.
+
+export {
+  Turtle,
+  turtle,
+  TURTLE_DISTANCE_DEFAULT,
+  TURTLE_DIRECTION_DEFAULT,
+  TURTLE_TURN_DEFAULT,
+} from './ext/turtle'
+
+export type { TurtleOptions } from './ext/turtle'
+
+// Lindenmayer systems (PGF lindenmayersystems) — rules and a symbol
+// alphabet expanded to a string, then traced by a turtle.
+
+export {
+  lindenmayer,
+  expandLSystem,
+  lsystemActions,
+  DEFAULT_SYMBOLS,
+  kochCurve,
+  hilbertCurve,
+  LSYSTEM_STEP_DEFAULT,
+  LSYSTEM_ANGLE_DEFAULT,
+  LSYSTEM_MAX_SYMBOLS,
+} from './ext/lindenmayer'
+
+export type {
+  LindenmayerSystem,
+  LSystemOptions,
+  LSystemAction,
+  LSystemContext,
+} from './ext/lindenmayer'
+
+// Fadings (PGF fadings / TikZ path fading) — opacity masks as SVG
+// <mask> defs. `fading` is a style key on any path, and `fading` on a
+// scope is TikZ's `scope fading`.
+
+export {
+  fadings,
+  axialFading,
+  circleFading,
+  ringFading,
+  FADE_OPAQUE,
+  FADE_TRANSPARENT,
+} from './ext/fadings'
+
+export type { FadingName } from './ext/fadings'
+export type { FadingSpec } from './render/StyleMapper'
+
+// Magnified insets (TikZ spy) — a clipped, scaled scope replaying the
+// picture's own items, plus the outline marking what it magnifies.
+
+export {
+  spy,
+  SPY_MAGNIFICATION_DEFAULT,
+  SPY_SIZE_DEFAULT,
+  SPY_VERY_THIN,
+  SPY_THIN,
+  SPY_THICK,
+} from './ext/spy'
+
+export type { Spy, SpyOptions } from './ext/spy'
+
+// Mind maps (TikZ mindmap) — concept circles laid out radially, joined
+// by the circle connection bar decoration as fillable paths.
+
+export {
+  mindmap,
+  circleConnectionBar,
+  connectionBarMidpoint,
+  conceptLevels,
+  smallConceptLevels,
+  CONCEPT_COLOR_DEFAULT,
+  MINDMAP_START_ANGLE_DEFAULT,
+  CONNECTION_ANGLE_DEFAULT,
+  AMPLITUDE_RATIO,
+} from './ext/mindmap'
+
+export type {
+  Mindmap,
+  MindmapOptions,
+  MindmapBar,
+  Concept,
+  PlacedConcept,
+  ConceptLevel,
+  ConnectionBarOptions,
+} from './ext/mindmap'

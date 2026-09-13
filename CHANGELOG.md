@@ -4,6 +4,127 @@
 
 ### Added
 
+- **`ext/mindmap` — mind maps (TikZ `mindmap`).** `mindmap(root, …)`
+  lays a concept tree out radially with TikZ's own per-level sizes,
+  level distances and sibling angles (`conceptLevels`, and
+  `smallConceptLevels` for its `small mindmap`), returning plain
+  values: where each concept sits, how big it is, and a fillable path
+  per link. The link is `circleConnectionBar`, a port of PGF's
+  `circle connection bar` decoration — a cap flaring out of one rim
+  across the decoration's 20° span, a bar at `0.175 × min(radius)`, and
+  a mirrored cap flaring into the other. Fill it and never stroke it,
+  as TikZ does, and draw bars before circles so they vanish underneath.
+  Concept colours cascade to descendants that name none. Where two
+  circles crowd closer than the two flares want — TikZ's own
+  `small mindmap` level 1 does — the straight section is dropped and
+  the flares alone carry the link, since PGF's bar rectangle would have
+  negative width there. Not ported: `circle connection bar switch
+  color`, which shades a bar between two concept colours; the bar is an
+  ordinary path, so `style: { gradient }` covers it.
+
+- **`ext/spy` — magnified insets (TikZ `spy`).**
+  `spy(pic, { on, at, magnification, size })` draws a region twice: an
+  outline where it lives and a magnified copy where there is room,
+  optionally joined by a line (`connect spies`). TikZ collects its
+  scope into a box and replays it under the lens; jikz replays the
+  container's own items into a clipped, scaled scope, so `spy()` must
+  be called *after* whatever it magnifies (or handed `content`). The
+  outline's size falls out of the arithmetic TikZ expresses by
+  inverting the lens: an inset `size` across at magnification `m` shows
+  `size / m` of the original. `lens: 'circle'` clips to a disc, and
+  strokes thicken with the lens exactly as TikZ's canvas transform
+  thickens them.
+- **`ItemContainer.adopt(items)`** — append already-built items from
+  another container's `items`. Unlike the drawing verbs it registers no
+  names, which is what makes drawing a picture inside itself possible:
+  `node()` refuses a duplicate name, and a replayed item needs no
+  registry because an edge resolved its endpoints when it was created.
+  This is the seam `ext/spy` is built on.
+
+- **`ext/fadings` — opacity masks (PGF `fadings`, TikZ `path fading`).**
+  PGF builds a fading from a picture and reads its *luminance* as
+  alpha; SVG masks follow the same rule, so each fading is the gradient
+  that paints one and `fading` is a new style key on any path, backed
+  by a `<mask>` through `DefsManager` like gradients and clip paths.
+  `fading` on a scope is TikZ's `scope fading`. PGF's predeclared
+  fadings port exactly: the axial four (`east`/`west`/`north`/`south`,
+  each naming the side it disappears towards) hold full opacity for the
+  first quarter and full transparency for the last, ramping across the
+  middle half; the radial ones put the rim at half the shading radius
+  with the fuzzy band eating inward, and `fuzzy ring 15 percent` peaks
+  halfway across that band. `axialFading`/`circleFading`/`ringFading`
+  generate the same shapes at any angle or percentage —
+  `axialFading` is also what TikZ's `fading angle` amounts to. Two
+  limits: `fit fading=false` has no equivalent, since an unfitted mask
+  would have to be rebuilt per element rather than shared as a def, and
+  `\tikzfadingfrompicture` is not supported — every fading is a
+  gradient, as all of PGF's own are.
+- **`ext/turtle` — turtle graphics (TikZ `turtle`).** `forward`/`back`/
+  `left`/`right`/`home` and the `fd`/`bk`/`lt`/`rt` shortcuts, over a
+  heading and a step, tracing an ordinary `Path`. TikZ's
+  `turtle/distance` (1cm) and `turtle/direction` (90, up the y-up page)
+  carry over — the latter as `-90`, since angles here are jikz screen
+  degrees. The turns are named rather than signed, so a TikZ turtle
+  program ports unchanged; only an explicit `direction` flips. Three
+  verbs go past TikZ's keys because L-systems need them and TikZ
+  supplies them there instead: `jump()` (move without drawing),
+  `push()` and `pop()`.
+- **`ext/lindenmayer` — L-systems (PGF `lindenmayersystems`).** A
+  system is rules plus optional symbol overrides, exactly as
+  `\pgfdeclarelindenmayersystem` takes them; `lindenmayer(system, …)`
+  expands and traces it with a turtle, returning a `Path`. PGF's
+  default alphabet is carried over character for character — `F` draw,
+  `f` move, `+`/`-` turn by `leftAngle`/`rightAngle`, `[`/`]` save and
+  restore — along with `step=5pt` and `angle=90`, and a symbol with
+  neither rule nor action is skipped, which is what makes pure
+  rewriting symbols work. `kochCurve` and `hilbertCurve` ship as the
+  PGF manual declares them, swapped `+`/`-` and all. Two departures:
+  randomization is seeded (so a picture stays reproducible) and reads
+  `randomize step percent` as an actual percentage of the step —
+  PGF adds an absolute `rand·percent/20`, which at its manual's own
+  `step=2pt, randomize step percent=50` can hand back a negative step;
+  and `expandLSystem` refuses past a million symbols rather than
+  hanging on a runaway order.
+- **`ext/automata` — finite automata (TikZ `automata`).** TikZ ships
+  this as `\tikzset` styles rather than shapes, and the port keeps that
+  shape: `state` is a circle with `minimum size=2.5em` (25 at the
+  default 10pt font), `state with output` is the existing `circle
+  split`, and `initial` is an ordinary edge — `initialArrow(state)`
+  returns where it starts and where its `start` label sits, since
+  `edge()` already takes a bare point and clips to the boundary. The
+  one new shape is `accepting`: TikZ's `accepting by double` thickens
+  the stroke on the node's own path, so `DoubleCircle` puts two real
+  rings at `radius ± separation/2` — the nominal circle stays exactly a
+  plain state's size, anchors report the outer ring (what TikZ's
+  `outer sep=.5\pgflinewidth+.3pt` buys), and both rings wind alike so
+  the disc still fills solid behind a label. `separation` defaults to
+  the line width plus TikZ's `double distance` (0.6); widen it when you
+  draw with a thicker pen.
+- **`ext/er` — entity-relationship diagrams (TikZ `er`).** The smallest
+  library in the TikZ tree, ported at the same size: four styles over
+  the geometric primitives, no new shapes. `entity` is a rectangle at
+  `4×2\baselineskip`, `relationship` a diamond with TikZ's tighter
+  `inner sep=1pt`, `attribute` an ellipse at `1.5\baselineskip`. The
+  minimums live in the shape factories, so `{ shape: 'entity' }` and
+  `er.entity()` size identically. `er.keyAttribute()` is named but
+  draws as `attribute`: TikZ separates the two by `font=\itshape`
+  alone, and jikz has no italic for node text yet.
+- **`ext/angles` — angle marks (TikZ `angles`).** `angleMark(a, b, c)`
+  and `rightAngleMark(a, b, c)` port TikZ's `angle` and `right angle`
+  pics, middle argument the vertex. TikZ splits a pic into background
+  code (a filled wedge behind the path) and foreground code (a stroked
+  arc in front); with no host path to straddle, both come back as plain
+  values on one `AngleMark` — `wedge` to `fill()`, `outline` to
+  `draw()`, `labelAt` for the text — so paint order is call order.
+  TikZ's defaults are carried over exactly: `angle radius=5mm` (with
+  the non-positive fallback to 12), `angle eccentricity=0.6`, and the
+  right angle's √2 label push. Argument order stays significant —
+  `(a, b, c)` and `(c, b, a)` mark the two different angles at `b` —
+  and `sweep` reports the measure TikZ computes internally and
+  discards. Two departures: points may be any `PointLike`, not only
+  node names as TikZ requires, and the arrowed form
+  (`pic [draw, ->]`) has no equivalent, since jikz honors `arrowEnd`
+  on edges only.
 - **`ext/dataviz` — data visualization (TikZ `datavisualization`).**
   Scaled axes with Heckbert "nice number" ticks, gridlines, tick and
   axis labels, a legend, and `line`/`scatter`/`bar` series builders —
@@ -218,6 +339,22 @@
   order. The UMD build is unchanged.
 
 ### Fixed
+
+- **`Path.scale()` mirrored arcs the wrong way.** A negative scale
+  factor reflected each segment's endpoints but left arc `sweep` flags
+  untouched and made `rx`/`ry` negative, so a mirrored arc kept bowing
+  the direction it did before the flip — a half-circle mirrored about
+  its chord came back identical. Reflections now flip `sweep` and keep
+  radii positive.
+
+- **Clipped scopes were measured by everything inside them.**
+  `contentBounds()` — and so `{ fit: true }` — ignored a scope's
+  `clip`, so a scope that both scaled and clipped (what `ext/spy`
+  does) could inflate the viewBox many times over. Clipped scopes are
+  now measured by the intersection of their content with the clip, in
+  the scope's own coordinates, since SVG scales a `clip-path` by the
+  element's own transform. A path clip still over-reports rather than
+  parsing its `d`.
 
 - **`ext/dataviz` review fixes.** Ten findings from code review, all
   pinned by tests:

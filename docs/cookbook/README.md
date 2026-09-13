@@ -83,11 +83,11 @@ Two set circles as nodes with translucent fills — their labels are node labels
 
 **Source:** [`examples/venn.ts`](../../examples/venn.ts)
 
-### Angle marking (angles & quotes)
+### Angle marking (angles library)
 
-![Angle marking (angles & quotes)](img/angle-marking.svg)
+![Angle marking (angles library)](img/angle-marking.svg)
 
-The TikZ angles library idiom: rays from one vertex via polar() — one pen statement with mid-path moves, \draw (O) -- (A) (O) -- (B) (O) -- (C) — and each angle arc a pen statement whose KaTeX label rides the arc itself via pos/offset (TikZ's node[midway]) — everything derived from the ray angles, no hand-placed label points.
+ext/angles, jikz's port of TikZ's \pic {angle = A--B--C}: angleMark() hands back the pieces of the pic separately — the fillable wedge (its background code), the strokable arc (its foreground code), and labelAt, the text node at angle eccentricity along the bisector — so paint order is just the order you draw them in. Four rays trisect a right angle; rightAngleMark() draws the square that encloses all three, and sweep reports its 90°.
 
 **Source:** [`examples/angle-marking.ts`](../../examples/angle-marking.ts)
 
@@ -131,13 +131,37 @@ Biology's favorite spiral: 250 florets on a Vogel spiral — radius c·√n, ang
 
 **Source:** [`examples/phyllotaxy.ts`](../../examples/phyllotaxy.ts)
 
-### Koch snowflake
+### Spy — magnified inset
 
-![Koch snowflake](img/koch-snowflake.svg)
+![Spy — magnified inset](img/spy-magnifier.svg)
 
-The texample fractal classic, at recursion depth 4. The whole construction is point arithmetic: toward() splits each segment in thirds, polar() at (direction − 60°) places the equilateral bump. One pen statement paints the 768-segment outline as a single filldraw path.
+TikZ's spy library: \spy on (coord) in node draws a region twice, outlined where it lives and magnified where there is room. ext/spy replays the picture's own items into a clipped, scaled scope — the clip is written in the scope's coordinates, since SVG scales a clip-path by the element's own transform, so clipping the spied region is what lands it on the inset. Magnifying the Koch snowflake's edge shows it is the whole curve again; strokes thicken with the lens, as TikZ's canvas transform thickens them.
+
+**Source:** [`examples/spy-magnifier.ts`](../../examples/spy-magnifier.ts)
+
+### Koch snowflake (L-system)
+
+![Koch snowflake (L-system)](img/koch-snowflake.svg)
+
+The texample fractal classic on ext/lindenmayer, declared the way the PGF manual declares it: kochCurve is the single rule F -> F-F++F-F with axiom F++F++F, and order 4 at step 4 expands to the same 768-segment outline the hand-rolled recursion used to build. One filldraw paints it.
 
 **Source:** [`examples/koch-snowflake.ts`](../../examples/koch-snowflake.ts)
+
+### Fractal plant — branching L-system
+
+![Fractal plant — branching L-system](img/fractal-plant.svg)
+
+The thing plain recursion cannot do neatly: [ and ] save and restore the turtle, so one string describes a whole branching tree, and X rewrites without ever drawing. Angle and step randomization are seeded, so the plant looks organic while the SVG stays byte-for-byte reproducible — unlike PGF, whose randomization is an absolute amount that can hand back a negative step.
+
+**Source:** [`examples/fractal-plant.ts`](../../examples/fractal-plant.ts)
+
+### Turtle spiral
+
+![Turtle spiral](img/turtle-spiral.svg)
+
+TikZ's turtle library as a fluent builder: fd/rt over a heading and a step, tracing an ordinary Path. Turning 89° instead of 90° each leg makes the square spiral precess — 110 legs, no coordinates computed by hand.
+
+**Source:** [`examples/turtle-spiral.ts`](../../examples/turtle-spiral.ts)
 
 ### Euler line
 
@@ -331,6 +355,14 @@ The texample classic: five states, bend edges with transition labels, and a self
 
 **Source:** [`examples/tcp-states.ts`](../../examples/tcp-states.ts)
 
+### Mind map (mindmap library)
+
+![Mind map (mindmap library)](img/mindmap.svg)
+
+TikZ's mindmap library: concept circles joined by the circle connection bar decoration — a cap flaring out of one rim, a constant-height bar at 0.175 of the smaller radius, and a mirrored cap flaring into the other. mindmap() lays the tree out radially with TikZ's own per-level sizes, level distances and sibling angles (small mindmap here) and returns plain values: where each concept sits and a fillable path per link. Bars are filled and never stroked, so they go down first and vanish under the circles they join.
+
+**Source:** [`examples/mindmap.ts`](../../examples/mindmap.ts)
+
 ### Bayesian network — plate diagram
 
 ![Bayesian network — plate diagram](img/plate-diagram.svg)
@@ -412,11 +444,11 @@ Quartiles computed in code; whiskers as one multi-subpath pen statement, boxes a
 
 State machines, trees, nets, and branch graphs — the diagrams CS textbooks run on.
 
-### DFA acceptor
+### DFA acceptor (automata library)
 
-![DFA acceptor](img/dfa-acceptor.svg)
+![DFA acceptor (automata library)](img/dfa-acceptor.svg)
 
-The automata-textbook DFA for strings ending in "01": double-circle acceptor (node + concentric ring), symbol-labeled bend transitions, self-loops, and a start arrow from a bare point — all three endpoint kinds in one card.
+The automata-textbook DFA for strings ending in "01", on ext/automata — jikz's port of TikZ's automata styles. automata.state() is the circle with minimum size=2.5em, automata.accepting() the doubled border (separation = line width + TikZ's double distance), and initialArrow() works out where the start arrow begins and where its label sits, so the edge is an ordinary edge from a bare point. Symbol-labeled bend transitions and self-loops round out the card.
 
 **Source:** [`examples/dfa-acceptor.ts`](../../examples/dfa-acceptor.ts)
 
@@ -543,6 +575,14 @@ A build pipeline as a DAG: multi-parent milestones (test, package) and a config�
 Interfaces with multiple implementers — a DAG a tree layout cannot express. Weighted-median + transpose sweeps untangle the implements-edges; interfaces are dashed by name convention.
 
 **Source:** [`examples/class-hierarchy.ts`](../../examples/class-hierarchy.ts)
+
+### ER diagram (er library)
+
+![ER diagram (er library)](img/er-diagram.svg)
+
+ext/er, jikz's port of TikZ's er library — the smallest library in the tree: entity is a rectangle at 4x2 baselineskips, relationship a diamond with inner sep=1pt, attribute an ellipse, and the minimums live in the shape factories so { shape: 'entity' } and er.entity() size identically. Student takes Course, with key and plain attributes hung underneath.
+
+**Source:** [`examples/er-diagram.ts`](../../examples/er-diagram.ts)
 
 ### rectFit — TikZ fit library
 
@@ -743,6 +783,14 @@ Any $...$ text renders through KaTeX (loaded from CDN on this page) inside a for
 Path surgery: offsetPath parallels a curve on either side, doublePath renders TikZ's double line as two real paths, smoothPath turns a polyline into a spline, subPath highlights the middle 30–70% of it.
 
 **Source:** [`examples/path-operations.ts`](../../examples/path-operations.ts)
+
+### Path fading (fadings library)
+
+![Path fading (fadings library)](img/path-fading.svg)
+
+TikZ's path fading over a checkerboard, so what you see is real transparency rather than a fade to white. ext/fadings ports PGF's predeclared fadings exactly — the axial four hold full opacity for the first quarter and full transparency for the last, the circular ones put the rim at half the shading radius with the fuzzy band eating inward — and each becomes an SVG `<mask>` read by luminance, fitted to its element the way fit fading=true fits a shading.
+
+**Source:** [`examples/path-fading.ts`](../../examples/path-fading.ts)
 
 ### Bézier playground — quadratic vs cubic
 
