@@ -2,8 +2,9 @@
 # build, on every push to master and every pull request.
 #
 # Two legs: Node 24 (matches .nvmrc) runs everything. Node 18 is the
-# X# 30 requires require(esm)), so that leg builds the package and runs the
-# dist smoke test instead of the vitest suite.
+# library's engines floor; the dev toolchain itself needs Node 22.22+ or
+# 24.15+ (jsdom 30's engines field), so that leg builds the package and
+# runs the dist smoke test instead of the vitest suite.
 name: CI
 
 on:
