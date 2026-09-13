@@ -1,5 +1,8 @@
 # jikz
 
+[![CI](https://github.com/binboavetonik/jikz/actions/workflows/ci.yml/badge.svg)](https://github.com/binboavetonik/jikz/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/%40ozan.e%2Fjikz)](https://www.npmjs.com/package/@ozan.e/jikz)
+
 A TikZ-inspired coordinate and drawing library for JavaScript/TypeScript.
 Programmatic, precise SVG graphics — nodes, edges, anchors, conics,
 patterns, decorations — with a fluent API modeled on TikZ's mental
