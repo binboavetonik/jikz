@@ -44,10 +44,13 @@ function declarationFiles(dir) {
  *   from './x'            (import / export ... from)
  *   import('./x')         (inline type import)
  *   declare module './x'  (augmentation)
- * Only `./` and `../` specifiers are touched; bare specifiers such as
- * 'katex' are left alone.
+ * Only relative specifiers are touched — `./x`, `../x`, and the bare
+ * directory forms `.` and `..` that TypeScript emits for an inline type
+ * import of an index module (`import('..').ShapeKind`). Bare package
+ * specifiers such as 'katex' are left alone.
  */
-const SPECIFIER_RE = /((?:\bfrom\s*|\bimport\s*\(\s*|\bdeclare\s+module\s+)['"])(\.\.?\/[^'"]*)(['"])/g
+const SPECIFIER_RE =
+  /((?:\bfrom\s*|\bimport\s*\(\s*|\bdeclare\s+module\s+)['"])(\.\.?(?:\/[^'"]*)?)(['"])/g
 
 /** Resolve an extensionless relative specifier to a file or directory target. */
 function withExtension(fromFile, spec, ext) {
@@ -55,6 +58,7 @@ function withExtension(fromFile, spec, ext) {
   const abs = resolve(dirname(fromFile), spec)
   if (existsSync(abs + '.d.ts')) return spec + ext
   if (existsSync(join(abs, 'index.d.ts'))) return spec.replace(/\/$/, '') + '/index' + ext
+  // '.' and '..' resolve to their own index, same as a trailing-slash form.
   throw new Error(
     `postbuild-dts: cannot resolve '${spec}' from ${relative(DIST, fromFile)} ` +
       `(neither ${spec}.d.ts nor ${spec}/index.d.ts exists in dist/)`
