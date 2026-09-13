@@ -66,13 +66,25 @@ docs/         Concepts, tutorials, reference, generated cookbook
   (`ensureBuiltins()`); follow that pattern rather than calling
   `registerX(...)` at module scope. `test/build/tree-shaking.test.ts`
   will fail if this regresses.
-- **Extensions** live under `src/ext/` and register explicitly
-  (`registerCircuits()`, `registerGates()`). Shape names are added to
-  the `ShapeRegistry` interface by module augmentation so they
-  typecheck.
+- **Shapes are values.** A shape is a `ShapeKind` (`defineShape(name,
+  factory)`) and a *name* is a key in a `ShapeSet` the picture is given:
+  `picture({ shapes: allShapes })`. Nothing is registered globally, so
+  add new shapes to a set rather than to a table, and keep each set in
+  a module that pulls in only the shapes it names — `allShapes` lives
+  apart from `basicShapes` for exactly that reason.
+- **Typing a helper that takes a picture.** `Picture` is generic in its
+  shape set, and a bare `Picture` means `Picture<{}>` — no names. Name
+  the set you expect (`Picture<typeof allShapes>`) or take a parameter
+  (`<S extends ShapeSet>(pic: Picture<S>)`) to accept any.
+- **Extensions** live under `src/ext/` and export a shape set
+  (`circuitShapes`, `gateShapes`) plus their symbol classes. They stay
+  on public seams only — `defineShape`, port anchors, `node({ rotate })`.
 - **Published declarations.** The build post-processes `dist/**/*.d.ts`
-  (`scripts/postbuild-dts.mjs`). Keep `rollupTypes` off in
-  `vite.config.ts`; the augmentation above depends on per-file output.
+  (`scripts/postbuild-dts.mjs`), adding the extensions Node16 resolution
+  needs and writing `.d.cts` twins. Keep `rollupTypes` off in
+  `vite.config.ts`: per-file declarations mirror the per-module ES build,
+  so consumers can drop what they never import. `npm run check:pkg`
+  (publint + attw) is the gate.
 
 ## Tests
 

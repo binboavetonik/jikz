@@ -276,6 +276,12 @@ so two extensions can never disagree about what a name means, and a
 picture carries only the shapes you hand it. Passing the kind itself —
 `node({ shape: allShapes.star })` — skips names altogether.
 
+A picture is typed by its set, so a helper that takes one names the set
+it expects — `function bay(pic: Picture<typeof allShapes>)` — or takes
+its own parameter, `function bay<S extends ShapeSet>(pic: Picture<S>)`,
+to accept any. A bare `Picture` means `Picture<{}>`: no names, which is
+what `picture()` with no shapes gives you.
+
 To compile pictures to a non-SVG backend, implement the 4-method
 `PictureRenderer` interface and call `picture().renderWith(yourRenderer)`.
 
