@@ -13,15 +13,15 @@ TikZ's chains library: place a start, then keep `going` in a
 direction. Edges between successive nodes come for free:
 
 ```ts
-import { chain, point, SVGRenderer } from 'jikz'
+import { chain, point, SVGRenderer, allShapes } from 'jikz'
 
 const { nodes, edges } = chain(point(60, 70), { spacing: 46 })
-  .node({ text: 'q0', shape: 'circle', width: 40, height: 40 })
-  .node({ text: 'q1', shape: 'circle', width: 40, height: 40 })
+  .node({ text: 'q0', shape: allShapes.circle, width: 40, height: 40 })
+  .node({ text: 'q1', shape: allShapes.circle, width: 40, height: 40 })
   .going('below')
-  .node({ text: 'q2', shape: 'circle', width: 40, height: 40 })
+  .node({ text: 'q2', shape: allShapes.circle, width: 40, height: 40 })
   .going('right')
-  .node({ text: 'q3', shape: 'circle', width: 40, height: 40 })
+  .node({ text: 'q3', shape: allShapes.circle, width: 40, height: 40 })
   .build()
 
 const r = new SVGRenderer()
@@ -92,7 +92,7 @@ several parents (a DAG), use `layered` — nodes and edges are declared
 by name, ranks align into columns:
 
 ```ts
-import { layered, point } from 'jikz'
+import { layered, point, allShapes } from 'jikz'
 
 const { nodes, edges } = layered({ at: point(20, 20), grow: 'down' })
   .node('config')
@@ -123,7 +123,7 @@ boundary-clipped for free):
 
 ```ts
 for (const n of nodeCircle(point(160, 110), 90, ['v1', 'v2', 'v3', 'v4', 'v5'])) {
-  pic.node(n.text, { at: n.center, shape: 'circle', ... })
+  pic.node(n.text, { at: n.center, shape: allShapes.circle, ... })
 }
 ```
 

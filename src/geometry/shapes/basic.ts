@@ -10,7 +10,7 @@ import { Rectangle } from '../Rectangle'
 import { Ellipse } from '../Ellipse'
 import { Diamond } from '../Diamond'
 import type { ShapeOptions } from '../Shape'
-import { defineShape } from '../ShapeKind'
+import { defineShape, type ShapeSet } from '../ShapeKind'
 
 const ORIGIN = { x: 0, y: 0 }
 
@@ -34,7 +34,7 @@ const diamond = defineShape('diamond', (o: ShapeOptions) =>
 )
 
 /** Rectangle, circle, ellipse, diamond — the TikZ core four. */
-export const basicShapes = { rectangle, circle, ellipse, diamond } as const
+export const basicShapes = { rectangle, circle, ellipse, diamond } as const satisfies ShapeSet
 
 /** The default shape of a node with no `shape` option. */
 export const defaultShape = rectangle

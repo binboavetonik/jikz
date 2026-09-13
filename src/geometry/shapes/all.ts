@@ -6,8 +6,9 @@
  * the complex catalogue into a bundle: a module that merged them would
  * have to evaluate both.
  */
+import type { ShapeSet } from '../ShapeKind'
 import { basicShapes } from './basic'
 import { complexShapes } from './complex'
 
 /** Every built-in shape: the primitives plus the complex catalogue. */
-export const allShapes = { ...basicShapes, ...complexShapes } as const
+export const allShapes = { ...basicShapes, ...complexShapes } as const satisfies ShapeSet

@@ -1,7 +1,7 @@
 # Reference: ext/circuits
 
 The circuits extension — jikz's `\usetikzlibrary{circuits.ee}`. Ships
-in the package; registers at runtime. Full API: [generated
+in the package as a shape set you hand to `picture`; nothing registers. Full API: [generated
 reference](../api/) (`npm run docs:api`).
 
 ## Setup
@@ -12,9 +12,10 @@ import { circuitShapes, picture } from '@ozan.e/jikz'
 const pic = picture({ shapes: circuitShapes })  // like \usetikzlibrary{circuits.ee}
 ```
 
-Gives the picture the symbol names. The set itself types them, so a
-module augmentation makes the names known to the IDE: `shape:
-'resistor'` autocompletes, and `'resitor'` is a compile error.
+Gives the picture the symbol names. The set itself types them: `shape:
+'resistor'` autocompletes, `'resitor'` is a compile error, and
+`{ ...allShapes, ...circuitShapes }` is how to keep the geometric
+shapes alongside.
 
 ## Symbols
 
@@ -38,7 +39,7 @@ puts the `in` port at `p` (TikZ `at + anchor=`).
 ## Two ways to reference
 
 ```ts
-// Strings — TikZ-familiar, data-driven, checked at runtime:
+// Strings — TikZ-familiar; the set types the name, ports are checked at runtime:
 pic.node('R1', { shape: 'resistor', at: p })
 wire(pic, ['R1.out', 'D1.in'])   // typo'd port → AnchorError listing valid names
 

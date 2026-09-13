@@ -95,7 +95,7 @@ The 33 entries of `allShapes` — `cylinder`, `diamond`, `star`,
 `cloud`, `callout`, `chamfered rectangle`, `forbidden sign`,
 `magnifying glass`, `tape`, arrow shapes, split shapes, … — live in
 `src/geometry/complex/`. They're primarily **node shapes**
-(`pic.node('x', { shape: 'cylinder' })`), each with full anchor
+(`picture({ shapes: allShapes }).node('x', { shape: 'cylinder' })`), each with full anchor
 support. The complete visual gallery is
 [`examples/shape-gallery.ts`](../../examples/shape-gallery.ts).
 

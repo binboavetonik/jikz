@@ -12,10 +12,10 @@ export default defineConfig({
   plugins: [
     dts({
       include: ['src'],
-      // NOTE: rollupTypes must stay OFF. api-extractor drops the
-      // `declare module` augmentation in ext/circuits that adds circuit
-      // shape names to ShapeRegistry; per-file .d.ts output preserves
-      // it (dist/ext/circuits/index.d.ts augments ../../node/Node).
+      // NOTE: rollupTypes stays OFF. Per-file declarations mirror the
+      // per-module ES build below, so a consumer's bundler and editor see
+      // the same module graph, and scripts/postbuild-dts.mjs relies on
+      // that layout.
       // scripts/postbuild-dts.mjs then adds .js extensions to the
       // relative specifiers (Node16 resolution) and writes .d.cts twins
       // for the require condition; `npm run check:pkg` verifies both.

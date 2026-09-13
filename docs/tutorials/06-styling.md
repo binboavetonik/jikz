@@ -56,7 +56,7 @@ stars:
 
 ```ts
 pic.filldraw(rect(x, y, 120, 70), {
-  style: { stroke: '#334155', fillPattern: 'north east lines' },
+  style: { stroke: '#334155', fillPattern: fillPatterns['north east lines'] },
 })
 ```
 

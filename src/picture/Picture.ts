@@ -157,7 +157,7 @@ export interface PictureRenderer {
  *
  * Usage:
  *
- *     picture()
+ *     picture({ shapes: basicShapes })
  *       .draw(circle(point(0, 0), 40))
  *       .node('A', { at: point(0, 0),   shape: 'circle',    text: 'A' })
  *       .node('B', { at: point(100, 0), shape: 'rectangle', text: 'B' })

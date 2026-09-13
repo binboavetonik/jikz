@@ -136,7 +136,7 @@ export {
   rayEdgeIntersection,
   pointInPolygon,
   polygonBounds,
-  // Shape registry
+  // Shape kinds and sets
   PortedShape,
   intrinsicSize,
   defineShape,
@@ -157,6 +157,10 @@ export type {
   PolarPlotOptions,
   PlotMark,
   PlotMarkSpec,
+  // Shape kinds and sets (what `picture({ shapes })` takes)
+  ShapeKind,
+  ShapeSet,
+  ShapeOptionsOf,
 } from './geometry'
 
 // Node system
@@ -176,7 +180,7 @@ export {
   // factories (circle/rect/ellipse/diamond) from './geometry' above.
   // regularPolygon/pentagon/hexagon/star/isoscelesTriangle factories
   // belong to geometry's vertex layer — the complex node shapes are
-  // available as classes or by registry name ('star', …).
+  // available as classes, or by name from `allShapes` ('star', …).
   Trapezium,
   trapezium,
   Parallelogram,
@@ -288,6 +292,7 @@ export type {
   Anchorable,
   Shape,
   ShapeOptionsFor,
+  ShapeSpec,
   ShapeOptions,
   TrapeziumOptions,
   ParallelogramOptions,
@@ -563,6 +568,7 @@ export {
 } from './picture'
 export { Pen } from './picture'
 export type { PenOptions, PenHost, PenPoint, ToOptions } from './picture'
+export type { NodeOptionsFor } from './picture'
 export type {
   PictureEndpoint,
   PictureItem,
@@ -685,7 +691,7 @@ export type {
 } from './layout'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Extensions (domain vocabularies on the public seams — opt-in registration)
+// Extensions (domain vocabularies on the public seams — opt-in shape sets)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export {
@@ -742,7 +748,7 @@ export type {
   OpAmpOptions,
 } from './ext/circuits'
 
-// Logic gates (TikZ shapes.gates.logic) — opt-in registration
+// Logic gates (TikZ shapes.gates.logic) — opt-in shape set
 
 export {
   GATE_PORTS,

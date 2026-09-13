@@ -179,8 +179,6 @@ export const STYLE_PRESETS = {
   draw: { stroke: '#000000', fill: 'none' },
   'fill only': { stroke: 'none' },
 
-  // Fill pattern presets
-
   // Shadow presets
   shadow: { dropShadow: { offsetX: 2, offsetY: 2, blur: 3, color: 'rgba(0,0,0,0.3)' } },
   'shadow-sm': { dropShadow: { offsetX: 1, offsetY: 1, blur: 2, color: 'rgba(0,0,0,0.2)' } },

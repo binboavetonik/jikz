@@ -2,9 +2,9 @@
  * Typed node-option builders — the code-first API for circuit symbols.
  *
  * The string path (`node({ shape: 'resistor', shapeOptions: … })`) is
- * the TikZ-familiar, data-driven route: it flows through the shape
- * registry and Picture's name resolution, but strings and shapeOptions
- * are only checked at runtime.
+ * the TikZ-familiar, data-driven route: the name resolves against the
+ * picture's shape set (`picture({ shapes: circuitShapes })`), and the
+ * set types both the name and its shapeOptions.
  *
  * These builders are the programmer-facing route: every option is
  * typed, variants autocomplete, and typos are COMPILE errors. They

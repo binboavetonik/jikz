@@ -19,9 +19,9 @@ and produce identical markup.
 ## Node / SSR
 
 ```ts
-import { picture, point } from '@ozan.e/jikz'
+import { picture, point, basicShapes } from '@ozan.e/jikz'
 
-const svg = picture()
+const svg = picture({ shapes: basicShapes })
   .node('A', { at: point(60, 60),  shape: 'circle',    width: 60, height: 60, text: 'A' })
   .node('B', { at: point(200, 60), shape: 'rectangle', width: 80, height: 50, text: 'B' })
   .edge('A', 'B', { arrowEnd: 'stealth' })

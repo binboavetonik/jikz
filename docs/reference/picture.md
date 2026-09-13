@@ -74,10 +74,22 @@ throws rather than silently dropping them.
 
 ```ts
 picture(options?: {
+  shapes?: ShapeSet       // the names node({ shape }) may use — see below
   transform?: Transform   // canvas transform — maps the whole scene
   scale?: number          // uniform canvas scale (composes with transform)
 })
 ```
+
+`shapes` is the picture's shape library: `basicShapes` (rectangle,
+circle, ellipse, diamond), `complexShapes` (the other 29), `allShapes`
+(both), an extension set such as `circuitShapes`, your own
+`defineShape(...)` kinds, or any spread of those. The picture is typed by
+it — `Picture<typeof allShapes>` — so a name outside the set is a
+compile error and `shapeOptions` is checked against the named shape. A
+bare `picture()` is `Picture<{}>` and resolves no names; hand it kinds
+directly (`shape: allShapes.star`). Nested `scope`s inherit the root
+picture's set. A helper that takes any picture is generic in the set:
+`function stamp<S extends ShapeSet>(pic: Picture<S>)`.
 
 ## Verbs
 

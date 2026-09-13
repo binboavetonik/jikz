@@ -6,6 +6,8 @@ to hang off a shape without colliding with it.
 ## A node is a named, anchored shape
 
 ```ts
+const pic = picture({ shapes: basicShapes })   // names below resolve against this set
+
 pic.node('A', {
   at: point(150, 85),
   shape: 'rectangle',

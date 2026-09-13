@@ -47,7 +47,7 @@
   `.circular()` places nodes on a ring sized from the node count
   (`order: 'given' | 'degree'`). The result mirrors `LayeredResult`
   (`{ nodes, edges, getNode, toRenderables, bounds }`).
-- **`ext/gates` — logic gates.** The opt-in `registerGates()` package is
+- **`ext/gates` — logic gates.** The opt-in `gateShapes` set is
   jikz's `shapes.gates.logic`: `and`/`nand`/`or`/`nor`/`xor`/`xnor`/
   `not`/`buffer` with ANSI distinctive shapes (D-shape, concave-OR,
   triangle) and IEC rectangular bodies (`variant: 'iec'`); negated gates
@@ -59,7 +59,7 @@
   compile error rather than an `AnchorError` at render time.
   `UNARY_GATE_PORTS`, `BINARY_GATE_PORTS` and `GATE_PORTS` (the union)
   are the matching compile-time vocabularies, pinned against the runtime
-  port tables. Built entirely on the `registerShape`/port seams shared
+  port tables. Built entirely on the `defineShape`/port seams shared
   with ext/circuits.
 - **SVG path import.** `pathFromSVG('M … C … Z')` parses any SVG `d`
   string — absolute/relative, `H`/`V`/`S`/`T` shorthand, implicit
@@ -185,14 +185,34 @@
   Extensions are plain exports: `registerCircuits()` and
   `registerGates()` are replaced by the `circuitShapes` and `gateShapes`
   sets, and a custom shape is `defineShape('house', (o) => new House(o))`
-  with no registration step. `picture()` and `Scope` are generic in
-  their shape set; a helper that takes any picture types it as
-  `Picture<any>`.
+  with no registration step.
 
-  This is what drops the floor a `picture()` import costs: 104 kB
-  minified / 31 kB gzipped, down from 195 kB / 45 kB, because the
-  catalogue is no longer welded onto `Node` by a global table. Ask for
-  `allShapes` and you are back at the old size — by choice, now.
+  What to know when migrating:
+  - A bare `picture()` is `Picture<{}>` and resolves **no** names —
+    `shape: 'circle'` is a compile error and a runtime throw until the
+    picture is given a set. Pass `basicShapes` (rectangle, circle,
+    ellipse, diamond), `complexShapes` (the other 29), `allShapes`
+    (both), an extension set, or any spread of them — or hand a kind
+    directly (`shape: allShapes.star`), which needs no set.
+  - `Picture` and `Scope` are generic in their set and a scope inherits
+    the root picture's. A helper that takes any picture is generic too:
+    `function stamp<S extends ShapeSet>(pic: Picture<S>)`; a bare
+    `Picture` means `Picture<{}>`, which a picture with a set is not
+    assignable to.
+  - Layout builders (`chain`, `matrix`, `tree`, `layered`, `graph`) take
+    kinds, never names: `shape: allShapes.circle`. They never had a set.
+  - `ShapeKind`, `ShapeSet`, `ShapeSpec`, `ShapeOptionsOf` and
+    `NodeOptionsFor` are exported for typing helpers and options.
+  - `isShapeKind` requires the `kindName` that `defineShape` stamps, so
+    an arbitrary function passed as `shape` is rejected instead of
+    silently disabling text auto-sizing. Every shipped set is checked
+    with `satisfies ShapeSet`.
+
+  This is what drops the floor a `picture()` import costs — measured
+  through a consumer's bundler: `{ picture, point }` is 97 kB minified /
+  29 kB gzipped, down from 195 kB / 45 kB, because the catalogue is no
+  longer welded onto `Node` by a global table. `basicShapes` adds
+  52 bytes; `allShapes` adds 92 kB / 14 kB — by choice, now.
 
 - **JavaScript sourcemaps ship with the ES modules.** Each `dist/**/*.js`
   has a `.js.map` beside it, and `src/` is included in the package so
@@ -203,27 +223,26 @@
   `renderToString`; verified against KaTeX 0.18.
 - **Repository scaffolding for contributors.** `CONTRIBUTING.md`,
   `CODE_OF_CONDUCT.md`, `SECURITY.md`, `.editorconfig`, an ESLint config
-  (`npm run lint`, correctness rules only — no formatter), and a
-  Bitbucket Pipelines CI that runs lint, build, tests, package checks
-  and the docs build, plus build + test on Node 18. `prepublishOnly`
-  now runs lint too.
+  (`npm run lint`, correctness rules only — no formatter), and CI that
+  runs lint, build, tests, package checks and the docs build, plus the
+  Node 18 engines floor. `prepublishOnly` now runs lint too.
 
 - **The package is now tree-shakeable.** `package.json` declares
-  `"sideEffects": false`, the ES build keeps one file per source module
-  (`dist/index.js` is the entry; `module` and `exports.import` point at
-  it) instead of a single 500 kB bundle, and the built-in shape, arrow
-  tip and decoration registries fill their tables on first use rather
-  than at import time. Nothing changes for callers: every registry
-  lookup registers the built-ins first, so `shape: 'star'` still just
-  works and a user `registerShape('star', …)` still wins over the
-  built-in. Measured through a consumer's bundler: `import { point }`
-  now costs 2 kB minified / 0.9 kB gzipped instead of 147 kB / 29 kB;
-  `{ circle, intersectLineCircle }` 6 kB / 2 kB; a `picture()` about
-  207 kB / 47 kB, which is its real floor because string shape lookup
-  needs every shape. `test/build/tree-shaking.test.ts` bundles those
-  imports with esbuild and fails if the geometry-only case grows past
-  40 kB; `test/render/LazyBuiltins.test.ts` pins the registration
-  order. The UMD build is unchanged.
+  `"sideEffects": false` and the ES build keeps one file per source
+  module (`dist/index.js` is the entry; `module` and `exports.import`
+  point at it) instead of a single 500 kB bundle. Nothing registers at
+  import time: shapes and fill patterns are values a picture or a style
+  is handed (see the two entries above), and the two tables that remain
+  — arrow tips and path decorations — fill on first use, so a user
+  `registerArrowTip` still wins over a built-in of the same name.
+  Measured through a consumer's bundler: `import { point }` costs 2 kB
+  minified / 0.9 kB gzipped instead of 147 kB / 29 kB; `{ circle,
+  intersectLineCircle }` 6 kB / 2 kB; `{ picture, point }` 97 kB /
+  29 kB, plus only the shape sets you hand it. `test/build/
+  tree-shaking.test.ts` bundles those imports with esbuild and fails if
+  the geometry-only case grows past 40 kB or a picture starts carrying
+  shapes it was not given; `test/render/LazyBuiltins.test.ts` pins the
+  tip/decoration registration order. The UMD build is unchanged.
 
 ### Fixed
 

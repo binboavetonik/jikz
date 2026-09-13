@@ -37,7 +37,7 @@ import {
   tape,
   trapezium,
 } from '../complex'
-import { defineShape } from '../ShapeKind'
+import { defineShape, type ShapeSet } from '../ShapeKind'
 
 /** Every non-primitive built-in shape, keyed by its TikZ-style name. */
 export const complexShapes = {
@@ -70,4 +70,4 @@ export const complexShapes = {
   'arrow box': defineShape('arrow box', arrowBox),
   'circle split': defineShape('circle split', circleSplit),
   'rectangle split': defineShape('rectangle split', rectangleSplit),
-} as const
+} as const satisfies ShapeSet

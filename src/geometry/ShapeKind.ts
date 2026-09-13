@@ -86,5 +86,8 @@ export function defineShape<F extends ShapeFactory>(
 
 /** Whether a shape spec is a kind (callable) rather than a built instance. */
 export function isShapeKind(value: unknown): value is ShapeKind<ShapeOptions> {
-  return typeof value === 'function'
+  // A bare callable is not enough: Node reads `textAutoSize` off a kind,
+  // and an arbitrary function passed as `shape` would silently disable
+  // text sizing instead of failing. `kindName` is what defineShape stamps.
+  return typeof value === 'function' && typeof (value as ShapeKind).kindName === 'string'
 }

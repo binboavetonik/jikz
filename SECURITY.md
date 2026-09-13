@@ -10,7 +10,7 @@ security are the string paths:
   (`&`, `<`, `>`, `"`). A regression here is a security bug.
 - **Style parsing.** `parseStyleString` and `mergeStyles` must not allow
   prototype pollution through keys such as `__proto__`.
-- **Raw fragments.** `registerPattern`, `registerArrowTip` and the
+- **Raw fragments.** `definePattern`, `registerArrowTip` and the
   KaTeX adapter accept SVG or HTML fragments that are emitted verbatim.
   They are trusted by design: only pass fragments you control, never
   user input.

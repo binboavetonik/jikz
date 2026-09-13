@@ -23,7 +23,7 @@ Every `style` option across the library resolves to this shape
 | `dash` | `DashPatternName` | TikZ names: `'dashed'`, `'dotted'`, `'dashdotted'`, `'densely dashed'`, `'loosely dashed'`, `'densely dotted'`, `'loosely dotted'` — sugar for `strokeDasharray` |
 | `fill` | `Color` | |
 | `fillOpacity` / `'fill-opacity'` | `number` | aliases; camelCase wins |
-| `fillPattern` | `FillPatternName \| FillPatternSpec` | 12 TikZ patterns or a custom spec |
+| `fillPattern` | `PatternKind \| FillPatternSpec` | a `fillPatterns.*` tile, or `{ pattern, color, scale, … }` |
 | `gradient` | `GradientSpec` | linear/radial, multi-stop — compiles to `<defs>` |
 | `dropShadow` | `DropShadowSpec \| boolean` | SVG filter primitive |
 | `clip` | `ClipSpec` | clip path |
@@ -51,8 +51,15 @@ objects; introspect via `PRESET_OBJECTS`.
 
 ## Fill patterns
 
-`fillPattern: 'north east lines' | 'north west lines' | 'horizontal lines' | 'vertical lines' | 'grid' | 'crosshatch' | 'dots' | 'crosshatch dots' | 'fivepointed stars' | 'sixpointed stars' | 'bricks' | 'checkerboard'` — or a custom
-`FillPatternSpec` (your own SVG tile fragment).
+`fillPattern: fillPatterns.dots` — the twelve TikZ tiles live in the
+`fillPatterns` set (`'north east lines'`, `'north west lines'`,
+`'horizontal lines'`, `'vertical lines'`, `'grid'`, `'crosshatch'`,
+`'dots'`, `'crosshatch dots'`, `'fivepointed stars'`, `'sixpointed
+stars'`, `'bricks'`, `'checkerboard'`). Tune one with a
+`FillPatternSpec` (`{ pattern, color, backgroundColor, scale, lineWidth,
+rotation }`), or define your own tile with `definePattern(name, { width,
+height, defaultLineWidth, createContent })` — a value you hand to a
+style; nothing is registered.
 
 ## Arrow tips
 

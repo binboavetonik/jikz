@@ -10,8 +10,9 @@ model, not on a scene graph.
 
 - **Zero runtime dependencies.** Rendering is string-first through jikz's
   own `SVGBuilder`; KaTeX is an *optional* peer for math labels.
-  Tree-shakeable: `import { point }` costs under 1 kB gzipped, a full
-  `picture()` about 47 kB.
+  Tree-shakeable: `import { point }` costs under 1 kB gzipped, a
+  `picture()` about 29 kB plus only the shape sets you hand it
+  (`allShapes` adds 14 kB).
 - **Runs anywhere.** `toSVG()` works in Node, workers, and SSR with no
   DOM; `mount()` attaches a live tree in the browser.
 - **TikZ semantics.** Named nodes with boundary-aware edges, compass
@@ -45,9 +46,9 @@ Hosted at **https://binboavetonik.github.io/jikz/** (built from
 ## Quick start
 
 ```ts
-import { picture, point } from '@ozan.e/jikz'
+import { picture, point, basicShapes } from '@ozan.e/jikz'
 
-const svg = picture()
+const svg = picture({ shapes: basicShapes })
   .node('A', { at: point(60, 60),  shape: 'circle',    width: 60, height: 60, text: 'A' })
   .node('B', { at: point(220, 60), shape: 'rectangle', width: 90, height: 50, text: 'B' })
   .edge('A', 'B', { arrowEnd: 'stealth', label: 'hello' })
@@ -55,7 +56,15 @@ const svg = picture()
 
 // In a browser, mount into a container instead:
 //   .mount(document.getElementById('out'), { width: 280, height: 120 })
+// …and hand it attachPanZoom for wheel-zoom + drag-pan:
+//   .mount(el, { fit: true, panZoom: attachPanZoom })
 ```
+
+Shape names come from the set the picture was given: `basicShapes` is
+the four core shapes (rectangle, circle, ellipse, diamond), `allShapes`
+the whole catalogue, and any `{ ...allShapes, ...circuitShapes, house }`
+mix is a set too. A bare `picture()` resolves no names — hand it a kind
+directly instead (`shape: allShapes.star`), which also skips the set.
 
 Edges between bare node names auto-resolve to the **boundary point**
 facing the other endpoint (like `\draw (A) -- (B)` in TikZ). Pin a

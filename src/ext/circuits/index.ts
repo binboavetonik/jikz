@@ -2,8 +2,8 @@
  * Electrical circuit symbols — jikz's analogue of TikZ's
  * `\usetikzlibrary{circuits.ee}`.
  *
- * Built entirely on the library's public extension seams: the shape
- * registry ({@link registerShape}), the anchor system (port
+ * Built entirely on the library's public extension seams: shape kinds
+ * ({@link defineShape}), the anchor system (port
  * interception + `anchorOn*` delegation), and standard node options
  * (`rotate`, `anchor`, `labels`).
  *
@@ -29,7 +29,7 @@
  * `node({ at, anchor: 'in' })`. All symbols opt out of text
  * auto-sizing — annotate with `labels`, never `text`.
  */
-import { defineShape } from '../../geometry/ShapeKind'
+import { defineShape, type ShapeSet } from '../../geometry/ShapeKind'
 import type { ResistorOptions } from './symbols/resistor'
 import type { CapacitorOptions } from './symbols/capacitor'
 import type { DiodeOptions } from './symbols/diode'
@@ -141,7 +141,7 @@ export const circuitShapes = {
   ),
   ground: defineShape('ground', (o: GroundOptions) => ground(o), NO_AUTO),
   'op amp': defineShape('op amp', (o: OpAmpOptions) => opAmp(o), NO_AUTO),
-} as const
+} as const satisfies ShapeSet
 
 /** Shape names in {@link circuitShapes}. */
 export type CircuitShapeName = keyof typeof circuitShapes

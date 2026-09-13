@@ -9,9 +9,9 @@ The API you want 95% of the time. A picture is a **named registry**
 plus TikZ's path verbs:
 
 ```ts
-import { picture, point } from 'jikz'
+import { picture, point, basicShapes } from 'jikz'
 
-const pic = picture()
+const pic = picture({ shapes: basicShapes })
   .node('A', { at: point(60, 60),  shape: 'circle',    width: 60, height: 60, text: 'A' })
   .node('B', { at: point(220, 60), shape: 'rectangle', width: 90, height: 50, text: 'B' })
   .edge('A', 'B', { arrowEnd: 'stealth', label: 'hello' })

@@ -6,6 +6,7 @@ again — then bend, steer, and loop the connections.
 ## The magic sentence
 
 ```ts
+const pic = picture({ shapes: basicShapes })
 pic.node('A', { at: point(70, 75),  shape: 'circle',    width: 60,  height: 60, text: 'A' })
 pic.node('B', { at: point(330, 75), shape: 'rectangle', width: 120, height: 60, text: 'B' })
 

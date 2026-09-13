@@ -23,7 +23,7 @@
  * for the `&`/`≥1`/`=1`/`1` symbol).
  */
 import type { Point } from '../../core/Point'
-import { defineShape } from '../../geometry/ShapeKind'
+import { defineShape, type ShapeSet } from '../../geometry/ShapeKind'
 import { assertType } from '../../node/Node'
 import {
   gate,
@@ -86,7 +86,7 @@ export const gateShapes = {
   xnor: defineShape('xnor', (o: LogicGateOptions) => gate('xnor', o), NO_AUTO),
   not: defineShape('not', (o: LogicGateOptions) => gate('not', o), NO_AUTO),
   buffer: defineShape('buffer', (o: LogicGateOptions) => gate('buffer', o), NO_AUTO),
-} as const
+} as const satisfies ShapeSet
 
 /** Shape names in {@link gateShapes}. */
 export type GateShapeName = keyof typeof gateShapes

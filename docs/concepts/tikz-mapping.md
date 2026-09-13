@@ -76,11 +76,11 @@ Named endpoints work too: `pen.moveTo('P').vhTo('Q')` is
 
 | TikZ | jikz |
 |---|---|
-| `\node[circle, draw] (A) at (p) {A};` | `pic.node('A', { at: p, shape: 'circle', text: 'A' })` |
+| `\node[circle, draw] (A) at (p) {A};` | `pic.node('A', { at: p, shape: 'circle', text: 'A' })` — the name resolves against the picture's shape set |
 | `minimum width=1cm` | `minWidth: 10` (px) |
 | `inner sep=4pt` / `outer sep=2pt` | `innerSep: 4` / `outerSep: 4` |
 | no size given → fits text | omit `width`/`height` — the node measures its text |
-| `\usetikzlibrary{shapes.geometric}` shapes | `allShapes` — 33 shapes, handed to `picture({ shapes })` |
+| `\usetikzlibrary{shapes.geometric}` shapes | `picture({ shapes: allShapes })` — the set you hand a picture is its shape library; `basicShapes` is the core four |
 | `rotate=45` | `rotate: 45` |
 | `at=(p), anchor=north` | `{ at: p, anchor: 'north' }` |
 
@@ -130,7 +130,7 @@ included), so font size never causes collisions.
 | `dashed` / `dotted` / `dashdotted` | `dash: 'dashed'` — full vocabulary incl. `densely dashed`, `loosely dotted`, … |
 | `fill opacity=0.3` | `'fill-opacity': 0.3` |
 | `double` | `doubleLine: { spacing: 5 }` |
-| `pattern=north east lines` | `fillPattern: 'north east lines'` — all 12 TikZ patterns |
+| `pattern=north east lines` | `fillPattern: fillPatterns['north east lines']` — all 12 TikZ tiles in `fillPatterns` |
 | `shade` / gradients | `gradient: { type: 'linear', angle: 45, stops: [...] }` |
 | `drop shadow` | `dropShadow: { blur: 4, offsetX: 3, offsetY: 3, color: '#000' }` |
 

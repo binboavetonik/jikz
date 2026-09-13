@@ -1547,9 +1547,9 @@ function omega(e: InternalEdge): number {
  * @example
  * ```typescript
  * const t = layered({ at: point(40, 40), grow: 'right' })
- *   .node('A', { shape: 'circle', width: 36, height: 36 })
- *   .node('B', { shape: 'circle', width: 36, height: 36 })
- *   .node('D', { shape: 'circle', width: 36, height: 36 })
+ *   .node('A', { shape: allShapes.circle, width: 36, height: 36 })
+ *   .node('B', { shape: allShapes.circle, width: 36, height: 36 })
+ *   .node('D', { shape: allShapes.circle, width: 36, height: 36 })
  *   .edge('A', 'D')
  *   .edge('B', 'D')   // D has two parents
  *   .build()

@@ -5,11 +5,15 @@ geometry — `{ nodes, edges }` — that you render with `SVGRenderer`
 or `picture`. Full API: [generated reference](../api/) (`npm run
 docs:api`).
 
+Layout builders take node options as values: `shape` is a kind
+(`allShapes.circle`), never a name, because a builder has no shape set
+to resolve names against.
+
 ## chain
 
 ```ts
 chain(point(60, 70), { spacing: 46 })
-  .node({ text: 'q0', shape: 'circle', width: 40, height: 40 })
+  .node({ text: 'q0', shape: allShapes.circle, width: 40, height: 40 })
   .node({ text: 'q1', ... })
   .going('below')          // redirect the chain
   .node({ text: 'q2', ... })
@@ -113,10 +117,10 @@ Demos: [`examples/layout-tree.ts`](../../examples/layout-tree.ts),
 
 ```ts
 layered({ at: point(40, 40), grow: 'down', rankSep, nodeSep })
-  .node('config', { shape: 'circle', minWidth: 40, minHeight: 40 })
-  .node('db', { shape: 'circle', minWidth: 40, minHeight: 40 })
-  .node('cache', { shape: 'circle', minWidth: 40, minHeight: 40 })
-  .node('api', { shape: 'circle', minWidth: 40, minHeight: 40 })
+  .node('config', { shape: allShapes.circle, minWidth: 40, minHeight: 40 })
+  .node('db', { shape: allShapes.circle, minWidth: 40, minHeight: 40 })
+  .node('cache', { shape: allShapes.circle, minWidth: 40, minHeight: 40 })
+  .node('api', { shape: allShapes.circle, minWidth: 40, minHeight: 40 })
   .edge('config', 'db')
   .edge('config', 'cache')
   .edge('db', 'api')

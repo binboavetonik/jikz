@@ -47,7 +47,7 @@ on this: geometry around `(0,0)`, translated to center, `fit: true`.
 modes work in Node, workers, and SSR identically:
 
 ```ts
-const svg = picture()
+const svg = picture({ shapes: basicShapes })
   .node('A', { at: point(60, 60), shape: 'circle', width: 60, height: 60, text: 'A' })
   .toSVG({ fit: true, padding: 8 })
 
