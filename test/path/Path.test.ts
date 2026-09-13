@@ -258,6 +258,42 @@ describe('Path', () => {
       expect(p.endPoint?.x).toBe(150)
     })
 
+    it('mirroring flips an arc so it bows the other way', () => {
+      // A half circle bulging to +x; mirrored about x=0 it must bulge
+      // to -x. Reflecting only the endpoints leaves the arc turning the
+      // way it did before, which put the bounds on the wrong side.
+      const p = path()
+        .moveTo(point(0, -10))
+        .circularArcTo(10, false, true, point(0, 10))
+      // The arc's extreme sits on a trig result, so compare loosely.
+      const near = (b: readonly number[], want: number[]) =>
+        b.forEach((v, i) => expect(v).toBeCloseTo(want[i]!, 9))
+      near(p.bounds, [0, -10, 10, 10])
+
+      const mirrored = p.scale(-1, 1)
+      near(mirrored.bounds, [-10, -10, 0, 10])
+      expect(mirrored.toSVGPath()).toBe('M 0 -10 A 10 10 0 0 0 0 10')
+    })
+
+    it('keeps arc radii positive under a mirror', () => {
+      const d = path()
+        .moveTo(point(0, 0))
+        .circularArcTo(10, false, true, point(20, 0))
+        .scale(-1, 1)
+        .toSVGPath()
+      expect(d).not.toContain('-10')
+      expect(d).toContain('A 10 10')
+    })
+
+    it('leaves the sweep alone when both axes scale the same way', () => {
+      const p = path()
+        .moveTo(point(0, -10))
+        .circularArcTo(10, false, true, point(0, 10))
+      expect(p.scale(2).toSVGPath()).toBe('M 0 -20 A 20 20 0 0 1 0 20')
+      // Two negatives are a rotation, not a reflection: orientation holds.
+      expect(p.scale(-1, -1).toSVGPath()).toBe('M 0 10 A 10 10 0 0 1 0 -10')
+    })
+
     it('rotate rotates the path', () => {
       const p = path()
         .moveTo(point(0, 0))

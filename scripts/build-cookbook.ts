@@ -69,7 +69,8 @@ for (const [key, title, blurb] of CATEGORY_ORDER) {
     const rawTag = outsideCode.match(/<[a-zA-Z][^>\s]*/)
     if (rawTag) {
       throw new Error(
-        `examples/manifest.ts: description of "" contains a raw > — ` +
+        `examples/manifest.ts: description of "${demo.id}" contains a raw ` +
+          `\`${rawTag[0]}>\` — ` +
           'wrap HTML/SVG element names in backticks so VitePress does not parse them as Vue elements',
       )
     }

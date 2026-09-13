@@ -9,6 +9,7 @@ import { picture } from '../../src/picture/Picture'
 import { point } from '../../src/core/Point'
 import { circle } from '../../src/geometry/Circle'
 import { line } from '../../src/geometry/Line'
+import { rect } from '../../src/geometry/Rectangle'
 import { Transform } from '../../src/core/Transform'
 import { measureText } from '../../src/text/measureText'
 
@@ -86,5 +87,51 @@ describe('fit viewBox', () => {
       .draw(circle(point(50, 60), 20))
       .toSVG({ fit: true, width: 999, height: 999, padding: 4 })
     expect(viewBoxOf(svg)).toEqual([26, 36, 48, 48])
+  })
+})
+
+describe('clipped scopes', () => {
+  it('measures a clipped scope by what it actually paints', () => {
+    // A clip can only shrink a scope's contribution; before this was
+    // accounted for, a big clipped shape inflated the viewBox.
+    const pic = picture()
+    pic.scope({ clip: { shape: 'rect', x: 0, y: 0, width: 20, height: 20 } }, (s) => {
+      s.fill(rect(0, 0, 500, 500))
+    })
+    expect(pic.contentBounds()).toEqual([0, 0, 20, 20])
+  })
+
+  it('scales the clip with the scope transform, as SVG does', () => {
+    const pic = picture()
+    pic.scope(
+      { scale: 4, clip: { shape: 'rect', x: 0, y: 0, width: 20, height: 20 } },
+      (s) => s.fill(rect(0, 0, 500, 500))
+    )
+    expect(pic.contentBounds()).toEqual([0, 0, 80, 80])
+  })
+
+  it('drops a scope whose content misses the clip entirely', () => {
+    const pic = picture()
+    pic.fill(rect(0, 0, 10, 10))
+    pic.scope({ clip: { shape: 'rect', x: 200, y: 200, width: 10, height: 10 } }, (s) => {
+      s.fill(rect(400, 400, 50, 50))
+    })
+    expect(pic.contentBounds()).toEqual([0, 0, 10, 10])
+  })
+
+  it('measures a circular clip by its box', () => {
+    const pic = picture()
+    pic.scope({ clip: { shape: 'circle', cx: 50, cy: 50, r: 10 } }, (s) => {
+      s.fill(rect(0, 0, 500, 500))
+    })
+    expect(pic.contentBounds()).toEqual([40, 40, 60, 60])
+  })
+
+  it('still over-reports a path clip rather than parsing the d', () => {
+    const pic = picture()
+    pic.scope({ clip: { shape: 'path', d: 'M 0 0 L 10 0 L 10 10 Z' } }, (s) => {
+      s.fill(rect(0, 0, 500, 500))
+    })
+    expect(pic.contentBounds()).toEqual([0, 0, 500, 500])
   })
 })

@@ -5,7 +5,7 @@ import { estimateLabelSize } from '../text/placeText'
 import type { Node } from '../node/Node'
 import type { Edge } from '../node/Edge'
 import type { Renderable, RenderOptions, TextOptions } from '../render/Renderer'
-import type { RenderStyle } from '../render/StyleMapper'
+import type { ClipSpec, RenderStyle } from '../render/StyleMapper'
 import { SVGRenderer } from '../render/SVGRenderer'
 import type { ViewBoxSpec } from '../render/SVGBuilder'
 import type {
@@ -507,6 +507,37 @@ function textCenter(item: Extract<PictureItem, { kind: 'text' }>): Point {
 }
 
 /**
+ * The box a clip confines its scope to, in the scope's own coordinates.
+ * `undefined` when there is no clip, or when it is a path — measuring
+ * that would mean parsing the `d`, and over-reporting is the safe way
+ * to be wrong about a viewBox.
+ */
+function clipBounds(
+  clip: ClipSpec | undefined
+): [number, number, number, number] | undefined {
+  if (!clip) return undefined
+  if (clip.shape === 'rect') {
+    const x = clip.x ?? 0
+    const y = clip.y ?? 0
+    return [x, y, x + (clip.width ?? 0), y + (clip.height ?? 0)]
+  }
+  if (clip.shape === 'circle') {
+    const cx = clip.cx ?? 0
+    const cy = clip.cy ?? 0
+    const r = clip.r ?? 0
+    return [cx - r, cy - r, cx + r, cy + r]
+  }
+  if (clip.shape === 'ellipse') {
+    const cx = clip.cx ?? 0
+    const cy = clip.cy ?? 0
+    const rx = clip.rx ?? 0
+    const ry = clip.ry ?? 0
+    return [cx - rx, cy - ry, cx + rx, cy + ry]
+  }
+  return undefined
+}
+
+/**
  * Grow `grow` by an item's bounds, mapped through the accumulated scope
  * transform so the picture-space box is correct inside nested scopes.
  */
@@ -535,6 +566,36 @@ function growBounds(
   } else if (item.kind === 'scope') {
     const local = item.scope.options.transform
     const next = local && transform ? transform.compose(local) : (local ?? transform)
+    const clipped = clipBounds(item.scope.options.clip)
+    if (clipped) {
+      // A clip can only shrink what the scope contributes, so gather the
+      // content in the scope's own coordinates, intersect it there (the
+      // space the clip is written in — SVG scales a clip-path by the
+      // element's own transform), and map the result out.
+      let box: [number, number, number, number] | undefined
+      const collect = (b: readonly [number, number, number, number]) => {
+        box = box
+          ? [
+              Math.min(box[0], b[0]),
+              Math.min(box[1], b[1]),
+              Math.max(box[2], b[2]),
+              Math.max(box[3], b[3]),
+            ]
+          : [b[0], b[1], b[2], b[3]]
+      }
+      for (const sub of item.scope.items) growBounds(sub, collect, undefined)
+      if (!box) return
+      const hit: [number, number, number, number] = [
+        Math.max(box[0], clipped[0]),
+        Math.max(box[1], clipped[1]),
+        Math.min(box[2], clipped[2]),
+        Math.min(box[3], clipped[3]),
+      ]
+      // Entirely outside the clip: nothing of this scope is painted.
+      if (hit[0] > hit[2] || hit[1] > hit[3]) return
+      grow(next ? mapBox(hit, next) : hit)
+      return
+    }
     for (const sub of item.scope.items) growBounds(sub, grow, next)
   } else {
     const center = textCenter(item)

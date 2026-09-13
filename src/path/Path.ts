@@ -597,13 +597,19 @@ export class Path {
    * Scale the path around a center point
    */
   scale(sx: number, sy: number = sx, center: PointLike = { x: 0, y: 0 }): Path {
+    // A mirror (exactly one negative factor) reverses orientation, so
+    // every arc has to turn the other way; without this an `A` segment
+    // keeps bulging the direction it did before it was flipped. Radii
+    // are magnitudes and stay positive.
+    const mirrored = sx * sy < 0
     const newSegments = this._segments.map((seg) => ({
       ...seg,
       points: seg.points.map((p) =>
         point(center.x + (p.x - center.x) * sx, center.y + (p.y - center.y) * sy)
       ),
-      rx: seg.rx !== undefined ? seg.rx * sx : undefined,
-      ry: seg.ry !== undefined ? seg.ry * sy : undefined,
+      rx: seg.rx !== undefined ? Math.abs(seg.rx * sx) : undefined,
+      ry: seg.ry !== undefined ? Math.abs(seg.ry * sy) : undefined,
+      sweep: mirrored && seg.sweep !== undefined ? !seg.sweep : seg.sweep,
     }))
     return new Path(newSegments)
   }
