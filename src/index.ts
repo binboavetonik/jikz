@@ -554,6 +554,8 @@ export type {
   PictureTextOptions,
   PictureViewBox,
   MountOptions,
+  PanZoomAttach,
+  PanZoomMount,
   DrawOptions,
   ShadeOptions,
   DrawLabel,

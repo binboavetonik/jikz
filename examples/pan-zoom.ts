@@ -1,7 +1,7 @@
-import { allShapes, picture, point, tree } from 'jikz'
+import { allShapes, attachPanZoom, picture, point, tree } from 'jikz'
 
 export default function render(container: HTMLElement) {
-  // mount({ panZoom: true }): the wheel zooms to the cursor, drag pans,
+  // mount({ panZoom: attachPanZoom }): the wheel zooms to the cursor, drag pans,
   // two-pointer pinch zooms, double-click refits. The scene is wrapped in
   // <g class="jikz-viewport"> and the returned controller mutates only its
   // transform attribute — panning never re-renders the picture.
@@ -42,7 +42,9 @@ export default function render(container: HTMLElement) {
   const ctl = pic.mount(container, {
     fit: true,
     padding: 8,
-    panZoom: { minScale: 0.25, maxScale: 6 },
+    // Handing over the function is the opt-in: a drawing that never pans
+    // never imports the controller, so it stays out of the bundle.
+    panZoom: { attach: attachPanZoom, minScale: 0.25, maxScale: 6 },
   })
   // Across re-renders: stash ctl.transform via the onTransform option and
   // reapply with ctl.setTransform(...). On unmount: ctl.destroy().

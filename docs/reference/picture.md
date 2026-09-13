@@ -119,12 +119,16 @@ order. See [ViewBox, sizing & fit](../concepts/viewbox-and-fit.md).
 
 `mount` accepts `panZoom` for first-class interaction — wheel zooms to
 the cursor, pointer-drag pans, two-pointer pinch zooms, double-click
-resets:
+resets. Hand it `attachPanZoom` itself: importing the controller is the
+opt-in, so a drawing that never pans doesn't carry it.
 
 ```ts
+import { attachPanZoom } from '@ozan.e/jikz'
+
 const ctl = pic.mount(element, {
   fit: true,
-  panZoom: { minScale: 0.15, maxScale: 4 },
+  panZoom: { attach: attachPanZoom, minScale: 0.15, maxScale: 4 },
+  // or, with default options: panZoom: attachPanZoom
 })
 
 ctl.transform          // { tx, ty, scale }

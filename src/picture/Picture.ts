@@ -8,10 +8,10 @@ import type { Renderable, RenderOptions, TextOptions } from '../render/Renderer'
 import type { RenderStyle } from '../render/StyleMapper'
 import { SVGRenderer } from '../render/SVGRenderer'
 import type { ViewBoxSpec } from '../render/SVGBuilder'
-import {
-  attachPanZoom,
-  type PanZoomController,
-  type PanZoomOptions,
+import type {
+  PanZoomController,
+  PanZoomOptions,
+  ViewBoxRect,
 } from '../render/PanZoom'
 import { placeText } from '../text/placeText'
 import {
@@ -73,9 +73,31 @@ export interface PictureViewBox {
  * (`width`/`height: 100%`) and lets the browser letterbox the viewBox, and
  * mount returns a {@link PanZoomController} instead of the bare element.
  */
+/**
+ * `attachPanZoom`, as {@link MountOptions.panZoom} takes it. Passing the
+ * function rather than a flag is what keeps the pan/zoom controller out
+ * of a bundle that never pans: importing it is the opt-in.
+ */
+export type PanZoomAttach = (
+  svg: SVGElement,
+  viewBox: ViewBoxRect,
+  options?: PanZoomOptions
+) => PanZoomController
+
+/** {@link MountOptions.panZoom}: the attach function, with options. */
+export type PanZoomMount = PanZoomAttach | ({ attach: PanZoomAttach } & PanZoomOptions)
+
 export interface MountOptions extends PictureViewBox {
-  /** Enable first-class pan/zoom interaction (see {@link PanZoomOptions}). */
-  panZoom?: boolean | PanZoomOptions
+  /**
+   * First-class pan/zoom interaction. Hand over `attachPanZoom` itself:
+   *
+   * ```ts
+   * import { attachPanZoom } from '@ozan.e/jikz'
+   * pic.mount(el, { fit: true, panZoom: attachPanZoom })
+   * pic.mount(el, { fit: true, panZoom: { attach: attachPanZoom, maxScale: 6 } })
+   * ```
+   */
+  panZoom?: PanZoomMount
 }
 
 /**
@@ -322,10 +344,11 @@ export class Picture<S extends ShapeSet = {}>
 
   /**
    * Compile and attach a live SVG element to `container` (browser only).
-   * With {@link MountOptions.panZoom} the scene gets a viewport group and
-   * the return value is a {@link PanZoomController} owning its transform.
+   * With {@link MountOptions.panZoom} — the `attachPanZoom` function
+   * itself — the scene gets a viewport group and the return value is a
+   * {@link PanZoomController} owning its transform.
    */
-  mount(container: Element, options: MountOptions & { panZoom: boolean | PanZoomOptions }): PanZoomController
+  mount(container: Element, options: MountOptions & { panZoom: PanZoomMount }): PanZoomController
   mount(container: Element, viewBox?: PictureViewBox): ReturnType<SVGRenderer['builder']['mount']>
   mount(
     container: Element,
@@ -345,10 +368,12 @@ export class Picture<S extends ShapeSet = {}>
         'Picture.mount: panZoom requires a viewBox — pass { fit: true } or { width, height }.'
       )
     }
-    return attachPanZoom(
+    const attach = typeof panZoom === 'function' ? panZoom : panZoom.attach
+    const options = typeof panZoom === 'function' ? {} : panZoom
+    return attach(
       svg,
       { x: spec.x ?? 0, y: spec.y ?? 0, width: spec.width, height: spec.height },
-      panZoom === true ? {} : panZoom
+      options
     )
   }
 

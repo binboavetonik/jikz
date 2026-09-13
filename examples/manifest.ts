@@ -269,7 +269,7 @@ const meta: DemoMeta[] = [
     id: "pan-zoom",
     category: "diagram-layout",
     title: "Pan & zoom",
-    description: "mount({ panZoom: true }): wheel zooms to the cursor, drag pans, pinch zooms, double-click refits. One viewport group's transform attribute is all that changes — the picture never re-renders.",
+    description: "mount({ panZoom: attachPanZoom }): wheel zooms to the cursor, drag pans, pinch zooms, double-click refits. One viewport group's transform attribute is all that changes — the picture never re-renders.",
   },
   {
     id: "animation",

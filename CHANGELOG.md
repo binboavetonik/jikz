@@ -69,6 +69,22 @@
 
 ### Changed
 
+- **`mount({ panZoom })` takes the `attachPanZoom` function.** The flag
+  form is gone: pass the function itself, or an object carrying it
+  alongside options.
+
+  ```ts
+  import { attachPanZoom } from '@ozan.e/jikz'
+  pic.mount(el, { fit: true, panZoom: attachPanZoom })
+  pic.mount(el, { fit: true, panZoom: { attach: attachPanZoom, maxScale: 6 } })
+  ```
+
+  Importing the controller is now the opt-in, so `Picture` no longer
+  references it and a drawing that never pans stops carrying it:
+  `import { picture, point }` drops from 101,661 to 96,838 bytes
+  minified (29.2 kB gzipped). Behaviour, the controller API and the
+  viewport-group wrapping are unchanged.
+
 - **Fill patterns are values, like shapes.** A pattern is a
   `PatternKind` — a tile definition carrying its name — and the twelve
   TikZ tiles live in the `fillPatterns` set:

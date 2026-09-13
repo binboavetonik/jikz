@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { picture } from '../../src/picture/Picture'
 import { point } from '../../src/core/Point'
 import { circle } from '../../src/geometry/Circle'
-import { PANZOOM_VIEWPORT_CLASS } from '../../src/render/PanZoom'
+import { attachPanZoom, PANZOOM_VIEWPORT_CLASS } from '../../src/render/PanZoom'
 
 function host() {
   const el = document.createElement('div')
@@ -28,7 +28,7 @@ function pointer(type: string, props: { pointerId: number; clientX: number; clie
 describe('Picture.mount({ panZoom })', () => {
   it('returns a controller and wraps the scene in a viewport group', () => {
     const pic = picture().draw(circle(point(50, 50), 40))
-    const ctl = pic.mount(host(), { fit: true, panZoom: true })
+    const ctl = pic.mount(host(), { fit: true, panZoom: attachPanZoom })
 
     expect(ctl.svg).toBeInstanceOf(SVGElement)
     expect(ctl.svg.getAttribute('width')).toBe('100%')
@@ -49,7 +49,7 @@ describe('Picture.mount({ panZoom })', () => {
 
   it('panZoom requires a viewBox', () => {
     const pic = picture().draw(circle(point(50, 50), 40))
-    expect(() => pic.mount(host(), { panZoom: true })).toThrow(/fit: true/)
+    expect(() => pic.mount(host(), { panZoom: attachPanZoom })).toThrow(/fit: true/)
   })
 
   it('setTransform writes the viewport transform, clamps scale, and reports', () => {
@@ -57,7 +57,7 @@ describe('Picture.mount({ panZoom })', () => {
     const pic = picture().draw(circle(point(50, 50), 40))
     const ctl = pic.mount(host(), {
       fit: true,
-      panZoom: { maxScale: 2, onTransform: (t) => seen.push(t) },
+      panZoom: { attach: attachPanZoom, maxScale: 2, onTransform: (t) => seen.push(t) },
     })
 
     ctl.setTransform({ tx: 10, ty: -5, scale: 99 })
@@ -69,7 +69,7 @@ describe('Picture.mount({ panZoom })', () => {
 
   it('resetToFit returns to identity; dblclick triggers it', () => {
     const pic = picture().draw(circle(point(50, 50), 40))
-    const ctl = pic.mount(host(), { fit: true, panZoom: true })
+    const ctl = pic.mount(host(), { fit: true, panZoom: attachPanZoom })
     ctl.setTransform({ tx: 40, scale: 2 })
     ctl.svg.dispatchEvent(new Event('dblclick', { bubbles: true }))
     expect(ctl.transform).toEqual({ tx: 0, ty: 0, scale: 1 })
@@ -77,7 +77,7 @@ describe('Picture.mount({ panZoom })', () => {
 
   it('wheel zooms and preventDefaults', () => {
     const pic = picture().draw(circle(point(50, 50), 40))
-    const ctl = pic.mount(host(), { fit: true, panZoom: true })
+    const ctl = pic.mount(host(), { fit: true, panZoom: attachPanZoom })
     stubRect(ctl.svg)
 
     const e = new WheelEvent('wheel', { deltaY: -100, clientX: 400, clientY: 300, cancelable: true })
@@ -88,7 +88,7 @@ describe('Picture.mount({ panZoom })', () => {
 
   it('ignores wheel on 0×0 rects (detached panels)', () => {
     const pic = picture().draw(circle(point(50, 50), 40))
-    const ctl = pic.mount(host(), { fit: true, panZoom: true })
+    const ctl = pic.mount(host(), { fit: true, panZoom: attachPanZoom })
     ctl.svg.dispatchEvent(
       new WheelEvent('wheel', { deltaY: -100, clientX: 0, clientY: 0, cancelable: true })
     )
@@ -97,7 +97,7 @@ describe('Picture.mount({ panZoom })', () => {
 
   it('drag pans past the threshold; wasDrag separates drags from clicks', () => {
     const pic = picture().draw(circle(point(50, 50), 40))
-    const ctl = pic.mount(host(), { fit: true, panZoom: true })
+    const ctl = pic.mount(host(), { fit: true, panZoom: attachPanZoom })
     stubRect(ctl.svg)
 
     // Below threshold: no pan, not a drag.
@@ -119,7 +119,7 @@ describe('Picture.mount({ panZoom })', () => {
 
   it('pinch zooms with two pointers', () => {
     const pic = picture().draw(circle(point(50, 50), 40))
-    const ctl = pic.mount(host(), { fit: true, panZoom: true })
+    const ctl = pic.mount(host(), { fit: true, panZoom: attachPanZoom })
     stubRect(ctl.svg)
 
     ctl.svg.dispatchEvent(pointer('pointerdown', { pointerId: 1, clientX: 300, clientY: 300 }))
@@ -133,7 +133,7 @@ describe('Picture.mount({ panZoom })', () => {
     // Capturing on pointerdown would retarget the compatibility click event
     // to the svg root, breaking click handlers on scene elements.
     const pic = picture().draw(circle(point(50, 50), 40))
-    const ctl = pic.mount(host(), { fit: true, panZoom: true })
+    const ctl = pic.mount(host(), { fit: true, panZoom: attachPanZoom })
     stubRect(ctl.svg)
     const captureSpy = vi.fn()
     ctl.svg.setPointerCapture = captureSpy
@@ -148,7 +148,7 @@ describe('Picture.mount({ panZoom })', () => {
 
   it('destroy() detaches every listener', () => {
     const pic = picture().draw(circle(point(50, 50), 40))
-    const ctl = pic.mount(host(), { fit: true, panZoom: true })
+    const ctl = pic.mount(host(), { fit: true, panZoom: attachPanZoom })
     stubRect(ctl.svg)
     ctl.destroy()
 

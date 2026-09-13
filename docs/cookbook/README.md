@@ -460,7 +460,7 @@ Chains position successive nodes and wire the edges for you.
 
 ![Pan & zoom](img/pan-zoom.svg)
 
-mount({ panZoom: true }): wheel zooms to the cursor, drag pans, pinch zooms, double-click refits. One viewport group's transform attribute is all that changes — the picture never re-renders.
+mount({ panZoom: attachPanZoom }): wheel zooms to the cursor, drag pans, pinch zooms, double-click refits. One viewport group's transform attribute is all that changes — the picture never re-renders.
 
 **Source:** [`examples/pan-zoom.ts`](../../examples/pan-zoom.ts)
 
@@ -746,7 +746,7 @@ A histogram silhouette as ONE filldraw pen statement: hvTo is TikZ's -| (horizon
 
 ## Custom extensions
 
-defineShape, registerPattern, clip paths — TikZ-library-style extension on public seams.
+defineShape, definePattern, clip paths — TikZ-library-style extension on public seams.
 
 ### Custom shape — 'house' via defineShape
 
@@ -760,7 +760,7 @@ The full TikZ-library workflow: extend AnchoredPolygon, declare five vertices, a
 
 ![Custom fill pattern — herringbone](img/custom-pattern.svg)
 
-registerPattern() takes an SVG tile fragment and compiles it to a `<defs>` pattern — so it works in Node string output too. Shown plain, scaled+rotated, and next to built-in 'bricks' for comparison.
+definePattern() names an SVG tile fragment and compiles it to a `<defs>` pattern — so it works in Node string output too. The result is a value you hand to a style; nothing is registered, and a drawing carries only the tiles it uses. Shown plain, scaled+rotated, and next to built-in 'bricks' for comparison.
 
 **Source:** [`examples/custom-pattern.ts`](../../examples/custom-pattern.ts)
 
