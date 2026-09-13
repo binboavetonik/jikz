@@ -10,6 +10,13 @@ export default defineConfig({
   // GitHub Pages serves a project site under /jikz/; the docs workflow sets
   // DOCS_BASE. Local dev/build stay at the root.
   base: process.env.DOCS_BASE ?? '/',
+  // The docs root and the cookbook are README.md so they read well on
+  // GitHub; serve them as the directory index pages the nav links to
+  // ('/' and '/cookbook/') instead of README.html.
+  rewrites: {
+    'README.md': 'index.md',
+    'cookbook/README.md': 'cookbook/index.md',
+  },
   title: 'jikz',
   description: 'TikZ-inspired coordinate and drawing library for JavaScript/TypeScript',
   // The TypeDoc output (docs/api) is generated separately by
