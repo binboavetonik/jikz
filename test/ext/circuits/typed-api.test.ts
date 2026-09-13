@@ -23,7 +23,6 @@ import { picture } from '../../../src/picture/Picture'
 import { edge } from '../../../src/node/Edge'
 import { point } from '../../../src/core/Point'
 import { allShapes } from '../../../src/geometry/shapes'
-import { circuitShapes } from '../../../src/ext/circuits'
 const SHAPES = { ...allShapes, ...circuitShapes }
 
 function expectPt(p: { x: number; y: number }, x: number, y: number, label = '') {

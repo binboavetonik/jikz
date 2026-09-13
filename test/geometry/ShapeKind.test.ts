@@ -6,8 +6,8 @@
 import { describe, it, expect } from 'vitest'
 import { point } from '../../src/core/Point'
 import { Node } from '../../src/node/Node'
-import { picture } from '../../src/picture/Picture'
-import { defineShape, isShapeKind } from '../../src/geometry/ShapeKind'
+import { picture, type Picture } from '../../src/picture/Picture'
+import { defineShape, isShapeKind, type ShapeSet } from '../../src/geometry/ShapeKind'
 import { allShapes, basicShapes, complexShapes } from '../../src/geometry/shapes'
 import { AnchoredPolygon } from '../../src/geometry/AnchoredPolygon'
 import { Point } from '../../src/core/Point'
@@ -99,9 +99,9 @@ describe('shapes through Node', () => {
       height: 60,
       shapeOptions: { points: 8 },
     })
-    expect((n.shape as { points: number }).points).toBe(8)
+    expect((n.shape as unknown as { points: number }).points).toBe(8)
     // 8-point star → 16 vertices
-    expect((n.shape as { vertices: unknown[] }).vertices.length).toBe(16)
+    expect((n.shape as unknown as { vertices: unknown[] }).vertices.length).toBe(16)
   })
 
   it('defaults to a rectangle when no shape is given', () => {
@@ -138,5 +138,51 @@ describe('shapes through Picture', () => {
     expect(merged.circle.kindName).toBe('square')
     const n = new Node({ shape: merged.circle, at: point(10, 10), width: 20, height: 20 })
     expect(n.shape.type).toBe('rectangle')
+  })
+})
+
+/**
+ * The compile-time half of the contract. These only mean something
+ * because `npm run typecheck` runs tsc over test/: a wrong expectation
+ * fails there, not in vitest (which strips types). Each case pairs a
+ * rejected form with the accepted one beside it, so a future widening of
+ * `node<K>` back to `string` is caught.
+ */
+describe('compile-time contract', () => {
+  it('names resolve only against the set the picture was given', () => {
+    const basic = picture({ shapes: basicShapes })
+    basic.node('ok', { at: point(0, 0), shape: 'circle' })
+    // @ts-expect-error -- 'star' is not in basicShapes
+    expect(() => basic.node('no', { at: point(0, 0), shape: 'star' })).toThrow(/unknown shape "star"/)
+
+    const bare = picture()
+    // @ts-expect-error -- a bare picture() has no names at all
+    expect(() => bare.node('no', { at: point(0, 0), shape: 'circle' })).toThrow(/shapes in scope: none/)
+    bare.node('ok', { at: point(0, 0), shape: basicShapes.circle })
+  })
+
+  it('shapeOptions are typed by the name, and by the kind when handed a value', () => {
+    const full = picture({ shapes: allShapes })
+    full.node('a', { at: point(0, 0), shape: 'star', shapeOptions: { points: 7 } })
+    // @ts-expect-error -- StarOptions has no 'pointz'
+    full.node('b', { at: point(0, 0), shape: 'star', shapeOptions: { pointz: 7 } })
+    full.node('c', { at: point(0, 0), shape: allShapes.star, shapeOptions: { points: 7 } })
+    // @ts-expect-error -- same check through the kind value
+    full.node('d', { at: point(0, 0), shape: allShapes.star, shapeOptions: { pointz: 7 } })
+    expect(full.getNode('a')?.shape.type).toBe(full.getNode('c')?.shape.type)
+  })
+
+  it('a helper generic in the set accepts any picture; a concrete set is a fixed contract', () => {
+    function stamp<S extends ShapeSet>(pic: Picture<S>): Picture<S> {
+      return pic.node('stamp', { at: point(0, 0), shape: basicShapes.rectangle })
+    }
+    function stampBasic(pic: Picture<typeof basicShapes>): void {
+      pic.node('basic', { at: point(1, 1), shape: 'diamond' })
+    }
+    expect(stamp(picture({ shapes: allShapes })).getNode('stamp')).toBeDefined()
+    expect(stamp(picture()).getNode('stamp')).toBeDefined()
+    stampBasic(picture({ shapes: basicShapes }))
+    // @ts-expect-error -- Picture<S> is invariant in S: a fixed set is not "any set"
+    stampBasic(picture({ shapes: allShapes }))
   })
 })

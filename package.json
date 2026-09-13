@@ -26,7 +26,8 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "dev:demo": "vite",
-    "build": "tsc && vite build && node scripts/postbuild-dts.mjs",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
+    "build": "npm run typecheck && vite build && node scripts/postbuild-dts.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
@@ -49,6 +50,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
+    "@types/node": "^26.5.1",
     "esbuild": "^0.28.2",
     "eslint": "^10.10.0",
     "jsdom": "^30.0.1",

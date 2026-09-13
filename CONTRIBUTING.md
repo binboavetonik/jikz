@@ -22,7 +22,8 @@ Useful scripts:
 | `npm run dev` | Demo page (`:5173/demo/`) and docs site (`:5174`) together, live against `src/` |
 | `npm test` / `npm run test:watch` | Vitest, once or in watch mode |
 | `npm run lint` | ESLint (correctness rules only; see below) |
-| `npm run build` | `tsc` typecheck of `src/` + `examples/`, Vite library build, declaration post-processing |
+| `npm run typecheck` | `tsc` over `src/` + `examples/`, then over `test/` (so `@ts-expect-error` assertions in tests are real) |
+| `npm run build` | `npm run typecheck`, Vite library build, declaration post-processing |
 | `npm run check:pkg` | publint + arethetypeswrong against the packed tarball |
 | `npm run docs:cookbook` | Regenerate `docs/cookbook/` from `examples/manifest.ts` |
 | `npm run docs:build` | Build the VitePress site |

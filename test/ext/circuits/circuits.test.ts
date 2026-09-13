@@ -1,9 +1,9 @@
 /**
  * Circuit extension — milestone 1: scaffold, PortedShape port base,
- * resistor symbol (ANSI zigzag + IEC box), registry integration.
+ * resistor symbol (ANSI zigzag + IEC box), shape-set integration.
  *
  * These tests double as the dogfood report for the public extension
- * seams: registerShape + shapeOptions passthrough, port interception
+ * seams: defineShape + shapeOptions passthrough, port interception
  * under strict anchors, rotate, anchor-based placement, labels.
  */
 import { describe, it, expect } from 'vitest'
@@ -18,7 +18,6 @@ import { picture } from '../../../src/picture/Picture'
 import { point } from '../../../src/core/Point'
 import { SVGRenderer } from '../../../src/render/SVGRenderer'
 import { allShapes } from '../../../src/geometry/shapes'
-import { circuitShapes } from '../../../src/ext/circuits'
 const SHAPES = { ...allShapes, ...circuitShapes }
 
 function expectPt(p: { x: number; y: number }, x: number, y: number, label = '') {

@@ -102,10 +102,10 @@ describe('StyleMapper', () => {
 
     it('preserves fillPattern when merging', () => {
       const result = mergeStyles(
-        { fillPattern: 'dots' as const },
+        { fillPattern: fillPatterns.dots },
         { stroke: 'blue' }
       )
-      expect(result.fillPattern).toBe('dots')
+      expect(result.fillPattern).toBe(fillPatterns.dots)
       expect(result.stroke).toBe('blue')
     })
 

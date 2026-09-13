@@ -25,8 +25,8 @@ const SHAPES = allShapes
  *
  * Coverage: bare geometry, nodes, edges (auto + named anchors), path
  * decorations, dash styles, fill patterns, gradients, drop shadows,
- * layers, double lines, double-line paths, all SHAPE_TYPES via the
- * node dispatch, KaTeX (stubbed), and one full picture({ shapes: SHAPES }) scene.
+ * layers, double lines, double-line paths, every shape in allShapes via
+ * the node dispatch, KaTeX (stubbed), and one full picture({ shapes: SHAPES }) scene.
  */
 
 function render(

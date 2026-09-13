@@ -800,7 +800,7 @@ describe('Tree', () => {
     }
 
     const spec = (name: string, w: number, h = 15) =>
-      ({ name, text: '', shape: SHAPES['rectangle'] as const, width: w, height: h, innerSep: 0, minWidth: 0, minHeight: 0 })
+      ({ name, text: '', shape: SHAPES['rectangle'], width: w, height: h, innerSep: 0, minWidth: 0, minHeight: 0 })
 
     it('pushes a deep child clear of a wide uncle in a neighbouring branch, in all four growth directions', () => {
       // A is a long row whose short children end early; B's branch is

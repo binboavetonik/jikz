@@ -1,6 +1,6 @@
 /**
  * Logic-gate extension — dogfoods the same public seams as ext/circuits:
- * registerShape, port interception under strict anchors, rotate,
+ * defineShape, port interception under strict anchors, rotate,
  * anchor-based placement, and typed builders.
  */
 import { describe, it, expect } from 'vitest'
@@ -26,7 +26,6 @@ import { Node } from '../../../src/node/Node'
 import { picture } from '../../../src/picture/Picture'
 import { point } from '../../../src/core/Point'
 import { allShapes } from '../../../src/geometry/shapes'
-import { gateShapes } from '../../../src/ext/gates'
 const SHAPES = { ...allShapes, ...gateShapes }
 
 function expectPt(p: { x: number; y: number }, x: number, y: number, label = '') {

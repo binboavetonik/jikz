@@ -2,10 +2,9 @@ import { describe, it, expect } from 'vitest'
 import {
   generatePatternId,
   normalizePatternSpec,
-  FillPatternName,
-  FillPatternSpec,
+  type FillPatternSpec,
 } from '../../src/render/FillPattern'
-import { fillPatterns } from '../../src/render/patterns'
+import { fillPatterns, type FillPatternName } from '../../src/render/patterns'
 
 describe('FillPattern', () => {
   describe('fillPatterns', () => {

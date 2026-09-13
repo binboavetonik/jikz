@@ -96,5 +96,5 @@ describe('SMIL animation emission', () => {
 })
 
 function rectNodeOptions() {
-  return { shape: SHAPES['rectangle'] as const, width: 20, height: 12, innerSep: 0, minWidth: 0, minHeight: 0 }
+  return { shape: SHAPES['rectangle'], width: 20, height: 12, innerSep: 0, minWidth: 0, minHeight: 0 }
 }

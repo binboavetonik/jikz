@@ -4,18 +4,19 @@
  * package.json declares `"sideEffects": false`, which promises bundlers
  * that importing any module of this package has no observable effect
  * beyond its exports — so anything a consumer doesn't import can be
- * dropped. That promise is only true because the built-in shape, arrow
- * tip and decoration registries fill their tables on FIRST USE
- * (`ensureBuiltins()` in geometry/registry, render/ArrowTip and
- * path/PathDecorations), not at import time.
+ * dropped. That promise holds because shapes and fill patterns are plain
+ * values (a picture is handed the set it uses), and the two tables that
+ * remain — arrow tips and path decorations — fill on FIRST USE
+ * (`ensureBuiltins()` in render/ArrowTip and path/PathDecorations), not
+ * at import time.
  *
  * This test bundles small imports with esbuild against the live source
  * and asserts the output stays small. If someone reintroduces an
  * import-time side effect (a top-level `registerX(...)`, a module-level
  * mutation of shared state), esbuild will still tree-shake — but
  * consumers' bundlers, trusting `sideEffects: false`, may then DROP
- * that side effect and break `shape: SHAPES['star']` at runtime. The lazy
- * registry tests in test/render/LazyBuiltins.test.ts guard that half.
+ * that side effect and break arrow tips at runtime. The lazy registry
+ * tests in test/render/LazyBuiltins.test.ts guard that half.
  */
 import { describe, it, expect } from 'vitest'
 import { build } from 'esbuild'

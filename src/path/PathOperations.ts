@@ -259,9 +259,10 @@ export function decoration(
  */
 export interface DashPattern {
   /**
-   * Array of dash and gap lengths
+   * Array of dash and gap lengths. Readonly so the `as const` entries of
+   * `DASH_PATTERNS` (and any frozen user table) are accepted as-is.
    */
-  pattern: number[]
+  pattern: readonly number[]
 
   /**
    * Offset to start the pattern

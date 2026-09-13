@@ -25,7 +25,7 @@ describe('dash style field (TikZ names)', () => {
     for (const name of DASH_PATTERN_NAMES) {
       const attrs = styleToSVGAttributes({ dash: name })
       expect(attrs['stroke-dasharray']).toBe(
-        (STYLE_PRESETS as Record<string, { strokeDasharray: string }>)[name]!.strokeDasharray
+        (STYLE_PRESETS as unknown as Record<string, { strokeDasharray: string }>)[name]!.strokeDasharray
       )
     }
   })
