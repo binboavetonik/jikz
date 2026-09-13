@@ -75,7 +75,7 @@
     "type": "git",
     "url": "git+https://github.com/binboavetonik/jikz.git"
   },
-  "homepage": "https://github.com/binboavetonik/jikz#readme",
+  "homepage": "https://binboavetonik.github.io/jikz/",
   "bugs": "https://github.com/binboavetonik/jikz/issues",
   "license": "MIT",
   "engines": {

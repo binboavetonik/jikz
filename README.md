@@ -25,7 +25,8 @@ npm install katex
 
 ## Documentation
 
-Full docs live in [`docs/`](docs/README.md):
+Hosted at **https://binboavetonik.github.io/jikz/** (built from
+[`docs/`](docs/README.md) on every push):
 
 - **[TikZ → jikz mapping](docs/concepts/tikz-mapping.md)** — if you know
   TikZ, start here: the idiom-by-idiom translation table.
