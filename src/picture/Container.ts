@@ -14,7 +14,7 @@ import { Edge, type EdgeOptions } from '../node/Edge'
 import { Pen, type PenOptions } from './Pen'
 import type { Renderable, RenderOptions, TextOptions } from '../render/Renderer'
 import { mergeStyles } from '../render/StyleMapper'
-import type { ClipSpec, RenderStyle, StyleSpec } from '../render/StyleMapper'
+import type { ClipSpec, FadingSpec, RenderStyle, StyleSpec } from '../render/StyleMapper'
 import { resolveShading, type ShadingOptions } from '../render/Shadings'
 import { shapeLabelPoint, type DrawLabel } from '../text/shapeLabels'
 import type { TextPlacement } from '../text/placeText'
@@ -172,6 +172,11 @@ export interface ScopeOptions {
   opacity?: number
   /** Clip everything in the scope to this region. */
   clip?: ClipSpec
+  /**
+   * Fade everything in the scope — TikZ's `scope fading`, which is to
+   * `path fading` what `clip` is to a single path's clip.
+   */
+  fading?: FadingSpec
   /** CSS class on the group. */
   className?: string
   /** Element id on the group. */
@@ -183,6 +188,7 @@ export interface GroupRenderOptions {
   transform?: Transform
   opacity?: number
   clip?: ClipSpec
+  fading?: FadingSpec
   className?: string
   id?: string
 }
@@ -544,6 +550,29 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
   }
 
   /**
+   * Append items taken from another container's {@link items} — drawing
+   * the same content a second time somewhere else. `ext/spy` is what
+   * this exists for.
+   *
+   * Unlike the drawing verbs, this registers no names. The items are
+   * already built: a node item holds its `Node`, and an edge resolved
+   * its endpoints when it was created, so a replay needs no registry
+   * and cannot collide with the names the originals hold — which is
+   * what makes drawing a picture inside itself possible at all, since
+   * {@link ItemContainer.node} refuses a duplicate name.
+   *
+   * The items are shared, not copied. Rendering never mutates them, so
+   * this is safe; it also means later edits to the original items show
+   * up in both places.
+   */
+  adopt(items: readonly PictureItem[]): this {
+    // A loop rather than push(...items): a spread of a very long list
+    // can overflow the argument limit.
+    for (const item of items) this.itemList.push(item)
+    return this
+  }
+
+  /**
    * Resolve a string spec to a point in THIS container's coordinates.
    *
    * - `"A"` → `A.center`
@@ -657,6 +686,7 @@ export class Scope<S extends ShapeSet = {}> extends ItemContainer<S> {
       transform: this.options.transform,
       opacity: this.options.opacity,
       clip: this.options.clip,
+      fading: this.options.fading,
       className: this.options.className,
       id: this.options.id,
     }
@@ -666,7 +696,7 @@ export class Scope<S extends ShapeSet = {}> extends ItemContainer<S> {
   get needsGroup(): boolean {
     const o = this.options
     return Boolean(
-      o.transform || o.opacity !== undefined || o.clip || o.className || o.id
+      o.transform || o.opacity !== undefined || o.clip || o.fading || o.className || o.id
     )
   }
 }

@@ -39,6 +39,7 @@ import {
   styleToSVGAttributes,
   SVGAttributes,
   ClipSpec,
+  FadingSpec,
   DoubleLineSpec,
 } from './StyleMapper'
 import {
@@ -313,6 +314,34 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // Fadings (opacity masks)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Build the `<mask>` behind a {@link FadingSpec} and hand back its
+   * `url(#id)`. The mask holds a unit rect painted with the fading's
+   * gradient; SVG reads a mask by luminance by default, which is the
+   * same rule PGF's `pgftransparent` follows, so white stays opaque
+   * and black vanishes.
+   *
+   * `maskContentUnits="objectBoundingBox"` is what makes the mask
+   * track whatever it is applied to — TikZ's `fit fading`.
+   */
+  private ensureFading(spec: FadingSpec): string {
+    const gradient = normalizeGradientSpec(spec.gradient)
+    // The gradient id already carries the spec; drop its prefix so the
+    // mask id does not read `jikz-fading-jikz-gradient-…`.
+    const id = `jikz-fading-${generateGradientId(gradient).replace(/^jikz-/, '')}`
+    const paint = this.ensureGradient(gradient)
+
+    return this.defsManager.ensure(id, (defs) => {
+      defs
+        .el('mask', { id, maskContentUnits: 'objectBoundingBox' })
+        .el('rect', { x: 0, y: 0, width: 1, height: 1, fill: paint })
+    })
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // Drop Shadows
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -432,6 +461,11 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
     // Clip path
     if (style.clip) {
       attrs['clip-path'] = this.ensureClipPath(style.clip)
+    }
+
+    // Fading (opacity mask)
+    if (style.fading) {
+      attrs.mask = this.ensureFading(style.fading)
     }
 
     // Border radius (handled in renderRect, but also add to attrs for consistency)
@@ -1025,6 +1059,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
     if (options.className) g.addClass(options.className)
     if (options.id) g.id(options.id)
     if (options.clip) g.attr({ 'clip-path': this.ensureClipPath(options.clip) })
+    if (options.fading) g.attr({ mask: this.ensureFading(options.fading) })
 
     this.groupStack.push(this.currentGroup)
     this.currentGroup = g

@@ -11,6 +11,25 @@ export type Color = string
 /**
  * Clip path specification
  */
+/**
+ * An opacity mask — TikZ's `path fading`.
+ *
+ * PGF builds a fading out of a picture whose *luminance* is read as
+ * alpha: its `pgftransparent!0` is white and stays opaque, its
+ * `pgftransparent!100` is black and vanishes. SVG masks default to the
+ * same luminance rule, so a fading here is the gradient that paints
+ * one.
+ *
+ * The mask is fitted to the element's bounding box, which is TikZ's
+ * `fit fading=true` (its default). `fit fading=false` has no
+ * equivalent: it needs a mask positioned per element, which cannot be
+ * shared the way a def is.
+ */
+export interface FadingSpec {
+  /** White is opaque, black is transparent. */
+  gradient: GradientSpec
+}
+
 export interface ClipSpec {
   shape: 'rect' | 'circle' | 'ellipse' | 'path'
   // For rect
@@ -79,6 +98,7 @@ export interface RenderStyle {
   // Effects
   dropShadow?: DropShadowSpec | boolean
   clip?: ClipSpec
+  fading?: FadingSpec
 
   // Border radius (for rectangles)
   borderRadius?: number
@@ -112,6 +132,7 @@ export interface SVGAttributes {
   opacity?: number
   filter?: string
   'clip-path'?: string
+  mask?: string
   rx?: number
   ry?: number
 }

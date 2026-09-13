@@ -342,3 +342,46 @@ describe('Scope', () => {
     ])
   })
 })
+
+describe('adopt', () => {
+  it('appends already-built items without touching the name registry', () => {
+    const pic = picture({ shapes: allShapes })
+    pic.node('a', { at: point(10, 10), shape: 'circle', width: 20 })
+    pic.draw(circle(point(50, 10), 8))
+
+    const target = picture()
+    target.adopt(pic.items)
+
+    expect(target.items).toHaveLength(2)
+    // The name stayed with the original picture; nothing was registered here.
+    expect(target.getNode('a')).toBeUndefined()
+    expect(pic.getNode('a')).toBeDefined()
+  })
+
+  it('lets a picture hold its own content twice, which node() forbids', () => {
+    const pic = picture({ shapes: allShapes })
+    pic.node('a', { at: point(10, 10), shape: 'circle', width: 20, text: 'A' })
+    const own = [...pic.items]
+
+    expect(() => pic.node('a', { at: point(50, 10), shape: 'circle' })).toThrow(/already exists/)
+    expect(() => pic.adopt(own)).not.toThrow()
+    expect(pic.toSVG({ width: 80, height: 40 }).match(/>A</g)).toHaveLength(2)
+  })
+
+  it('returns the container so it chains, and takes an empty list', () => {
+    const pic = picture()
+    expect(pic.adopt([])).toBe(pic)
+    expect(pic.items).toHaveLength(0)
+  })
+
+  it('carries adopted items into a scope, group properties and all', () => {
+    const pic = picture()
+    pic.draw(circle(point(10, 10), 5))
+    const own = [...pic.items]
+    pic.scope({ scale: 2 }, (s) => s.adopt(own))
+
+    const svg = pic.toSVG({ width: 60, height: 60 })
+    expect(svg).toMatch(/<g[^>]*transform="matrix\(2 0 0 2 0 0\)"/)
+    expect(svg.match(/<circle/g)).toHaveLength(2)
+  })
+})
