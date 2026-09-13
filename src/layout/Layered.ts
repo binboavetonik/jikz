@@ -878,7 +878,6 @@ class LayeredBuilderImpl implements LayeredBuilder {
       maxY = Math.max(maxY, c.bounds[3])
     }
 
-    const self = this
     return {
       nodes,
       clusters,
@@ -887,9 +886,9 @@ class LayeredBuilderImpl implements LayeredBuilder {
       levelCount: outerResult.levelCount,
       level: (i) => levelNodes.get(i) ?? [],
       getNode: (name) => nodesByName.get(name),
-      incoming(node: Node): Node[] {
+      incoming: (node: Node): Node[] => {
         const out: Node[] = []
-        for (const e of self._edges) {
+        for (const e of this._edges) {
           if (e.origTo!.name === node.name) {
             const n = nodesByName.get(e.origFrom!.name)
             if (n) out.push(n)
@@ -897,9 +896,9 @@ class LayeredBuilderImpl implements LayeredBuilder {
         }
         return out
       },
-      outgoing(node: Node): Node[] {
+      outgoing: (node: Node): Node[] => {
         const out: Node[] = []
-        for (const e of self._edges) {
+        for (const e of this._edges) {
           if (e.origFrom!.name === node.name) {
             const n = nodesByName.get(e.origTo!.name)
             if (n) out.push(n)

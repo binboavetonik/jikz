@@ -119,11 +119,11 @@ export class Arc {
   angleAt(t: number): number {
     if (this.clockwise) {
       // Clockwise: angles decrease
-      let angle = this.startAngle - t * this.sweep
+      const angle = this.startAngle - t * this.sweep
       return normalizeAngle(angle)
     } else {
       // Counter-clockwise: angles increase
-      let angle = this.startAngle + t * this.sweep
+      const angle = this.startAngle + t * this.sweep
       return normalizeAngle(angle)
     }
   }

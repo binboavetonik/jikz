@@ -69,6 +69,20 @@
 
 ### Changed
 
+- **JavaScript sourcemaps ship with the ES modules.** Each `dist/**/*.js`
+  has a `.js.map` beside it, and `src/` is included in the package so
+  the maps (and the existing `.d.ts.map` files) resolve to real source
+  in debuggers and go-to-definition. Maps carry mappings only, not a
+  second copy of the source. The UMD build has no map.
+- **KaTeX peer range widened to `>=0.16.0`.** The adapter only needs
+  `renderToString`; verified against KaTeX 0.18.
+- **Repository scaffolding for contributors.** `CONTRIBUTING.md`,
+  `CODE_OF_CONDUCT.md`, `SECURITY.md`, `.editorconfig`, an ESLint config
+  (`npm run lint`, correctness rules only — no formatter), and a
+  Bitbucket Pipelines CI that runs lint, build, tests, package checks
+  and the docs build, plus build + test on Node 18. `prepublishOnly`
+  now runs lint too.
+
 - **The package is now tree-shakeable.** `package.json` declares
   `"sideEffects": false`, the ES build keeps one file per source module
   (`dist/index.js` is the entry; `module` and `exports.import` point at

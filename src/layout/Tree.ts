@@ -513,6 +513,7 @@ class TreeNodeBuilderImpl implements TreeNodeBuilder {
   }
 
   private getRootSpec(): TreeNodeSpec {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- walks up the parent chain
     let current: TreeNodeBuilderImpl = this
     while (current._parentBuilder) {
       current = current._parentBuilder

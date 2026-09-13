@@ -110,27 +110,27 @@ describe('Picture', () => {
     it('edge("A", "B") boundary-resolves through both nodes (auto)', () => {
       const pic = mk().edge('A', 'B')
       const edge = pic.items.find((i) => i.kind === 'edge')!
-      // @ts-expect-error — narrowing in test
+      // @ts-expect-error -- PictureItem union is not narrowed by find(); the edge item is asserted above
       expect(edge.edge.from.x).toBeCloseTo(15) // A's east boundary
-      // @ts-expect-error
+      // @ts-expect-error -- PictureItem union is not narrowed by find()
       expect(edge.edge.to.x).toBeCloseTo(85) // B's west boundary
     })
 
     it('edge("A.north", "B.south") resolves immediately to fixed points', () => {
       const pic = mk().edge('A.north', 'B.south')
       const edge = pic.items.find((i) => i.kind === 'edge')!
-      // @ts-expect-error
+      // @ts-expect-error -- PictureItem union is not narrowed by find()
       expect(edge.edge.from.y).toBeCloseTo(-15) // A north: visual top, −y
-      // @ts-expect-error
+      // @ts-expect-error -- PictureItem union is not narrowed by find()
       expect(edge.edge.to.y).toBeCloseTo(15) // B south: visual bottom, +y
     })
 
     it('edge accepts raw points', () => {
       const pic = picture().edge(point(0, 0), point(100, 50))
       const edge = pic.items.find((i) => i.kind === 'edge')!
-      // @ts-expect-error
+      // @ts-expect-error -- PictureItem union is not narrowed by find()
       expect(edge.edge.from.x).toBe(0)
-      // @ts-expect-error
+      // @ts-expect-error -- PictureItem union is not narrowed by find()
       expect(edge.edge.to.y).toBe(50)
     })
 

@@ -160,8 +160,8 @@ function forcePositions(
       for (let j = i + 1; j < n; j++) {
         const pa = pos.get(names[i]!)!
         const pb = pos.get(names[j]!)!
-        let vx = pa.x - pb.x
-        let vy = pa.y - pb.y
+        const vx = pa.x - pb.x
+        const vy = pa.y - pb.y
         let d = Math.hypot(vx, vy)
         d = Math.max(d, radius * 2, 1e-3)
         const f = (repulsion * ideal * ideal) / d

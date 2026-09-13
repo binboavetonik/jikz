@@ -80,7 +80,7 @@ export class CircularSector implements Shape {
   get apex(): Point {
     const r = this.radius
     const pts: Point[] = [point(0, 0)]
-    let start = this.startAngle
+    const start = this.startAngle
     let end = this.endAngle
     if (end < start) end += 360
     for (let a = start; a <= end; a += 5) {
@@ -194,7 +194,7 @@ export class CircularSector implements Shape {
     const r = this.radius
 
     // Normalize angles
-    let start = this.startAngle
+    const start = this.startAngle
     let end = this.endAngle
     if (end < start) end += 360
 
@@ -287,7 +287,7 @@ export class CircularSector implements Shape {
     if (dist > this.radius) return false
 
     let angle = Math.atan2(dy, dx) * 180 / Math.PI
-    let start = this.startAngle
+    const start = this.startAngle
     let end = this.endAngle
 
     // Normalize
@@ -303,7 +303,7 @@ export class CircularSector implements Shape {
 
     // Add cardinal points if they're within the arc
     const cardinals = [0, 90, 180, 270]
-    let start = this.startAngle
+    const start = this.startAngle
     let end = this.endAngle
     if (end < start) end += 360
 

@@ -384,6 +384,7 @@ Then open `http://localhost:5173/demo/index.html` (vite port may vary).
 ```sh
 npm install
 npm test          # vitest, incl. SVG-output + example-gallery snapshot suites
+npm run lint      # eslint (correctness rules; style is by convention, see CONTRIBUTING.md)
 npm run build     # tsc typecheck (src + examples) + vite library build → dist/
 npm run dev       # vite dev server (demo page)
 ```

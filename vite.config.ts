@@ -23,6 +23,11 @@ export default defineConfig({
     }),
   ],
   build: {
+    // Ship JS sourcemaps next to each module so consumers get readable
+    // stack traces (the .d.ts.map files only cover types). Maps carry
+    // mappings only — the sources they point at are the shipped `src/`
+    // tree (see "files" in package.json), not a second embedded copy.
+    sourcemap: true,
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
       name: 'Jikz',
@@ -39,12 +44,17 @@ export default defineConfig({
           preserveModules: true,
           preserveModulesRoot: 'src',
           entryFileNames: '[name].js',
+          sourcemapExcludeSources: true,
         },
         // UMD stays a single file for <script> consumers and require().
         {
           format: 'umd',
           name: 'Jikz',
           entryFileNames: 'jikz.umd.cjs',
+          // No map for the legacy single-file build: it would add ~470 kB
+          // to every install for the <script>-tag path nobody debugs
+          // through node_modules. The ES modules carry the maps.
+          sourcemap: false,
         },
       ],
     },
