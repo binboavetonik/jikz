@@ -28,6 +28,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --no-audit --no-fund
+      # TypeDoc → docs/public/api, served at /api/ next to the site
+      - run: npm run docs:api
       - run: npm run docs:build
         env:
           DOCS_BASE: /jikz/

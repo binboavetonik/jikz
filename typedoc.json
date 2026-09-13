@@ -1,7 +1,9 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "entryPoints": ["src/index.ts"],
-  "out": "docs/api",
+  "entryPoints": [
+    "src/index.ts"
+  ],
+  "out": "docs/public/api",
   "name": "jikz",
   "readme": "docs/README.md",
   "disableSources": true,

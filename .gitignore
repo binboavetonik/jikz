@@ -5,7 +5,7 @@ dist/
 .vscode/
 .idea/
 implementation-plans/
-docs/api/
+docs/public/api/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
 .vitepress/cache/
