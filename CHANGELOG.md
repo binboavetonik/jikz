@@ -219,6 +219,37 @@
 
 ### Fixed
 
+- **`ext/dataviz` review fixes.** Ten findings from code review, all
+  pinned by tests:
+  - `axes()` no longer throws on flat domains — a single `tickValues`
+    entry, all-equal tick values, or an explicit `domain: [v, v]`
+    (`exact` or not) widen by ±0.5 instead of crashing `linearScale`.
+  - Non-finite data points are skipped by every series builder —
+    line, scatter and bars — matching the `Plot` convention: a `NaN`
+    used to land in the path data and blank the whole series element,
+    and in a bar it produced a `NaN` rect. One `isFiniteSample`
+    predicate backs all three. `dataDomain`/`mapSeries` skip them too,
+    `niceTicks(NaN, …)` returns no ticks on a safe range, and a
+    non-finite bar baseline falls back to 0.
+  - Scatter marks styled by fill (`{ fill, stroke: 'none' }`) are no
+    longer invisible — the mark color falls back from the style's
+    stroke to its fill, then black.
+  - A one-point `frame.line()` series still draws its marks (the
+    path skips, the marker paints).
+  - `legend()` defaults survive explicit `undefined` fields
+    (`fontSize: undefined` no longer defeats the default font size) —
+    per-field `??` instead of a spread.
+  - The legend frame takes a style: `frame: { fill, stroke }` merges
+    over the default light frame (dark canvases).
+  - `niceNumber(0)`/negative/non-finite input returns 1 instead of
+    `NaN`.
+  - `frame.bars()` doc corrected: the baseline clamp covers the
+    baseline only; out-of-domain values still draw outside the plot
+    area (data is never clipped silently).
+  - `drawMarks` parses the mark glyph once per series instead of once
+    per point.
+  - New reference page `docs/reference/ext-dataviz.md`.
+
 - **The typed port accessors' rotation caveat is documented.** `r1.out`
   and `g.in1` read the instance you built, and `node({ shape: r1,
   rotate: 90 })` rotates a copy — so a rotated node's ports come from

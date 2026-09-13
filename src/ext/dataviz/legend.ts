@@ -18,7 +18,7 @@ import { point } from '../../core/Point'
 import type { PointLike } from '../../core/types'
 import type { ShapeSet } from '../../geometry/ShapeKind'
 import type { ItemContainer } from '../../picture/Container'
-import type { StyleSpec } from '../../render/StyleMapper'
+import type { RenderStyle, StyleSpec } from '../../render/StyleMapper'
 import { estimateLabelSize } from '../../text/placeText'
 import { line } from '../../geometry/Line'
 import { rect } from '../../geometry/Rectangle'
@@ -56,8 +56,11 @@ export interface LegendOptions {
   gap?: number
   /** Padding inside the frame, px (default 6). */
   padding?: number
-  /** Draw a light box around the legend. */
-  frame?: boolean
+  /**
+   * Draw a box around the legend: `true` for the default light frame,
+   * or a StyleSpec merged over it (e.g. on a dark canvas).
+   */
+  frame?: boolean | StyleSpec
 }
 
 /** Box-sample extent, px. */
@@ -72,13 +75,15 @@ interface ResolvedLegendOptions extends LegendOptions {
 }
 
 function resolve(options: LegendOptions): ResolvedLegendOptions {
+  // Per-field ??, not a spread: an explicit `fontSize: undefined`
+  // would otherwise DEFEAT the default (the Node shape:undefined trap).
   return {
-    fontSize: 11,
-    rowHeight: 18,
-    sampleLength: 22,
-    gap: 6,
-    padding: 6,
     ...options,
+    fontSize: options.fontSize ?? 11,
+    rowHeight: options.rowHeight ?? 18,
+    sampleLength: options.sampleLength ?? 22,
+    gap: options.gap ?? 6,
+    padding: options.padding ?? 6,
   }
 }
 
@@ -105,8 +110,9 @@ export function legendSize(
 
 /**
  * Draw a legend into a picture. Rows paint top to bottom from `at`;
- * with `frame: true` a light box wraps the whole legend (painted
- * first, so swatches sit on top).
+ * with `frame` set a box wraps the whole legend (painted first, so
+ * swatches sit on top) — `true` for the default light frame, or a
+ * StyleSpec merged over it.
  */
 export function legend<S extends ShapeSet>(
   pic: ItemContainer<S>,
@@ -116,9 +122,14 @@ export function legend<S extends ShapeSet>(
   const { width, height } = legendSize(options)
 
   if (o.frame) {
-    pic.filldraw(rect(o.at.x, o.at.y, width, height), {
-      style: { fill: '#ffffff', stroke: '#cbd5e1', strokeWidth: 1 },
-    })
+    const base: Partial<RenderStyle> = { fill: '#ffffff', stroke: '#cbd5e1', strokeWidth: 1 }
+    const frameStyle: StyleSpec =
+      typeof o.frame === 'object'
+        ? Array.isArray(o.frame)
+          ? [base, ...o.frame]
+          : [base, o.frame]
+        : base
+    pic.filldraw(rect(o.at.x, o.at.y, width, height), { style: frameStyle })
   }
 
   o.entries.forEach((entry, i) => {

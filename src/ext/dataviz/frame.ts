@@ -38,6 +38,7 @@ import {
   linearScale,
   niceTicks,
   formatTick,
+  isFiniteSample,
   type Scale,
   type DataSeries,
 } from './scale'
@@ -105,21 +106,33 @@ interface ResolvedAxis {
 }
 
 function resolveAxis(o: AxisOptions): ResolvedAxis {
+  let resolved: ResolvedAxis
   if (o.tickValues) {
     const ticks = [...o.tickValues].sort((a, b) => a - b)
     const [min, max] = o.domain ?? [ticks[0] ?? 0, ticks[ticks.length - 1] ?? 1]
-    return { ticks, min, max }
+    resolved = { ticks, min, max }
+  } else {
+    const domain = o.domain ?? [0, 1]
+    const nice = niceTicks(domain[0], domain[1], o.ticks ?? 5)
+    resolved = o.exact
+      ? {
+          ticks: nice.ticks.filter((t) => t >= domain[0] && t <= domain[1]),
+          min: domain[0],
+          max: domain[1],
+        }
+      : nice
   }
-  const domain = o.domain ?? [0, 1]
-  const nice = niceTicks(domain[0], domain[1], o.ticks ?? 5)
-  if (o.exact) {
-    return {
-      ticks: nice.ticks.filter((t) => t >= domain[0] && t <= domain[1]),
-      min: domain[0],
-      max: domain[1],
+  // A flat domain (single tick value, all-equal tick values, or an
+  // explicit [v, v]) would hand linearScale a degenerate domain and
+  // throw. Widen symmetrically, the niceTicks convention.
+  if (resolved.min === resolved.max) {
+    resolved = {
+      ...resolved,
+      min: resolved.min - 0.5,
+      max: resolved.max + 0.5,
     }
   }
-  return nice
+  return resolved
 }
 
 /** Normalize the marks shorthand: a bare name is `{ name }`. */
@@ -133,7 +146,9 @@ function normalizeMarkSpec(
 /**
  * Paint scatter markers at picture-space points. Mirrors the plot-mark
  * convention: open marks stroke the series color, `*Filled` marks fill
- * it; the color is the resolved stroke of the series style.
+ * it. The color is the series style's stroke — falling back to its
+ * fill (a filled series styled `stroke: 'none'` still colors its
+ * marks), then to black.
  *
  * Package-internal (shared with the legend's sample swatches) — not
  * re-exported from ext/dataviz.
@@ -146,14 +161,20 @@ export function drawMarks<S extends ShapeSet>(
 ): void {
   const d = plotMarkPath(spec.name, spec.size ?? 5)
   if (!d) return
-  const color = style ? resolveStyle(style).stroke : undefined
+  const pick = (c: string | undefined): string | undefined =>
+    c !== undefined && c !== 'none' ? c : undefined
+  const resolved = style ? resolveStyle(style) : undefined
+  const color = pick(resolved?.stroke) ?? pick(resolved?.fill) ?? '#000000'
   const paint: Partial<RenderStyle> = plotMarkFilled(spec.name)
-    ? { fill: color ?? '#000000', stroke: 'none' }
-    : { stroke: color ?? '#000000', fill: 'none', strokeWidth: 1.5 }
+    ? { fill: color, stroke: 'none' }
+    : { stroke: color, fill: 'none', strokeWidth: 1.5 }
   const every = Math.max(1, spec.every ?? 1)
+  // The glyph is the same at every point — parse once, translate per
+  // point (Path.translate returns a new Path).
+  const glyph = pathFromSVG(d)
   pts.forEach((p, i) => {
     if (i % every !== 0) return
-    pic.filldraw(pathFromSVG(d).translate(p.x, p.y), { style: paint })
+    pic.filldraw(glyph.translate(p.x, p.y), { style: paint })
   })
 }
 
@@ -179,8 +200,10 @@ export interface FrameBarOptions {
    */
   width?: number
   /**
-   * Baseline in data units (default 0), clamped into the y domain so
-   * bars never leave the plot area.
+   * Baseline in data units (default 0), clamped into the y domain.
+   * Note the clamp covers the BASELINE only: a bar value outside the
+   * y domain still draws outside the plot area (data is never
+   * clipped silently).
    */
   baseline?: number
   /** Bar paint (default: solid slate). */
@@ -224,7 +247,7 @@ export class ChartFrame {
   }
 
   private dataPoints(data: DataSeries): Point[] {
-    return data.map(([xv, yv]) => this.point(xv, yv))
+    return data.filter(isFiniteSample).map(([xv, yv]) => this.point(xv, yv))
   }
 
   /**
@@ -237,11 +260,14 @@ export class ChartFrame {
   line(data: DataSeries, options: FrameLineOptions = {}): this {
     const { smooth = false, marks, ...draw } = options
     const pts = this.dataPoints(data)
-    if (pts.length < 2) return this
-    const p = smooth
-      ? pathFromSVG(new Plot(pts).toSVGPathSmooth())
-      : polylinePath(pts)
-    this.pic.draw(p, draw)
+    // Fewer than two points: no path to draw, but marks still paint —
+    // a one-point series is a scatter of one.
+    if (pts.length >= 2) {
+      const p = smooth
+        ? pathFromSVG(new Plot(pts).toSVGPathSmooth())
+        : polylinePath(pts)
+      this.pic.draw(p, draw)
+    }
     const spec = normalizeMarkSpec(marks)
     if (spec) drawMarks(this.pic, pts, spec, draw.style)
     return this
@@ -272,9 +298,13 @@ export class ChartFrame {
   bars(data: DataSeries, options: FrameBarOptions = {}): this {
     const { width, baseline = 0, style = DEFAULT_BAR_STYLE } = options
     const [yMin, yMax] = this.yDomain
-    const base = Math.min(yMax, Math.max(yMin, baseline))
-    const w = width ?? this.defaultBarWidth(data)
-    for (const [xv, yv] of data) {
+    // Bars skip non-finite samples like every other series builder, and
+    // a non-finite baseline falls back to 0 rather than NaN-ing them all.
+    const samples = data.filter(isFiniteSample)
+    const from = Number.isFinite(baseline) ? baseline : 0
+    const base = Math.min(yMax, Math.max(yMin, from))
+    const w = width ?? this.defaultBarWidth(samples)
+    for (const [xv, yv] of samples) {
       const cx = this.x(xv)
       const y0 = this.y(base)
       const y1 = this.y(yv)

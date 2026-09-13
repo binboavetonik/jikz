@@ -59,6 +59,7 @@ export default defineConfig({
           { text: 'layout', link: '/reference/layout' },
           { text: 'text & math', link: '/reference/text' },
           { text: 'ext/circuits', link: '/reference/ext-circuits' },
+          { text: 'ext/dataviz', link: '/reference/ext-dataviz' },
         ],
       },
       {

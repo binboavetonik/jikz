@@ -280,3 +280,159 @@ describe('chart', () => {
     expect(svg).not.toContain('stroke="#cbd5e1"') // no legend frame
   })
 })
+
+describe('review fixes', () => {
+  const at = point(50, 200)
+
+  it('tickValues with a single value widens instead of throwing', () => {
+    const pic = picture()
+    const frame = axes(pic, { at, width: 100, height: 100, x: { tickValues: [5] } })
+    expect(frame.xDomain).toEqual([4.5, 5.5])
+    expect(frame.xTicks).toEqual([5])
+  })
+
+  it('tickValues with all-equal values widens instead of throwing', () => {
+    const pic = picture()
+    const frame = axes(pic, { at, width: 100, height: 100, x: { tickValues: [3, 3, 3] } })
+    expect(frame.xDomain).toEqual([2.5, 3.5])
+  })
+
+  it('a flat exact domain widens instead of throwing', () => {
+    const pic = picture()
+    const frame = axes(pic, {
+      at,
+      width: 100,
+      height: 100,
+      y: { domain: [3, 3], exact: true },
+    })
+    expect(frame.yDomain).toEqual([2.5, 3.5])
+    expect(frame.yTicks).toEqual([3])
+  })
+
+  it('a non-finite data point is skipped, not drawn into the path', () => {
+    const pic = picture()
+    const frame = axes(pic, {
+      at,
+      width: 100,
+      height: 100,
+      x: { domain: [0, 2], exact: true },
+      y: { domain: [0, 2], exact: true },
+    })
+    frame.line([[0, 0], [1, NaN], [2, 2]])
+    const svg = pic.toSVG({ width: 200, height: 220 })
+    expect(svg).not.toContain('NaN')
+    expect(svg).toContain('M 50 200 L 150 100') // endpoints survive
+  })
+
+  it('a bar series skips non-finite samples too', () => {
+    const pic = picture()
+    const frame = axes(pic, {
+      at,
+      width: 100,
+      height: 100,
+      x: { domain: [0, 4], exact: true },
+      y: { domain: [0, 4], exact: true },
+    })
+    frame.bars([[1, 2], [2, NaN], [3, 4]])
+    const svg = pic.toSVG({ width: 200, height: 220 })
+    expect(svg).not.toContain('NaN')
+    // two bars drawn, the NaN one dropped
+    expect((svg.match(/<rect/g) ?? []).length).toBe(2)
+  })
+
+  it('a non-finite baseline falls back to 0 instead of blanking the bars', () => {
+    const pic = picture()
+    const frame = axes(pic, {
+      at,
+      width: 100,
+      height: 100,
+      x: { domain: [0, 2], exact: true },
+      y: { domain: [0, 2], exact: true },
+    })
+    frame.bars([[1, 2]], { baseline: NaN })
+    expect(pic.toSVG({ width: 200, height: 220 })).not.toContain('NaN')
+  })
+
+  it('auto domains ignore non-finite data', () => {
+    expect(dataDomain([[[1, 2], [Infinity, 3], [NaN, -5]]], 0)).toEqual([1, 1])
+    expect(dataDomain([[[NaN, NaN]]], 1)).toEqual([0, 1]) // falls back
+    expect(niceTicks(NaN, NaN).ticks).toEqual([])
+  })
+
+  it('niceNumber guards non-positive and non-finite input', () => {
+    expect(niceNumber(0, true)).toBe(1)
+    expect(niceNumber(-3, false)).toBe(1)
+    expect(niceNumber(NaN, true)).toBe(1)
+    expect(niceNumber(Infinity, true)).toBe(1)
+  })
+
+  it('filled scatter marks take the series fill when stroke is none', () => {
+    const pic = picture()
+    const frame = axes(pic, { at, width: 100, height: 100 })
+    frame.scatter([[0.5, 0.5]], { style: { fill: '#2563eb', stroke: 'none' } })
+    const svg = pic.toSVG({ width: 200, height: 220 })
+    expect(svg).toContain('fill="#2563eb"')
+  })
+
+  it('a one-point line series still draws its marks', () => {
+    const pic = picture()
+    const frame = axes(pic, { at, width: 100, height: 100 })
+    frame.line([[0.5, 0.5]], { marks: 'o' })
+    const svg = pic.toSVG({ width: 200, height: 220 })
+    // The open-circle mark path renders even though no line can.
+    expect(svg).toMatch(/A 2\.5 2\.5/)
+  })
+
+  it('legend defaults survive explicit undefined fields', () => {
+    const explicit = legendSize({ entries: [{ label: 'a' }], fontSize: undefined })
+    const defaults = legendSize({ entries: [{ label: 'a' }] })
+    expect(explicit).toEqual(defaults)
+  })
+
+  it('legend frame accepts a custom style (dark canvas)', () => {
+    const pic = picture()
+    legend(pic, {
+      at: point(10, 10),
+      entries: [{ label: 'a' }],
+      frame: { fill: '#0f172a', stroke: '#475569' },
+    })
+    const svg = pic.toSVG({ width: 120, height: 60 })
+    expect(svg).toContain('fill="#0f172a"')
+    expect(svg).toContain('stroke="#475569"')
+  })
+
+  it('tickValues + custom format draw categorical labels', () => {
+    const pic = picture()
+    axes(pic, {
+      at,
+      width: 120,
+      height: 100,
+      x: { tickValues: [1, 2], format: (v) => ['one', 'two'][v - 1] ?? '' },
+    })
+    const svg = pic.toSVG({ width: 200, height: 220 })
+    expect(svg).toContain('>one</text>')
+    expect(svg).toContain('>two</text>')
+  })
+
+  it('arrows: true puts arrowheads on both axis ends', () => {
+    const pic = picture()
+    axes(pic, { at, width: 100, height: 100, arrows: true })
+    const svg = pic.toSVG({ width: 200, height: 220 })
+    expect(svg).toContain('marker-end')
+  })
+
+  it('exact: true keeps the domain verbatim and drops outlying ticks', () => {
+    const pic = picture()
+    const frame = axes(pic, {
+      at,
+      width: 100,
+      height: 100,
+      y: { domain: [3, 97], exact: true },
+    })
+    expect(frame.yDomain).toEqual([3, 97])
+    for (const t of frame.yTicks) {
+      expect(t).toBeGreaterThanOrEqual(3)
+      expect(t).toBeLessThanOrEqual(97)
+    }
+  })
+})

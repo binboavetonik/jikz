@@ -28,8 +28,12 @@ export function linearScale(domain: [number, number], range: [number, number]): 
  * Heckbert's "nice numbers": round `range` to a 1/2/5×10ⁿ step. With
  * `round`, prefer the smaller covering step (for tick spacing); without,
  * the larger (for axis ranges).
+ *
+ * Precondition: a positive, finite range. Non-positive or non-finite
+ * input returns 1 — a safe step that keeps tick loops terminating.
  */
 export function niceNumber(range: number, round: boolean): number {
+  if (!(range > 0) || !Number.isFinite(range)) return 1
   const exponent = Math.floor(Math.log10(range))
   const fraction = range / 10 ** exponent
   let niceFraction: number
@@ -60,6 +64,11 @@ export interface NiceTicks {
  * the actual count may differ by one or two.
  */
 export function niceTicks(min: number, max: number, count = 5): NiceTicks {
+  // Non-finite input (NaN/±Infinity data) yields no ticks on a safe
+  // default range rather than NaN poisoning every downstream scale.
+  if (!Number.isFinite(min) || !Number.isFinite(max)) {
+    return { ticks: [], min: 0, max: 1, step: 1 }
+  }
   if (min === max) {
     min -= 0.5
     max += 0.5
@@ -93,6 +102,9 @@ export function dataDomain(
   for (const s of series) {
     for (const p of s) {
       const v = p[component]!
+      // Skip non-finite samples, the Plot convention (NaN comparisons
+      // would accidentally ignore NaN anyway; ±Infinity would corrupt).
+      if (!Number.isFinite(v)) continue
       if (v < min) min = v
       if (v > max) max = v
     }
@@ -119,7 +131,21 @@ export function formatTick(v: number): string {
 /** A 2D data series — `[x, y]` pairs in data units. */
 export type DataSeries = readonly (readonly [number, number])[]
 
+/**
+ * Whether both components of a sample are finite. NaN/±Infinity are
+ * skipped rather than drawn — the `Plot` convention — because a
+ * non-finite coordinate in path data invalidates the whole element.
+ *
+ * Package-internal: every series builder filters through this, so they
+ * cannot disagree about what a drawable point is.
+ */
+export function isFiniteSample(sample: readonly [number, number]): boolean {
+  return Number.isFinite(sample[0]) && Number.isFinite(sample[1])
+}
+
 /** Map a series through two scales into picture points. */
 export function mapSeries(data: DataSeries, x: Scale, y: Scale): PointLike[] {
-  return data.map(([xv, yv]) => ({ x: x(xv), y: y(yv) }))
+  return data
+    .filter(isFiniteSample)
+    .map(([xv, yv]) => ({ x: x(xv), y: y(yv) }))
 }
