@@ -1,166 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.7.0 — 2026-09-14
 
-### Added
+0.7.0 is the first release after the move to GitHub, and it changes the
+public model for shapes and fill patterns (see *Breaking*). 0.6.0 is the
+previous published version; an earlier 0.7.0 section in this changelog
+was never published, so everything below is new relative to 0.6.0.
 
-- **`ext/dataviz` — data visualization (TikZ `datavisualization`).**
-  Scaled axes with Heckbert "nice number" ticks, gridlines, tick and
-  axis labels, a legend, and `line`/`scatter`/`bar` series builders —
-  no more hand-rolled axes. `chart(pic, { series, … })` is the one-call
-  builder: domains infer from the data (`domain: 'auto'`, widened to
-  nice tick boundaries; bar series pin the baseline at 0), labeled
-  series collect into a framed legend at the north-east corner of the
-  plot area. `axes(pic, …)` returns a `ChartFrame` — the `x`/`y`
-  scales, plot area, and resolved ticks plus `.line()/.scatter()/.bars()`
-  builders — so custom drawing stays in data space, and `legend()`
-  works standalone. Pure drawing on the public container verbs: no
-  shapes to register, composes with any shape set.
-- **Markings along a path (TikZ `decorations.markings`).**
-  `markPath(guide, …specs)` places arrow tips or plot marks at
-  positions along any guide — a `Path` or anything with an SVG outline
-  (`Arc`, `Circle`, shapes; the new `PathLike` union converts through
-  `pathFromSVG`). `{ mark: 'stealth', at: 0.5 }` is TikZ's
-  `mark=at position … with \arrow{…}`; `between: [a, b]` + `step` is
-  the repeated form; `scale` sizes the artwork. Tips rotate with the
-  tangent, plot marks stay upright, and marks inherit the path's
-  stroke color. Names resolve arrow-tip first, then plot mark —
-  `{ plotMark: 'circle' }` forces the scatter namespace for names both
-  claim. Returns a `MarkedPath` renderable (base path + resolved
-  marks), dispatched by `SVGRenderer` like `Plot`.
-- **Text along a path (TikZ `decorations.text`).**
-  `textAlongPath(guide, text, options)` flows text along any
-  `PathLike` via SVG `<textPath>`: the guide goes into `<defs>`
-  (never painted) and the text rides it, staying selectable, crisp
-  type. `anchor: 'middle'` centers on the midpoint (startOffset
-  derives from the anchor unless given); `side: 'right'` walks the
-  guide backwards to flip the text to the other side — arcs included,
-  via dense resampling (`Path.reverse` drops arc/quadratic segments).
-  Text color follows the text convention (the resolved stroke) unless
-  `color` is set. KaTeX cannot flow along a curve — plain text only.
-
-- **Graph layout — `graph()` (force-directed + circular).** A unified
-  builder for arbitrary graphs (cycles, undirected, disconnected — no
-  structural assumptions, unlike `tree`/`layered`). `.force({ seed })`
-  runs a seeded Fruchterman–Reingold spring embedder (repulsion +
-  attraction + cooling, viewport-clamped, deterministic per seed);
-  `.circular()` places nodes on a ring sized from the node count
-  (`order: 'given' | 'degree'`). The result mirrors `LayeredResult`
-  (`{ nodes, edges, getNode, toRenderables, bounds }`).
-- **`ext/gates` — logic gates.** The opt-in `gateShapes` set is
-  jikz's `shapes.gates.logic`: `and`/`nand`/`or`/`nor`/`xor`/`xnor`/
-  `not`/`buffer` with ANSI distinctive shapes (D-shape, concave-OR,
-  triangle) and IEC rectangular bodies (`variant: 'iec'`); negated gates
-  draw a bubble, and `gates.*` builders mirror `circuit.*`. A gate's
-  arity is part of its type: `gate(kind)` and the per-kind factories
-  return a `BinaryGate` (ports `in1`/`in2`/`out`) or a `UnaryGate`
-  (`in`/`out`), both extending the abstract `LogicGate` that carries the
-  drawing and the `out` port every gate has — so `andGate().in` is a
-  compile error rather than an `AnchorError` at render time.
-  `UNARY_GATE_PORTS`, `BINARY_GATE_PORTS` and `GATE_PORTS` (the union)
-  are the matching compile-time vocabularies, pinned against the runtime
-  port tables. Built entirely on the `defineShape`/port seams shared
-  with ext/circuits.
-- **SVG path import.** `pathFromSVG('M … C … Z')` parses any SVG `d`
-  string — absolute/relative, `H`/`V`/`S`/`T` shorthand, implicit
-  `M`→`L`, arcs with packed flags, sign-separated/exponent numbers —
-  into a `Path` (the inverse of `toSVGPath()`), so imported paths can be
-  drawn, decorated, measured and transformed. `parsePathData` exposes
-  the raw segment normalization; `rotatePathData` now reuses the same
-  parser (`Path.rotate` + `toSVGPath(precision)`), and `toSVGPath` gained
-  an optional precision argument for compact output.
-- **Named style registry (`\tikzset`).** `registerStyle('name', recipe)`
-  defines a reusable style; `parseStyleString('name, …')` and
-  `resolveStyle([...])` resolve it alongside the built-in presets, and
-  the frozen object it returns works in the array form
-  (`style: [name, …]`). Recipes compose other names (`['brand', dashed]`)
-  eagerly; re-registering replaces, and registered names shadow
-  built-ins. `hasStyle`/`registeredStyleNames` introspect the namespace.
-- **The `shade` verb + named shadings.** `pic.shade(obj, { … })` is
-  TikZ's `\shade` — a gradient fill spanning the shape's bounding box.
-  Accepts an explicit `gradient` spec or the TikZ color keys
-  (`leftColor`/`rightColor`, `topColor`/`bottomColor`, `innerColor`/
-  `outerColor`, `middleColor`, `ballColor`, `shading: 'axis' | 'radial' |
-  'ball'`). New builders `axisShading`/`radialShading`/`ballShading` +
-  `resolveShading` turn those keys into the existing `GradientSpec`.
-- **The `to` path verb.** `pen.to(point, { out, in, bend, looseness })`
-  now draws TikZ's `to[out=…, in=…]` curved connector — a single Bézier
-  whose control points derive from the angles. `bend: 'left' | 'right'`
-  is the symmetric shorthand (30° default); `to(point)` with no keys
-  stays a straight `--`. The underlying Bézier math was extracted from
-  `Edge` into a shared `bezierControlPoints` helper (`out`/`in`/`bend`/
-  `looseness`/`outLooseness`/`inLooseness`), so edges and pen segments
-  now route through one implementation.
-- **More arrow tips.** `circle` (`*`), `openCircle` (`o`), `square`,
-  `diamond`, `roundCap`, and `doubleBar` (`||`) join `stealth` / `latex` /
-  `to` / `bar`, all registered through the same public `registerArrowTip`
-  seam (10 built-in tips; TikZ spellings resolve to them).
-- **Plot marks.** `plot()` / `plotParametric()` / `plotPolar()` /
-  `plotFromPoints()` / `plotFromCoords()` accept a `marks` option
-  (`{ name, size, every }`) that draws scatter markers at each — or every
-  Nth — sampled point. Marks inherit the plot's stroke color; open marks
-  stroke it and `*Filled` marks fill with it. TikZ spellings accepted:
-  `*`, `+`, `x`/`X`, `o`.
-
-### Changed
-
-- **The repository moved to GitHub:** https://github.com/binboavetonik/jikz.
-  `repository`, `homepage` and `bugs` in `package.json` point there; CI is
-  GitHub Actions (`.github/workflows/ci.yml`, Node 18 and 24), releases
-  publish from a `v*` tag with npm provenance (`release.yml`), and the
-  docs deploy to GitHub Pages (`docs.yml`). The Bitbucket repository
-  stays as a read-only mirror so the URLs in already-published versions
-  keep resolving.
-
-- **The ported-shape base moved out of the circuits extension.**
-  `CircuitSymbol` and `symbolSize` are now `PortedShape` and
-  `intrinsicSize` in `geometry/PortedShape` — logic gates were importing
-  them from `ext/circuits/ports`, which made one extension depend on
-  another's internals. `ext/circuits` keeps what is circuit-specific:
-  `TwoTerminalSymbol`, `twoTerminalPorts` and the port-name constants.
-- **`AnchorError` names the anchors the shape does answer to.** A typo'd
-  port used to produce a message listing only cardinals; it now reads
-  `… This shape's own anchors: "in1", "in2", "out".` when the shape has
-  ports, and carries them as `error.known`.
-
-- **`mount({ panZoom })` takes the `attachPanZoom` function.** The flag
-  form is gone: pass the function itself, or an object carrying it
-  alongside options.
-
-  ```ts
-  import { attachPanZoom } from '@ozan.e/jikz'
-  pic.mount(el, { fit: true, panZoom: attachPanZoom })
-  pic.mount(el, { fit: true, panZoom: { attach: attachPanZoom, maxScale: 6 } })
-  ```
-
-  Importing the controller is now the opt-in, so `Picture` no longer
-  references it and a drawing that never pans stops carrying it:
-  `import { picture, point }` drops from 101,661 to 96,838 bytes
-  minified (29.2 kB gzipped). Behaviour, the controller API and the
-  viewport-group wrapping are unchanged.
-
-- **Fill patterns are values, like shapes.** A pattern is a
-  `PatternKind` — a tile definition carrying its name — and the twelve
-  TikZ tiles live in the `fillPatterns` set:
-
-  ```ts
-  style: { fillPattern: fillPatterns.dots }
-  style: { fillPattern: { pattern: fillPatterns.grid, color: '#2563eb', scale: 1.5 } }
-  const wavy = definePattern('wavy', { width: 12, height: 6, defaultLineWidth: 1, createContent })
-  ```
-
-  `registerPattern`, `getPatternDefinition`, `registeredPatternNames`,
-  `isPatternName`, `PATTERN_DEFINITIONS` and the string form
-  (`fillPattern: 'dots'`) are gone, as are the twelve `pattern *` style
-  preset NAMES — the `patternDots`/`patternGrid`/… preset objects remain
-  and now carry the value. The renderer no longer looks a pattern up, so
-  it cannot throw for an unknown one, and a picture that never fills
-  with a pattern no longer carries the tiles: `import { picture, point }`
-  drops from 104 kB to 102 kB minified.
-
-  Arrow tips and path decorations deliberately stay registries: their
-  tables are small and nearly every edge draws a tip, so the ceremony
-  would cost more than the bytes. CONTRIBUTING records that split.
+### Breaking
 
 - **Shapes are values; the global shape registry is gone.** A shape is
   now a `ShapeKind` — a factory plus the one flag Node needs to size it
@@ -214,13 +61,222 @@
   longer welded onto `Node` by a global table. `basicShapes` adds
   52 bytes; `allShapes` adds 92 kB / 14 kB — by choice, now.
 
+- **Fill patterns are values, like shapes.** A pattern is a
+  `PatternKind` — a tile definition carrying its name — and the twelve
+  TikZ tiles live in the `fillPatterns` set:
+
+  ```ts
+  style: { fillPattern: fillPatterns.dots }
+  style: { fillPattern: { pattern: fillPatterns.grid, color: '#2563eb', scale: 1.5 } }
+  const wavy = definePattern('wavy', { width: 12, height: 6, defaultLineWidth: 1, createContent })
+  ```
+
+  `registerPattern`, `getPatternDefinition`, `registeredPatternNames`,
+  `isPatternName`, `PATTERN_DEFINITIONS` and the string form
+  (`fillPattern: 'dots'`) are gone, as are the twelve `pattern *` style
+  preset NAMES — the `patternDots`/`patternGrid`/… preset objects remain
+  and now carry the value. The renderer no longer looks a pattern up, so
+  it cannot throw for an unknown one, and a picture that never fills
+  with a pattern no longer carries the tiles: `import { picture, point }`
+  drops from 104 kB to 102 kB minified.
+
+  Arrow tips and path decorations deliberately stay registries: their
+  tables are small and nearly every edge draws a tip, so the ceremony
+  would cost more than the bytes. CONTRIBUTING records that split.
+
+- **The ported-shape base moved out of the circuits extension.**
+  `CircuitSymbol` and `symbolSize` are now `PortedShape` and
+  `intrinsicSize` in `geometry/PortedShape` — logic gates were importing
+  them from `ext/circuits/ports`, which made one extension depend on
+  another's internals. `ext/circuits` keeps what is circuit-specific:
+  `TwoTerminalSymbol`, `twoTerminalPorts` and the port-name constants.
+
+### Added
+
+- **First-class pan/zoom for mounted pictures.**
+  `picture().mount(el, { fit: true, panZoom: attachPanZoom })` returns a
+  `PanZoomController`: wheel zooms to the cursor (exponential factor, so
+  trackpads are smooth and notched wheels match `wheelFactor` per click),
+  pointer-drag pans with a 3px click-safe threshold (pointer capture is
+  taken lazily at the threshold, so a plain click's compatibility event is
+  never retargeted off the scene element under the cursor), two-pointer pinch
+  zooms, and double-click resets to the fitted view. With `panZoom` the
+  root svg fills its container and the browser letterboxes the viewBox, so
+  the fitted view needs no pixel math and hidden (0×0) containers need no
+  refit. All state lives in one `<g class="jikz-viewport">` wrapping the
+  scene — panning mutates a single `transform` attribute, never re-renders.
+  `wasDrag()` separates drags from clicks, `screenToUser()` converts
+  client coordinates for hit-testing, `onTransform` reports every change
+  so views survive remounts, and `destroy()` detaches all listeners.
+
+  The transform math (`meetFit`, `screenToScene`, `sceneToScreen`,
+  `zoomAtScreenPoint`, `panByScreenDelta`, `clampScale`) is exported as
+  pure functions — DOM-free and unit-testable, matching the library's
+  plain-data architecture. Cursor conversion uses viewBox letterbox math
+  rather than `getScreenCTM`, so jsdom tests can stub the rect.
+
+  Handing `mount` the `attachPanZoom` function (or `{ attach: attachPanZoom, ...options }`)
+  rather than a flag is the opt-in: `Picture` does not reference the
+  controller, so a drawing that never pans does not carry it —
+  `import { picture, point }` is 4.8 kB smaller minified for it.
+
+  New `SVGRendererOptions.viewportGroup` wraps the scene in the viewport
+  group without interaction (inside any canvas-transform group), and
+  `attachPanZoom(svg, viewBox, options)` attaches a controller to an
+  already-mounted picture.
+
+- **Declarative SMIL animation.** Every render call — nodes, edges, bare
+  draws, text — accepts `animate: SVGAnimation | SVGAnimation[]`, emitted
+  as `<animate>`/`<animateTransform>` children of the element. Plain data
+  in the SVG tree: it serializes into `toSVG()` output (a saved static
+  file still animates) and mounts unchanged. `SVGAnimation` covers
+  `attributeName`, `values` or `from`/`to`, `dur`, `repeatCount`, `begin`,
+  `keyTimes`, `calcMode`/`keySplines`, `fill`, and `kind: 'animateTransform'`
+  with its `type` (`scale`/`rotate`/…). On nodes the animation lands on
+  the wrapping `<g>`, so shape and label animate together. CSS animation
+  stays available via `className`/`attributes`.
+
+- **Tree truncation: `collapsed` and `maxDepth`.** Large trees can be
+  laid out in windows: `TreeNodeSpec.collapsed: N` (or
+  `.collapsed(N)` on the builder) lays a node out as a leaf and records
+  the N withheld descendants on the result's new `collapsed` list — the
+  bookkeeping that drill-in markers (`+N›`) and click-to-re-root build
+  against. `tree({ maxDepth })` caps the layout at a depth with no
+  markers, for pure display truncation. Expansion state, marker visuals
+  and re-rooting stay app-side; see
+  [`examples/large-tree-collapse.ts`](examples/large-tree-collapse.ts).
+
+- **`ext/dataviz` — data visualization (TikZ `datavisualization`).**
+  Scaled axes with Heckbert "nice number" ticks, gridlines, tick and
+  axis labels, a legend, and `line`/`scatter`/`bar` series builders —
+  no more hand-rolled axes. `chart(pic, { series, … })` is the one-call
+  builder: domains infer from the data (`domain: 'auto'`, widened to
+  nice tick boundaries; bar series pin the baseline at 0), labeled
+  series collect into a framed legend at the north-east corner of the
+  plot area. `axes(pic, …)` returns a `ChartFrame` — the `x`/`y`
+  scales, plot area, and resolved ticks plus `.line()/.scatter()/.bars()`
+  builders — so custom drawing stays in data space, and `legend()`
+  works standalone. Pure drawing on the public container verbs: no
+  shapes to register, composes with any shape set.
+
+- **Markings along a path (TikZ `decorations.markings`).**
+  `markPath(guide, …specs)` places arrow tips or plot marks at
+  positions along any guide — a `Path` or anything with an SVG outline
+  (`Arc`, `Circle`, shapes; the new `PathLike` union converts through
+  `pathFromSVG`). `{ mark: 'stealth', at: 0.5 }` is TikZ's
+  `mark=at position … with \arrow{…}`; `between: [a, b]` + `step` is
+  the repeated form; `scale` sizes the artwork. Tips rotate with the
+  tangent, plot marks stay upright, and marks inherit the path's
+  stroke color. Names resolve arrow-tip first, then plot mark —
+  `{ plotMark: 'circle' }` forces the scatter namespace for names both
+  claim. Returns a `MarkedPath` renderable (base path + resolved
+  marks), dispatched by `SVGRenderer` like `Plot`.
+
+- **Text along a path (TikZ `decorations.text`).**
+  `textAlongPath(guide, text, options)` flows text along any
+  `PathLike` via SVG `<textPath>`: the guide goes into `<defs>`
+  (never painted) and the text rides it, staying selectable, crisp
+  type. `anchor: 'middle'` centers on the midpoint (startOffset
+  derives from the anchor unless given); `side: 'right'` walks the
+  guide backwards to flip the text to the other side — arcs included,
+  via dense resampling (`Path.reverse` drops arc/quadratic segments).
+  Text color follows the text convention (the resolved stroke) unless
+  `color` is set. KaTeX cannot flow along a curve — plain text only.
+
+- **Graph layout — `graph()` (force-directed + circular).** A unified
+  builder for arbitrary graphs (cycles, undirected, disconnected — no
+  structural assumptions, unlike `tree`/`layered`). `.force({ seed })`
+  runs a seeded Fruchterman–Reingold spring embedder (repulsion +
+  attraction + cooling, viewport-clamped, deterministic per seed);
+  `.circular()` places nodes on a ring sized from the node count
+  (`order: 'given' | 'degree'`). The result mirrors `LayeredResult`
+  (`{ nodes, edges, getNode, toRenderables, bounds }`).
+
+- **`ext/gates` — logic gates.** The opt-in `gateShapes` set is
+  jikz's `shapes.gates.logic`: `and`/`nand`/`or`/`nor`/`xor`/`xnor`/
+  `not`/`buffer` with ANSI distinctive shapes (D-shape, concave-OR,
+  triangle) and IEC rectangular bodies (`variant: 'iec'`); negated gates
+  draw a bubble, and `gates.*` builders mirror `circuit.*`. A gate's
+  arity is part of its type: `gate(kind)` and the per-kind factories
+  return a `BinaryGate` (ports `in1`/`in2`/`out`) or a `UnaryGate`
+  (`in`/`out`), both extending the abstract `LogicGate` that carries the
+  drawing and the `out` port every gate has — so `andGate().in` is a
+  compile error rather than an `AnchorError` at render time.
+  `UNARY_GATE_PORTS`, `BINARY_GATE_PORTS` and `GATE_PORTS` (the union)
+  are the matching compile-time vocabularies, pinned against the runtime
+  port tables. Built entirely on the `defineShape`/port seams shared
+  with ext/circuits.
+
+- **SVG path import.** `pathFromSVG('M … C … Z')` parses any SVG `d`
+  string — absolute/relative, `H`/`V`/`S`/`T` shorthand, implicit
+  `M`→`L`, arcs with packed flags, sign-separated/exponent numbers —
+  into a `Path` (the inverse of `toSVGPath()`), so imported paths can be
+  drawn, decorated, measured and transformed. `parsePathData` exposes
+  the raw segment normalization; `rotatePathData` now reuses the same
+  parser (`Path.rotate` + `toSVGPath(precision)`), and `toSVGPath` gained
+  an optional precision argument for compact output.
+
+- **Named style registry (`\tikzset`).** `registerStyle('name', recipe)`
+  defines a reusable style; `parseStyleString('name, …')` and
+  `resolveStyle([...])` resolve it alongside the built-in presets, and
+  the frozen object it returns works in the array form
+  (`style: [name, …]`). Recipes compose other names (`['brand', dashed]`)
+  eagerly; re-registering replaces, and registered names shadow
+  built-ins. `hasStyle`/`registeredStyleNames` introspect the namespace.
+
+- **The `shade` verb + named shadings.** `pic.shade(obj, { … })` is
+  TikZ's `\shade` — a gradient fill spanning the shape's bounding box.
+  Accepts an explicit `gradient` spec or the TikZ color keys
+  (`leftColor`/`rightColor`, `topColor`/`bottomColor`, `innerColor`/
+  `outerColor`, `middleColor`, `ballColor`, `shading: 'axis' | 'radial' |
+  'ball'`). New builders `axisShading`/`radialShading`/`ballShading` +
+  `resolveShading` turn those keys into the existing `GradientSpec`.
+
+- **The `to` path verb.** `pen.to(point, { out, in, bend, looseness })`
+  now draws TikZ's `to[out=…, in=…]` curved connector — a single Bézier
+  whose control points derive from the angles. `bend: 'left' | 'right'`
+  is the symmetric shorthand (30° default); `to(point)` with no keys
+  stays a straight `--`. The underlying Bézier math was extracted from
+  `Edge` into a shared `bezierControlPoints` helper (`out`/`in`/`bend`/
+  `looseness`/`outLooseness`/`inLooseness`), so edges and pen segments
+  now route through one implementation.
+
+- **More arrow tips.** `circle` (`*`), `openCircle` (`o`), `square`,
+  `diamond`, `roundCap`, and `doubleBar` (`||`) join `stealth` / `latex` /
+  `to` / `bar`, all registered through the same public `registerArrowTip`
+  seam (10 built-in tips; TikZ spellings resolve to them).
+
+- **Plot marks.** `plot()` / `plotParametric()` / `plotPolar()` /
+  `plotFromPoints()` / `plotFromCoords()` accept a `marks` option
+  (`{ name, size, every }`) that draws scatter markers at each — or every
+  Nth — sampled point. Marks inherit the plot's stroke color; open marks
+  stroke it and `*Filled` marks fill with it. TikZ spellings accepted:
+  `*`, `+`, `x`/`X`, `o`.
+
+### Changed
+
+- **The repository moved to GitHub:** https://github.com/binboavetonik/jikz.
+  `repository`, `homepage` and `bugs` in `package.json` point there; CI is
+  GitHub Actions (`.github/workflows/ci.yml`, Node 18 and 24), releases
+  publish from a `v*` tag with npm provenance (`release.yml`), and the
+  docs deploy to GitHub Pages (`docs.yml`). The Bitbucket repository
+  stays as a read-only mirror so the URLs in already-published versions
+  keep resolving.
+
+- **`AnchorError` names the anchors the shape does answer to.** A typo'd
+  port used to produce a message listing only cardinals; it now reads
+  `… This shape's own anchors: "in1", "in2", "out".` when the shape has
+  ports, and carries them as `error.known`.
+
 - **JavaScript sourcemaps ship with the ES modules.** Each `dist/**/*.js`
   has a `.js.map` beside it, and `src/` is included in the package so
   the maps (and the existing `.d.ts.map` files) resolve to real source
   in debuggers and go-to-definition. Maps carry mappings only, not a
   second copy of the source. The UMD build has no map.
+
 - **KaTeX peer range widened to `>=0.16.0`.** The adapter only needs
   `renderToString`; verified against KaTeX 0.18.
+
 - **Repository scaffolding for contributors.** `CONTRIBUTING.md`,
   `CODE_OF_CONDUCT.md`, `SECURITY.md`, `.editorconfig`, an ESLint config
   (`npm run lint`, correctness rules only — no formatter), and CI that
@@ -232,7 +288,7 @@
   module (`dist/index.js` is the entry; `module` and `exports.import`
   point at it) instead of a single 500 kB bundle. Nothing registers at
   import time: shapes and fill patterns are values a picture or a style
-  is handed (see the two entries above), and the two tables that remain
+  is handed (see *Breaking* above), and the two tables that remain
   — arrow tips and path decorations — fill on first use, so a user
   `registerArrowTip` still wins over a built-in of the same name.
   Measured through a consumer's bundler: `import { point }` costs 2 kB
@@ -340,66 +396,11 @@
   even-distribution redistribution is dropped) and parents still centre
   over their outermost children.
 
-## 0.7.0
-
-### Added
-
-- **First-class pan/zoom for mounted pictures.**
-  `picture().mount(el, { fit: true, panZoom: true })` now returns a
-  `PanZoomController`: wheel zooms to the cursor (exponential factor, so
-  trackpads are smooth and notched wheels match `wheelFactor` per click),
-  pointer-drag pans with a 3px click-safe threshold (pointer capture is
-  taken lazily at the threshold, so a plain click's compatibility event is
-  never retargeted off the scene element under the cursor), two-pointer pinch
-  zooms, and double-click resets to the fitted view. With `panZoom` the
-  root svg fills its container and the browser letterboxes the viewBox, so
-  the fitted view needs no pixel math and hidden (0×0) containers need no
-  refit. All state lives in one `<g class="jikz-viewport">` wrapping the
-  scene — panning mutates a single `transform` attribute, never re-renders.
-  `wasDrag()` separates drags from clicks, `screenToUser()` converts
-  client coordinates for hit-testing, `onTransform` reports every change
-  so views survive remounts, and `destroy()` detaches all listeners.
-
-  The transform math (`meetFit`, `screenToScene`, `sceneToScreen`,
-  `zoomAtScreenPoint`, `panByScreenDelta`, `clampScale`) is exported as
-  pure functions — DOM-free and unit-testable, matching the library's
-  plain-data architecture. Cursor conversion uses viewBox letterbox math
-  rather than `getScreenCTM`, so jsdom tests can stub the rect.
-
-  New `SVGRendererOptions.viewportGroup` wraps the scene in the viewport
-  group without interaction (inside any canvas-transform group), and
-  `attachPanZoom(svg, viewBox, options)` attaches a controller to an
-  already-mounted picture.
-
-- **Declarative SMIL animation.** Every render call — nodes, edges, bare
-  draws, text — accepts `animate: SVGAnimation | SVGAnimation[]`, emitted
-  as `<animate>`/`<animateTransform>` children of the element. Plain data
-  in the SVG tree: it serializes into `toSVG()` output (a saved static
-  file still animates) and mounts unchanged. `SVGAnimation` covers
-  `attributeName`, `values` or `from`/`to`, `dur`, `repeatCount`, `begin`,
-  `keyTimes`, `calcMode`/`keySplines`, `fill`, and `kind: 'animateTransform'`
-  with its `type` (`scale`/`rotate`/…). On nodes the animation lands on
-  the wrapping `<g>`, so shape and label animate together. CSS animation
-  stays available via `className`/`attributes`.
-
-- **Tree truncation: `collapsed` and `maxDepth`.** Large trees can be
-  laid out in windows: `TreeNodeSpec.collapsed: N` (or
-  `.collapsed(N)` on the builder) lays a node out as a leaf and records
-  the N withheld descendants on the result's new `collapsed` list — the
-  bookkeeping that drill-in markers (`+N›`) and click-to-re-root build
-  against. `tree({ maxDepth })` caps the layout at a depth with no
-  markers, for pure display truncation. Expansion state, marker visuals
-  and re-rooting stay app-side; see
-  [`examples/large-tree-collapse.ts`](examples/large-tree-collapse.ts).
-
-### Fixed
-
 - **Elements with both text content and children no longer drop the
   children.** `SVGBuilder`'s serializer and DOM mounter treated `text`
   and `children` as mutually exclusive, which would have silently
   discarded `<animate>` children on `<text>` elements. Text now emits
   first, children after.
-
 ## 0.6.0
 
 ### Changed
