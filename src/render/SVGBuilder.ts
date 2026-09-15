@@ -362,11 +362,46 @@ export function createSVGBuilder(): SVGBuilder {
 // Serialization (pure string — runs in any JS environment)
 // ─────────────────────────────────────────────────────────────────
 
+/**
+ * Decimal places kept when a coordinate reaches the output.
+ *
+ * Six is far finer than any visible difference - a millionth of a pixel -
+ * while being coarse enough to sit above the engine-dependent bits.
+ * `Math.sin`/`cos`/`pow`/`acos` are not required by ECMAScript to be
+ * correctly rounded, so without this the same picture serializes
+ * differently on different JS engines.
+ */
+const ATTR_DECIMALS = 6
+
+/** Matches a decimal run longer than {@link ATTR_DECIMALS} anywhere in a value. */
+const LONG_DECIMAL = /-?\d+\.\d{7,}/g
+
+function roundAttrNumber(n: number): string {
+  if (!Number.isFinite(n)) return String(n)
+  // Number() drops the padding `toFixed` adds, so 60.000000 emits as `60`
+  // and the rounding costs no bytes on values that did not need it.
+  return String(Number(n.toFixed(ATTR_DECIMALS)))
+}
+
+/**
+ * Serialize one attribute value, rounding any numbers it carries.
+ *
+ * Handles numbers and strings alike because most coordinates reach the
+ * output inside a string: path `d` data accounts for the large majority
+ * of them, with `transform` and `viewBox` behind it.
+ */
+export function attrValue(v: unknown): string {
+  if (typeof v === 'number') return roundAttrNumber(v)
+  const s = String(v)
+  // Fast path: no decimal point means nothing to round.
+  return s.includes('.') ? s.replace(LONG_DECIMAL, (m) => roundAttrNumber(Number(m))) : s
+}
+
 function serialize(el: SVGNode): string {
   const attrPairs = Object.entries(el.attrs)
     .filter(([, v]) => v !== undefined && v !== null)
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    .map(([k, v]) => `${k}="${escape(String(v))}"`)
+    .map(([k, v]) => `${k}="${escape(attrValue(v))}"`)
   const open = [el.tag, ...attrPairs].join(' ')
 
   // Text content and children (e.g. <animate>) coexist: text first.
@@ -400,7 +435,7 @@ const XHTML_NS = 'http://www.w3.org/1999/xhtml'
 function createDOM(node: SVGNode): globalThis.Element {
   const el = document.createElementNS(SVG_NS, node.tag)
   for (const [k, v] of Object.entries(node.attrs)) {
-    if (v !== undefined && v !== null) el.setAttribute(k, String(v))
+    if (v !== undefined && v !== null) el.setAttribute(k, attrValue(v))
   }
   // Text first (a text node — assigning textContent would wipe children),
   // then children such as <animate>.
@@ -420,7 +455,7 @@ function createDOM(node: SVGNode): globalThis.Element {
       // should emit the xmlns explicitly.
       const fo = document.createElementNS(SVG_NS, 'foreignObject')
       for (const [k, v] of Object.entries(child.attrs)) {
-        if (v !== undefined && v !== null) fo.setAttribute(k, String(v))
+        if (v !== undefined && v !== null) fo.setAttribute(k, attrValue(v))
       }
       for (const sub of child.children) {
         if ('raw' in sub) {
