@@ -1,6 +1,20 @@
 # Changelog
 
-## Unreleased
+## 0.8.0 — 2026-09-15
+
+0.8.0 adds `ext/petri`, jikz's port of TikZ's `petri` library, and
+settles two rendering behaviours that were quietly wrong: coordinates
+are now rounded at the serialization boundary, and text takes the
+colour it was asked for instead of falling back to black.
+
+A minor rather than a patch release, because the public surface grows:
+a whole ext module, `PIXEL_EPSILON`, the petri constants, and
+`styleList` alongside `mergeStyles`.
+
+**Upgrading.** No API changed, but two things can move a committed SVG:
+rounded coordinates, and text that now honours an explicit `fill` (on
+`text()`) or `textStyle` (on an edge label) instead of rendering black.
+Regenerate any checked-in output and diff it.
 
 ### Added
 
@@ -16,10 +30,11 @@
   quietly — the lookup expands to `\relax`, so every token lands on the
   place's centre; a ring is used instead. `colored tokens` and
   `structured tokens` are the `colors` and `labels` options, the
-  latter carrying TikZ's white `\tiny` text for the caller to draw. Token spacing is held as a
-  ratio of the token size rather than as TikZ's fixed `1.5ex`, so
-  sizing the dots up spreads them to match instead of piling them into
-  each other; at the default size it is exactly TikZ's length.
+  latter carrying TikZ's white `\tiny` text for the caller to draw.
+  Token spacing is held as a ratio of the token size rather than as
+  TikZ's fixed `1.5ex`, so sizing the dots up spreads them to match
+  instead of piling them into each other; at the default size it is
+  exactly TikZ's length.
 
   Tokens are values rather than part of the place: a place and its
   dots are two paints, which one shape's `toSVGPath()` cannot carry.
@@ -53,7 +68,8 @@
   reaches text; that rule lives a layer up in `Picture.ts` and is
   where it belongs. `examples/layout-clusters.ts` and
   `examples/scope-groups.ts` were both asking for coloured labels and
-  silently getting black ones.
+  silently getting black ones — as is any drawing out there that passed
+  a `fill` to `text()`, so committed SVG can shift on upgrade.
 
 - **`star`, `pentagon`, `hexagon`, `regularPolygon` and
   `isoscelesTriangle` resolved to different things in TypeScript and at
