@@ -25,7 +25,7 @@
   "sideEffects": false,
   "scripts": {
     "dev": "vitepress dev docs",
-    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json && tsc -p tsconfig.scripts.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json && tsc -p tsconfig.scripts.json && tsc -p tsconfig.parser.json",
     "build": "npm run typecheck && vite build && node scripts/postbuild-dts.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
