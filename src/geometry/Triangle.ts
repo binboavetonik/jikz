@@ -1,6 +1,6 @@
 import { Point, point } from '../core/Point'
 import type { PointLike } from '../core/types'
-import { EPSILON, approxEqual } from '../utils/math'
+import { EPSILON, approxEqual, clamp, circumcenterOf } from '../utils/math'
 import { Line } from './Line'
 import { Circle } from './Circle'
 import { Polygon } from './Polygon'
@@ -78,25 +78,16 @@ export class Triangle extends Polygon {
    * Center of the circumscribed circle (equidistant from all vertices)
    */
   get circumcenter(): Point {
-    const ax = this.A.x, ay = this.A.y
-    const bx = this.B.x, by = this.B.y
-    const cx = this.C.x, cy = this.C.y
+    const c = circumcenterOf(
+      this.A.x, this.A.y,
+      this.B.x, this.B.y,
+      this.C.x, this.C.y
+    )
 
-    const d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by))
+    // Degenerate triangle (collinear points)
+    if (c === null) return this.centroid
 
-    if (approxEqual(d, 0, EPSILON)) {
-      // Degenerate triangle (collinear points)
-      return this.centroid
-    }
-
-    const aSq = ax * ax + ay * ay
-    const bSq = bx * bx + by * by
-    const cSq = cx * cx + cy * cy
-
-    const ux = (aSq * (by - cy) + bSq * (cy - ay) + cSq * (ay - by)) / d
-    const uy = (aSq * (cx - bx) + bSq * (ax - cx) + cSq * (bx - ax)) / d
-
-    return point(ux, uy)
+    return point(c.x, c.y)
   }
 
   /**
@@ -273,7 +264,8 @@ export class Triangle extends Polygon {
     const ba = this.B.sub(this.A)
     const ca = this.C.sub(this.A)
     const dot = ba.x * ca.x + ba.y * ca.y
-    return Math.acos(dot / (ba.length * ca.length))
+    // clamp: FP error can push the quotient just past +/-1, which is NaN
+    return Math.acos(clamp(dot / (ba.length * ca.length), -1, 1))
   }
 
   /**
@@ -283,7 +275,8 @@ export class Triangle extends Polygon {
     const ab = this.A.sub(this.B)
     const cb = this.C.sub(this.B)
     const dot = ab.x * cb.x + ab.y * cb.y
-    return Math.acos(dot / (ab.length * cb.length))
+    // clamp: FP error can push the quotient just past +/-1, which is NaN
+    return Math.acos(clamp(dot / (ab.length * cb.length), -1, 1))
   }
 
   /**
@@ -293,7 +286,8 @@ export class Triangle extends Polygon {
     const ac = this.A.sub(this.C)
     const bc = this.B.sub(this.C)
     const dot = ac.x * bc.x + ac.y * bc.y
-    return Math.acos(dot / (ac.length * bc.length))
+    // clamp: FP error can push the quotient just past +/-1, which is NaN
+    return Math.acos(clamp(dot / (ac.length * bc.length), -1, 1))
   }
 
   /**

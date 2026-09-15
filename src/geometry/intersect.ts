@@ -1,5 +1,5 @@
 import { Point, point } from '../core/Point'
-import { EPSILON, approxEqual } from '../utils/math'
+import { EPSILON, PIXEL_EPSILON, approxEqual } from '../utils/math'
 import { Line } from './Line'
 import { Circle } from './Circle'
 import { Arc } from './Arc'
@@ -121,33 +121,38 @@ export function intersectSegmentSegment(
 export function intersectLineCircle(
   line: Line,
   circle: Circle,
-  epsilon = EPSILON
+  epsilon = PIXEL_EPSILON
 ): IntersectionResult {
-  const d = line.direction
-  const f = point(line.start.x - circle.center.x, line.start.y - circle.center.y)
+  // Compare the perpendicular distance from the centre against the radius
+  // rather than testing a discriminant. The discriminant scales with the
+  // fourth power of the coordinates, so no fixed tolerance classifies it
+  // correctly; these are two lengths in the same units at any scale.
+  const foot = line.projectPoint(circle.center)
+  const dist = foot.distanceTo(circle.center)
+  const r = circle.radius
 
-  const a = d.x * d.x + d.y * d.y
-  const b = 2 * (f.x * d.x + f.y * d.y)
-  const c = f.x * f.x + f.y * f.y - circle.radius * circle.radius
-
-  const discriminant = b * b - 4 * a * c
-
-  if (discriminant < -epsilon) {
+  if (dist > r + epsilon) {
     return { points: [], coincident: false }
   }
 
-  if (approxEqual(discriminant, 0, epsilon)) {
-    // Tangent - single intersection
-    const t = -b / (2 * a)
-    return { points: [line.at(t)], coincident: false }
+  // Tangent - single intersection. Deliberately a wide band: the half-chord
+  // below is a cancellation near tangency, and sqrt turns its relative error
+  // into the square root of itself, so the foot of the perpendicular is the
+  // far more accurate answer for every case that lands in here.
+  if (approxEqual(dist, r, epsilon)) {
+    return { points: [foot], coincident: false }
   }
 
-  // Two intersections
-  const sqrtDisc = Math.sqrt(discriminant)
-  const t1 = (-b - sqrtDisc) / (2 * a)
-  const t2 = (-b + sqrtDisc) / (2 * a)
+  const half = Math.sqrt(Math.max(0, r * r - dist * dist))
+  const u = line.unitDirection
 
-  return { points: [line.at(t1), line.at(t2)], coincident: false }
+  return {
+    points: [
+      point(foot.x - u.x * half, foot.y - u.y * half),
+      point(foot.x + u.x * half, foot.y + u.y * half),
+    ],
+    coincident: false,
+  }
 }
 
 /**
@@ -156,7 +161,7 @@ export function intersectLineCircle(
 export function intersectSegmentCircle(
   segment: Line,
   circle: Circle,
-  epsilon = EPSILON
+  epsilon = PIXEL_EPSILON
 ): IntersectionResult {
   const result = intersectLineCircle(segment, circle, epsilon)
 
@@ -178,30 +183,36 @@ export function intersectSegmentCircle(
 export function intersectCircleCircle(
   circle1: Circle,
   circle2: Circle,
-  epsilon = EPSILON
+  epsilon = PIXEL_EPSILON
 ): IntersectionResult {
   const dx = circle2.center.x - circle1.center.x
   const dy = circle2.center.y - circle1.center.y
   const d = Math.sqrt(dx * dx + dy * dy)
+  const r1 = circle1.radius
+  const r2 = circle2.radius
 
-  // Check for coincident circles
-  if (approxEqual(d, 0, epsilon) && approxEqual(circle1.radius, circle2.radius, epsilon)) {
+  // Check for coincident circles. This guard has to stay approximate: `d` is
+  // the divisor below, so centres that are merely very close together - not
+  // exactly equal - would otherwise blow the offset `a` up to ~1e16 and place
+  // the "intersections" thousands of pixels away from the circles.
+  if (approxEqual(d, 0, epsilon) && approxEqual(r1, r2, epsilon)) {
     return { points: [], coincident: true }
   }
 
   // Check for no intersection (too far apart or one inside the other)
-  if (d > circle1.radius + circle2.radius + epsilon) {
+  if (d > r1 + r2 + epsilon) {
     return { points: [], coincident: false }
   }
 
-  if (d + epsilon < Math.abs(circle1.radius - circle2.radius)) {
+  if (d + epsilon < Math.abs(r1 - r2)) {
     return { points: [], coincident: false }
   }
 
-  // Check for tangent (single intersection)
-  if (approxEqual(d, circle1.radius + circle2.radius, epsilon) ||
-      approxEqual(d, Math.abs(circle1.radius - circle2.radius), epsilon)) {
-    const t = circle1.radius / d
+  // Check for tangent (single intersection). As with the line-circle case the
+  // band is wide on purpose: `h` below cancels catastrophically near tangency,
+  // so anything close to it is better served by this direct construction.
+  if (approxEqual(d, r1 + r2, epsilon) || approxEqual(d, Math.abs(r1 - r2), epsilon)) {
+    const t = r1 / d
     const intersection = point(
       circle1.center.x + dx * t,
       circle1.center.y + dy * t
@@ -210,11 +221,9 @@ export function intersectCircleCircle(
   }
 
   // Two intersections
-  const r1 = circle1.radius
-  const r2 = circle2.radius
-
   const a = (r1 * r1 - r2 * r2 + d * d) / (2 * d)
-  const h = Math.sqrt(r1 * r1 - a * a)
+  // clamp: just inside the tangent band the radicand can still go negative
+  const h = Math.sqrt(Math.max(0, r1 * r1 - a * a))
 
   const px = circle1.center.x + (a * dx) / d
   const py = circle1.center.y + (a * dy) / d

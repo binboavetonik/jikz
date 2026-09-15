@@ -8,6 +8,7 @@ export type { PointLike, Styleable, Matrix, AngleOptions } from './core/types'
 // Utils
 export {
   EPSILON,
+  PIXEL_EPSILON,
   degToRad,
   radToDeg,
   normalizeAngle,

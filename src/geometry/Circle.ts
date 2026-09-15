@@ -1,7 +1,7 @@
 import { Point, point } from '../core/Point'
 import type { PointLike, AngleOptions } from '../core/types'
 import { anchorOnCircle, type AnchorSpec } from '../core/Anchor'
-import { degToRad, EPSILON, approxEqual } from '../utils/math'
+import { degToRad, EPSILON, approxEqual, circumcenterOf } from '../utils/math'
 import type { Shape } from './Shape'
 
 /**
@@ -325,20 +325,12 @@ export function circleThrough(p1: PointLike, p2: PointLike, p3: PointLike): Circ
   const b = point(p2.x, p2.y)
   const c = point(p3.x, p3.y)
 
-  // Check for collinearity
-  const d = 2 * (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y))
-  if (approxEqual(d, 0, EPSILON)) {
+  const found = circumcenterOf(a.x, a.y, b.x, b.y, c.x, c.y)
+  if (found === null) {
     return null // Points are collinear
   }
 
-  const aSq = a.x * a.x + a.y * a.y
-  const bSq = b.x * b.x + b.y * b.y
-  const cSq = c.x * c.x + c.y * c.y
-
-  const centerX = (aSq * (b.y - c.y) + bSq * (c.y - a.y) + cSq * (a.y - b.y)) / d
-  const centerY = (aSq * (c.x - b.x) + bSq * (a.x - c.x) + cSq * (b.x - a.x)) / d
-
-  const center = point(centerX, centerY)
+  const center = point(found.x, found.y)
   const radius = center.distanceTo(a)
 
   return new Circle(center, radius)

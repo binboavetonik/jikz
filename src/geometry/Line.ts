@@ -1,6 +1,6 @@
 import { Point, point } from '../core/Point'
 import type { PointLike } from '../core/types'
-import { approxEqual, EPSILON } from '../utils/math'
+import { approxEqual, EPSILON, PIXEL_EPSILON } from '../utils/math'
 
 /**
  * A line defined by two points, supporting both infinite line
@@ -231,7 +231,7 @@ export class Line {
   /**
    * Check if two lines are parallel
    */
-  isParallelTo(other: Line, epsilon = EPSILON): boolean {
+  isParallelTo(other: Line, epsilon = PIXEL_EPSILON): boolean {
     const cross = this.direction.x * other.direction.y - this.direction.y * other.direction.x
     return approxEqual(cross, 0, epsilon)
   }
@@ -239,7 +239,7 @@ export class Line {
   /**
    * Check if two lines are perpendicular
    */
-  isPerpendicularTo(other: Line, epsilon = EPSILON): boolean {
+  isPerpendicularTo(other: Line, epsilon = PIXEL_EPSILON): boolean {
     const dot = this.direction.x * other.direction.x + this.direction.y * other.direction.y
     return approxEqual(dot, 0, epsilon)
   }
