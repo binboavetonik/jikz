@@ -54,6 +54,26 @@
   no privileged access, which is the only thing that makes "write your
   own" true rather than decorative.
 
+- **`ext/circuits` grows seven symbols and a diode variant.** Read off
+  `tikzlibrarycircuits.ee.IEC.code.tex` rather than from memory: the
+  library declares `battery`, `bulb`, `amperemeter`, `voltmeter`,
+  `ohmmeter`, `ac source` and `dc source`, and jikz had none of them.
+  It also declares a Schottky diode, now a `diode` variant beside
+  `zener` and `led`.
+
+  The three meters are one symbol under three shape names, and the
+  name fixes the letter — `{ shape: 'voltmeter', shapeOptions:
+  { variant: 'ammeter' } }` still draws a V. Their A/V/Ω are **stroked
+  as part of the symbol** rather than set as node text, so they scale
+  with `width`/`height` like the rest of the drawing; `ext/circuits`
+  symbols opt out of text auto-sizing, and a text glyph would have
+  been the one part that did not.
+
+  The DC supply draws its broken line as three segments rather than
+  with `stroke-dasharray`, for the same reason the marking exists at
+  all: a symbol is one path and one stroke, so a dash pattern would
+  have dashed the leads and the circle too.
+
 ### Changed
 
 - **The cookbook renders real math.** Every `$...$` label in a gallery

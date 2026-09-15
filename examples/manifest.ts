@@ -653,7 +653,7 @@ const meta: DemoMeta[] = [
     id: "circuit-symbols",
     category: "physics-engineering",
     title: "Circuit symbol gallery — ext/circuits",
-    description: "The circuits extension (jikz's \\usetikzlibrary{circuits.ee} analogue) ships symbols built ONLY on public seams: defineShape, port anchors, rotate. Handing circuitShapes to a picture is what makes the names resolve, and because the set is a value the IDE reads the names and their options off it — misspellings are compile errors. The circuit.* builders used below are the fully-typed route: variants autocomplete too. Every symbol has an intrinsic size and never stretches to fit text.",
+    description: "The circuits extension (jikz's \\usetikzlibrary{circuits.ee} analogue) ships symbols built ONLY on public seams: defineShape, port anchors, rotate. Handing circuitShapes to a picture is what makes the names resolve, and because the set is a value the IDE reads the names and their options off it — misspellings are compile errors. The circuit.* builders used below are the fully-typed route: variants autocomplete too. Every symbol has an intrinsic size and never stretches to fit text. The set covers the symbols TikZ's circuits.ee.IEC declares \u2014 passives, sources, supplies, meters, battery, bulb, ground and op-amp \u2014 with the meters' A/V/\u03a9 stroked as part of the symbol so they scale with it.",
   },
   {
     id: "logic-gates",

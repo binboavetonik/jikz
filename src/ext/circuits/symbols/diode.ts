@@ -5,7 +5,7 @@ import { intrinsicSize } from '../../../geometry/PortedShape'
 import { TwoTerminalSymbol } from '../ports'
 
 /** Diode family: standard, Zener (hooked cathode bar), LED (light arrows). */
-export type DiodeVariant = 'standard' | 'zener' | 'led'
+export type DiodeVariant = 'standard' | 'zener' | 'schottky' | 'led'
 
 /** Diode symbol options. */
 export interface DiodeOptions extends ShapeOptions {
@@ -59,7 +59,14 @@ export class Diode extends TwoTerminalSymbol {
     ]
 
     // Cathode bar.
-    if (this.variant === 'zener') {
+    if (this.variant === 'schottky') {
+      // Bar with both hooks on the same side — the S that tells a
+      // Schottky from a Zener, whose hooks are diagonally opposed.
+      const hook = halfH * 0.4
+      parts.push(
+        `M ${x2 - hook} ${top + hook} L ${x2} ${top} L ${x2} ${bottom} L ${x2 - hook} ${bottom - hook}`
+      )
+    } else if (this.variant === 'zener') {
       // Bar with bent tips (Zener "Z" hooks).
       const hook = halfH * 0.4
       parts.push(

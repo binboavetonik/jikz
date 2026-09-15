@@ -731,6 +731,24 @@ export {
   ground,
   OpAmp,
   opAmp,
+  Battery,
+  battery,
+  BATTERY_DEFAULT_WIDTH,
+  BATTERY_DEFAULT_HEIGHT,
+  Bulb,
+  bulb,
+  BULB_DEFAULT_WIDTH,
+  BULB_DEFAULT_HEIGHT,
+  Meter,
+  meter,
+  METER_DEFAULT_WIDTH,
+  METER_DEFAULT_HEIGHT,
+  AcSource,
+  DcSource,
+  acSource,
+  dcSource,
+  SUPPLY_DEFAULT_WIDTH,
+  SUPPLY_DEFAULT_HEIGHT,
 } from './ext/circuits'
 
 export type {
@@ -752,6 +770,12 @@ export type {
   SourceOptions,
   GroundOptions,
   OpAmpOptions,
+  BatteryOptions,
+  BatteryVariant,
+  BulbOptions,
+  MeterOptions,
+  MeterVariant,
+  SupplyOptions,
 } from './ext/circuits'
 
 // Logic gates (TikZ shapes.gates.logic) — opt-in shape set

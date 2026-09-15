@@ -243,7 +243,7 @@ Principal rays from the arrow tip: parallel-then-focus, through-center-straight 
 
 ![Circuit symbol gallery — ext/circuits](img/circuit-symbols.svg)
 
-The circuits extension (jikz's \usetikzlibrary{circuits.ee} analogue) ships symbols built ONLY on public seams: defineShape, port anchors, rotate. Handing circuitShapes to a picture is what makes the names resolve, and because the set is a value the IDE reads the names and their options off it — misspellings are compile errors. The circuit.* builders used below are the fully-typed route: variants autocomplete too. Every symbol has an intrinsic size and never stretches to fit text.
+The circuits extension (jikz's \usetikzlibrary{circuits.ee} analogue) ships symbols built ONLY on public seams: defineShape, port anchors, rotate. Handing circuitShapes to a picture is what makes the names resolve, and because the set is a value the IDE reads the names and their options off it — misspellings are compile errors. The circuit.* builders used below are the fully-typed route: variants autocomplete too. Every symbol has an intrinsic size and never stretches to fit text. The set covers the symbols TikZ's circuits.ee.IEC declares — passives, sources, supplies, meters, battery, bulb, ground and op-amp — with the meters' A/V/Ω stroked as part of the symbol so they scale with it.
 
 **Source:** [`examples/circuit-symbols.ts`](../../examples/circuit-symbols.ts)
 

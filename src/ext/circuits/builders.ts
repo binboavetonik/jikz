@@ -23,6 +23,7 @@ import type { ResistorVariant } from './symbols/resistor'
 import type { CapacitorVariant } from './symbols/capacitor'
 import type { DiodeVariant } from './symbols/diode'
 import type { SwitchVariant } from './symbols/switch'
+import type { BatteryVariant } from './symbols/battery'
 
 /** NodeOptions minus the fields a builder fills in for you. */
 type BaseOptions = Omit<NodeOptions, 'shape' | 'shapeOptions'>
@@ -59,7 +60,7 @@ export const circuit = {
     return build('inductor', options)
   },
 
-  /** Diode node options. `variant`: standard (default), zener, or led. */
+  /** Diode node options. `variant`: standard (default), zener, schottky, or led. */
   diode(options: BaseOptions & { variant?: DiodeVariant } = {}): NodeOptions {
     const { variant, ...base } = options
     return build('diode', base, variant ? { variant } : undefined)
@@ -89,6 +90,42 @@ export const circuit = {
   /** Op-amp node options (ports: `-`/`in-`, `+`/`in+`, `out`). */
   opAmp(options: BaseOptions = {}): NodeOptions {
     return build('op amp', options)
+  },
+
+  /** Battery node options. `variant`: multi-cell (default) or single. */
+  battery(options: BaseOptions & { variant?: BatteryVariant } = {}): NodeOptions {
+    const { variant, ...base } = options
+    return build('battery', base, variant ? { variant } : undefined)
+  },
+
+  /** Lamp node options. */
+  bulb(options: BaseOptions = {}): NodeOptions {
+    return build('bulb', options)
+  },
+
+  /** AC supply node options. */
+  acSource(options: BaseOptions = {}): NodeOptions {
+    return build('ac source', options)
+  },
+
+  /** DC supply node options. */
+  dcSource(options: BaseOptions = {}): NodeOptions {
+    return build('dc source', options)
+  },
+
+  /** Ammeter node options — the A meter. */
+  ammeter(options: BaseOptions = {}): NodeOptions {
+    return build('ammeter', options)
+  },
+
+  /** Voltmeter node options — the V meter. */
+  voltmeter(options: BaseOptions = {}): NodeOptions {
+    return build('voltmeter', options)
+  },
+
+  /** Ohmmeter node options — the Ω meter. */
+  ohmmeter(options: BaseOptions = {}): NodeOptions {
+    return build('ohmmeter', options)
   },
 } as const
 

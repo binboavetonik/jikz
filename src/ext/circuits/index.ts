@@ -38,6 +38,10 @@ import type { InductorOptions } from './symbols/inductor'
 import type { SourceOptions } from './symbols/sources'
 import type { GroundOptions } from './symbols/ground'
 import type { OpAmpOptions } from './symbols/opamp'
+import type { BatteryOptions } from './symbols/battery'
+import type { BulbOptions } from './symbols/bulb'
+import type { MeterOptions } from './symbols/meters'
+import type { SupplyOptions } from './symbols/acdc'
 import { resistor } from './symbols/resistor'
 import { capacitor } from './symbols/capacitor'
 import { inductor } from './symbols/inductor'
@@ -46,6 +50,10 @@ import { createSwitch } from './symbols/switch'
 import { voltageSource, currentSource } from './symbols/sources'
 import { ground } from './symbols/ground'
 import { opAmp } from './symbols/opamp'
+import { battery } from './symbols/battery'
+import { bulb } from './symbols/bulb'
+import { meter } from './symbols/meters'
+import { acSource, dcSource } from './symbols/acdc'
 
 export { TwoTerminalSymbol, twoTerminalPorts } from './ports'
 export {
@@ -110,6 +118,30 @@ export type { GroundOptions } from './symbols/ground'
 export { OpAmp, opAmp, OPAMP_DEFAULT_WIDTH, OPAMP_DEFAULT_HEIGHT } from './symbols/opamp'
 export type { OpAmpOptions } from './symbols/opamp'
 
+export {
+  Battery,
+  battery,
+  BATTERY_DEFAULT_WIDTH,
+  BATTERY_DEFAULT_HEIGHT,
+} from './symbols/battery'
+export type { BatteryOptions, BatteryVariant } from './symbols/battery'
+
+export { Bulb, bulb, BULB_DEFAULT_WIDTH, BULB_DEFAULT_HEIGHT } from './symbols/bulb'
+export type { BulbOptions } from './symbols/bulb'
+
+export { Meter, meter, METER_DEFAULT_WIDTH, METER_DEFAULT_HEIGHT } from './symbols/meters'
+export type { MeterOptions, MeterVariant } from './symbols/meters'
+
+export {
+  AcSource,
+  DcSource,
+  acSource,
+  dcSource,
+  SUPPLY_DEFAULT_WIDTH,
+  SUPPLY_DEFAULT_HEIGHT,
+} from './symbols/acdc'
+export type { SupplyOptions } from './symbols/acdc'
+
 /** Symbols have intrinsic sizes; text never stretches them. */
 const NO_AUTO = { textAutoSize: false }
 
@@ -141,6 +173,23 @@ export const circuitShapes = {
   ),
   ground: defineShape('ground', (o: GroundOptions) => ground(o), NO_AUTO),
   'op amp': defineShape('op amp', (o: OpAmpOptions) => opAmp(o), NO_AUTO),
+  battery: defineShape('battery', (o: BatteryOptions) => battery(o), NO_AUTO),
+  bulb: defineShape('bulb', (o: BulbOptions) => bulb(o), NO_AUTO),
+  'ac source': defineShape('ac source', (o: SupplyOptions) => acSource(o), NO_AUTO),
+  'dc source': defineShape('dc source', (o: SupplyOptions) => dcSource(o), NO_AUTO),
+  // Three names, one symbol: the shape fixes the letter, so
+  // `{ shape: 'voltmeter' }` cannot be talked into drawing an A.
+  ammeter: defineShape('ammeter', (o: MeterOptions) => meter({ ...o, variant: 'ammeter' }), NO_AUTO),
+  voltmeter: defineShape(
+    'voltmeter',
+    (o: MeterOptions) => meter({ ...o, variant: 'voltmeter' }),
+    NO_AUTO
+  ),
+  ohmmeter: defineShape(
+    'ohmmeter',
+    (o: MeterOptions) => meter({ ...o, variant: 'ohmmeter' }),
+    NO_AUTO
+  ),
 } as const satisfies ShapeSet
 
 /** Shape names in {@link circuitShapes}. */

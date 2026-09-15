@@ -23,12 +23,25 @@ shapes alongside.
 | resistor | `circuit.resistor()` | `in`, `out` | `ansi` (zigzag, default), `iec` (box) |
 | capacitor | `circuit.capacitor()` | `in`, `out` | normal, `polarized` |
 | inductor | `circuit.inductor()` | `in`, `out` | — |
-| diode | `circuit.diode()` | `in`, `out` | normal, `zener`, `led` |
+| diode | `circuit.diode()` | `in`, `out` | normal, `zener`, `schottky`, `led` |
 | switch | `circuit.switch()` | `in`, `out` | — |
 | voltage source | `circuit.voltageSource()` | `in`, `out` | — |
 | current source | `circuit.currentSource()` | `in`, `out` | — |
 | ground | `circuit.ground()` | `in` | — |
 | op amp | `circuit.opAmp()` | `in-` (`-`), `in+` (`+`), `out` | — |
+| battery | `circuit.battery()` | `in`, `out` | `multi` (two cells, default), `single` |
+| bulb | `circuit.bulb()` | `in`, `out` | — |
+| ac source | `circuit.acSource()` | `in`, `out` | — |
+| dc source | `circuit.dcSource()` | `in`, `out` | — |
+| ammeter | `circuit.ammeter()` | `in`, `out` | — |
+| voltmeter | `circuit.voltmeter()` | `in`, `out` | — |
+| ohmmeter | `circuit.ohmmeter()` | `in`, `out` | — |
+
+The three meters are one symbol under three names, and the name fixes
+the letter — `{ shape: 'voltmeter', shapeOptions: { variant: 'ammeter' } }`
+still draws a V. The letter is stroked as part of the symbol rather
+than set as node text, so it scales with `width`/`height` like the
+rest of the drawing.
 
 Symbols have an **intrinsic size** and never stretch to fit text.
 Orientation: `rotate: 90` for vertical branches. Place by a specific

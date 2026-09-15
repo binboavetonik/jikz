@@ -13,10 +13,18 @@ export default function render(container: HTMLElement) { // once, like \usetikzl
     [circuit.inductor(), 'inductor'],
     [circuit.diode(), 'diode'],
     [circuit.diode({ variant: 'zener' }), 'Zener'],
+    [circuit.diode({ variant: 'schottky' }), 'Schottky'],
     [circuit.diode({ variant: 'led' }), 'LED'],
     [circuit.switch(), 'switch'],
     [circuit.voltageSource(), 'voltage source'],
     [circuit.currentSource(), 'current source'],
+    [circuit.acSource(), 'ac source'],
+    [circuit.dcSource(), 'dc source'],
+    [circuit.battery(), 'battery'],
+    [circuit.bulb(), 'bulb'],
+    [circuit.ammeter(), 'ammeter'],
+    [circuit.voltmeter(), 'voltmeter'],
+    [circuit.ohmmeter(), 'ohmmeter'],
     [circuit.ground(), 'ground'],
     [circuit.opAmp(), 'op amp'],
   ]
@@ -28,5 +36,5 @@ export default function render(container: HTMLElement) { // once, like \usetikzl
     pic.text(point(x, y + 38), label, { fontSize: 10 })
   })
 
-  pic.mount(container, { width: 500, height: 280 })
+  pic.mount(container, { width: 500, height: 450 })
 }
