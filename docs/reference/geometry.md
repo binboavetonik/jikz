@@ -6,7 +6,7 @@ describe shapes; painting happens when you hand them to a verb
 types without a dedicated render path fall back to their outline via
 `toSVGPath()`.
 
-Full API details: [generated API reference](../api/) (`npm run docs:api`).
+Full API details: <a href="../api/index.html" target="_blank">generated API reference</a> (`npm run docs:api`).
 
 ## Lines
 

@@ -1,4 +1,4 @@
-import { tree, point, SVGRenderer } from 'jikz'
+import { picture, tree, point } from 'jikz'
 
 export default function render(container: HTMLElement) {
   // Size-aware horizontal tree: each parent pushes its children past its
@@ -19,8 +19,11 @@ export default function render(container: HTMLElement) {
         .child('3.d4 exd4')
     .build()
 
-  const r = new SVGRenderer()
-  for (const e of edges) r.renderEdge(e, { style: { stroke: '#94a3b8', strokeWidth: 1.2 } })
-  for (const n of nodes) r.renderNode(n, { style: { stroke: '#2563eb', fill: '#dbeafe', strokeWidth: 1.5 } })
-  r.builder.mount(container, { width: 420, height: 220 })
+  // Drawn through a picture rather than straight at a renderer, so
+  // `fit: true` can size the frame from the laid-out tree — a
+  // hand-picked height clipped the top row once the labels grew.
+  const pic = picture()
+  for (const e of edges) pic.draw(e, { style: { stroke: '#94a3b8', strokeWidth: 1.2 } })
+  for (const n of nodes) pic.draw(n, { style: { stroke: '#2563eb', fill: '#dbeafe', strokeWidth: 1.5 } })
+  pic.mount(container, { fit: true, padding: 14 })
 }

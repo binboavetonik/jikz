@@ -1,4 +1,4 @@
-import { picture, triangle, line, circle, point, polar, intersectLineLine, type Point } from 'jikz'
+import { picture, triangle, line, circle, point, intersectLineLine, type Point } from 'jikz'
 
 export default function render(container: HTMLElement) {
   const pic = picture()
@@ -24,14 +24,20 @@ export default function render(container: HTMLElement) {
   // O constructed — identical to tri.circumcenter, but derived on screen
   const O = intersectLineLine(bisAB, bisAC).points[0]!
   pic.draw(circle(O, O.distanceTo(A)), { style: { stroke: '#dc2626', strokeWidth: 1.5 } })
-  pic.draw(O, { style: { stroke: '#dc2626', strokeWidth: 3 } })
-  pic.text(O.add(point(14, 4)), 'O', { fontSize: 11, style: { stroke: '#dc2626' } })
+  pic.draw(O, {
+    style: { stroke: '#dc2626', strokeWidth: 3 },
+    label: { text: 'O', at: 'south east', options: { fontSize: 11, style: { stroke: '#dc2626' } } },
+  })
 
+  // Vertex names point away from the centroid — one direction per
+  // vertex, and `label` keeps each clear of its own marker.
   const G = tri.centroid
   for (const { v, name } of [{ v: A, name: 'A' }, { v: B, name: 'B' }, { v: C, name: 'C' }]) {
-    pic.draw(v, { style: { stroke: '#111827', strokeWidth: 2.5 } })
-    pic.text(v.add(polar(G.angleTo(v), 16)), name, { fontSize: 11 })
+    pic.draw(v, {
+      style: { stroke: '#111827', strokeWidth: 2.5 },
+      label: { text: name, at: G.angleTo(v), options: { fontSize: 11 } },
+    })
   }
 
-  pic.mount(container, { width: 400, height: 240 })
+  pic.mount(container, { fit: true, padding: 14 })
 }

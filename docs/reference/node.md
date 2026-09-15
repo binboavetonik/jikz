@@ -1,7 +1,7 @@
 # Reference: node
 
 The `Node` — jikz's TikZ `\node`: a named, anchored, optionally
-text-bearing shape. Full API details: [generated API](../api/)
+text-bearing shape. Full API details: <a href="../api/index.html" target="_blank">generated API</a>
 (`npm run docs:api`).
 
 ## NodeOptions

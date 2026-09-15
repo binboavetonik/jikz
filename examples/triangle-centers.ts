@@ -1,20 +1,38 @@
-import { picture, triangle, circle, point } from 'jikz'
+import { picture, triangle, line, point } from 'jikz'
+
+// Triangle's computed properties do the geometry: `circumcircle` is
+// the circle through all three vertices, `centroid` the point where
+// the medians meet. Nothing here is a hand-placed coordinate — move a
+// vertex and every derived object follows.
 
 export default function render(container: HTMLElement) {
   const pic = picture()
-  const tri = triangle(point(50, 120), point(250, 110), point(140, 20))
+  const A = point(40, 190), B = point(300, 190), C = point(105, 20)
+  const tri = triangle(A, B, C)
 
+  pic.draw(tri.circumcircle, { style: { stroke: '#c4b5fd', dash: 'dashed' } })
   pic.draw(tri, { style: { stroke: '#334155', strokeWidth: 2 } })
 
-  // Circumcircle: centered at the circumcenter, through the vertices
-  const cc = tri.circumcenter
-  const r = cc.distanceTo(point(50, 120))
-  pic.draw(circle(cc, r), { style: { stroke: '#c4b5fd', dash: 'dashed' } })
+  // medians: each vertex to the midpoint of the opposite side
+  for (const [V, P, Q] of [[A, B, C], [B, C, A], [C, A, B]] as const) {
+    pic.draw(line(V, P.midpoint(Q)), { style: { stroke: '#fca5a5', strokeWidth: 1 } })
+  }
 
-  pic.draw(tri.centroid, { style: { stroke: '#dc2626', strokeWidth: 2.5 } })
-  pic.text(point(tri.centroid.x + 24, tri.centroid.y), 'centroid', { fontSize: 10 })
-  pic.draw(cc, { style: { stroke: '#7c3aed', strokeWidth: 2.5 } })
-  pic.text(point(cc.x + 34, cc.y), 'circumcenter', { fontSize: 10 })
+  // Labels ride the marker's own boundary — `at` picks a direction and
+  // the gap is measured from the text box, so nothing lands on the dot.
+  const text = { fontSize: 10 }
+  pic.draw(tri.centroid, {
+    style: { stroke: '#dc2626', strokeWidth: 2.5 },
+    label: { text: 'centroid', at: 'north west', options: { ...text, style: { stroke: '#dc2626' } } },
+  })
+  pic.draw(tri.circumcenter, {
+    style: { stroke: '#7c3aed', strokeWidth: 2.5 },
+    label: { text: 'circumcenter', at: 'south east', options: { ...text, style: { stroke: '#7c3aed' } } },
+  })
 
-  pic.mount(container, { width: 300, height: 160 })
+  for (const [V, at, name] of [[A, 'south west', 'A'], [B, 'south east', 'B'], [C, 'north', 'C']] as const) {
+    pic.draw(V, { style: { stroke: '#334155', strokeWidth: 2 }, label: { text: name, at, options: text } })
+  }
+
+  pic.mount(container, { fit: true, padding: 14 })
 }

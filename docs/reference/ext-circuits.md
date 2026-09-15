@@ -1,8 +1,7 @@
 # Reference: ext/circuits
 
 The circuits extension — jikz's `\usetikzlibrary{circuits.ee}`. Ships
-in the package as a shape set you hand to `picture`; nothing registers. Full API: [generated
-reference](../api/) (`npm run docs:api`).
+in the package as a shape set you hand to `picture`; nothing registers. Full API: <a href="../api/index.html" target="_blank">generated reference</a> (`npm run docs:api`).
 
 ## Setup
 

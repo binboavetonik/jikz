@@ -36,8 +36,12 @@ export default function render(container: HTMLElement) {
   frame.bars(DATA.map((d, i) => [i + 1 - 0.2, d[1]]), { width: 30, style: BLUE })
   frame.bars(DATA.map((d, i) => [i + 1 + 0.2, d[2]]), { width: 30, style: AMBER })
 
+  // The legend is placed by hand here (axes() draws no legend of its
+  // own — chart() is the one-call builder that does). Framed, in the
+  // corner the short Q1 bars leave empty.
   legend(pic, {
-    at: point(330, 30),
+    at: point(62, 50),
+    frame: true,
     entries: [
       { label: '2025', style: BLUE, sample: 'box' },
       { label: '2026', style: AMBER, sample: 'box' },

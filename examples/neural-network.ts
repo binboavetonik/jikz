@@ -41,11 +41,16 @@ export default function render(container: HTMLElement) {
     }
   })
 
-  // layer captions
+  // Layer captions, hung off the bottom node of each column: the y is
+  // derived from that column's own extent, so a caption can never end
+  // up under a circle when a layer changes size.
   const labels = ['input', 'hidden', 'hidden', 'output']
-  LAYERS.forEach((_count, li) => {
-    pic.text(point(layerX[li]!, 285), labels[li]!, { fontSize: 10, style: { stroke: '#64748b' } })
+  LAYERS.forEach((count, li) => {
+    const bottom = 150 + ((count - 1) * spacing) / 2 + 15 // + node radius
+    pic.text(point(layerX[li]!, bottom), labels[li]!, {
+      at: 'south', distance: 10, fontSize: 10, style: { stroke: '#64748b' },
+    })
   })
 
-  pic.mount(container, { width: 460, height: 300 })
+  pic.mount(container, { fit: true, padding: 14 })
 }

@@ -10,9 +10,13 @@ export default function render(container: HTMLElement) {
   const hot = { stroke: '#dc2626', strokeWidth: 1.8 }
 
   // places
+  // `labels` is TikZ's `label=<dir>:<text>` — measured and pushed off
+  // the node's own border, so the name never sits on the marking.
   for (const [name, x, y] of [['p1', 60, 70], ['p2', 60, 170], ['p3', 250, 70], ['p4', 250, 170]] as const) {
-    pic.node(name, { at: point(x, y), shape: 'circle', width: 44, height: 44 },
-      { style: { stroke: '#334155', fill: '#ffffff', strokeWidth: 1.5 } })
+    pic.node(name, {
+      at: point(x, y), shape: 'circle', width: 44, height: 44,
+      labels: [{ text: name, at: 'north', options: { fontSize: 10 } }],
+    }, { style: { stroke: '#334155', fill: '#ffffff', strokeWidth: 1.5 } })
   }
   // tokens (marking): p1 = 2, p2 = 1, p3 = 0, p4 = 0
   pic.fill(circle(point(52, 70), 4), { style: { fill: '#111827' } })
@@ -21,9 +25,10 @@ export default function render(container: HTMLElement) {
 
   // transitions
   for (const [name, x, y] of [['t1', 150, 70], ['t2', 150, 170]] as const) {
-    pic.node(name, { at: point(x, y), shape: 'rectangle', width: 12, height: 40 },
-      { style: { stroke: '#334155', fill: '#334155', strokeWidth: 1 } })
-    pic.text(point(x, y + 32), name, { fontSize: 10 })
+    pic.node(name, {
+      at: point(x, y), shape: 'rectangle', width: 12, height: 40,
+      labels: [{ text: name, at: 'south', options: { fontSize: 10 } }],
+    }, { style: { stroke: '#334155', fill: '#334155', strokeWidth: 1 } })
   }
 
   // flow relation — t1's edges highlighted (it can fire)

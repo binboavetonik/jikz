@@ -12,6 +12,7 @@ import {
 } from '../node/Node'
 import { Edge, type EdgeOptions } from '../node/Edge'
 import { Pen, type PenOptions } from './Pen'
+import { pointMarkerRadius } from '../render/Renderer'
 import type { Renderable, RenderOptions, TextOptions } from '../render/Renderer'
 import { mergeStyles } from '../render/StyleMapper'
 import type { ClipSpec, RenderStyle, StyleSpec } from '../render/StyleMapper'
@@ -424,10 +425,20 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
       ...(typeof label === 'string' ? [{ text: label }] : label ? [label] : []),
       ...(labels ?? []),
     ]
+    // A bare Point paints as a disc whose radius follows the stroke
+    // width, so labels on one anchor to that disc rather than to the
+    // mathematical point underneath it.
+    const radius =
+      obj instanceof Point
+        ? pointMarkerRadius(
+            mergeStyles(...this.inheritedStyles, ...styleList(options?.style))
+              .strokeWidth
+          )
+        : 0
     for (const l of allLabels) {
       this.itemList.push({
         kind: 'text',
-        at: shapeLabelPoint(obj, l),
+        at: shapeLabelPoint(obj, l, radius),
         text: l.text,
         options: { fontSize: DEFAULT_LABEL_FONT_SIZE, ...l.options },
       })

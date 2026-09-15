@@ -165,16 +165,16 @@ export class Point implements PointLike {
   }
 
   /**
-   * TikZ |- operator: horizontal from this, vertical from other
-   * Returns point at (this.x, other.y)
+   * TikZ `|-` operator: the vertical line through this point meets the
+   * horizontal line through `other`. Returns (this.x, other.y).
    */
   horAt(other: PointLike): Point {
     return new Point(this.x, other.y)
   }
 
   /**
-   * TikZ -| operator: vertical from this, horizontal from other
-   * Returns point at (other.x, this.y)
+   * TikZ `-|` operator: the horizontal line through this point meets the
+   * vertical line through `other`. Returns (other.x, this.y).
    */
   verAt(other: PointLike): Point {
     return new Point(other.x, this.y)

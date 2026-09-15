@@ -29,12 +29,16 @@ export default function render(container: HTMLElement) {
 
   // A half-opacity group: opacity composites the scope as a unit.
   pic.scope({ transform: Transform.translation(10, 92), opacity: 0.45 }, (s) => {
-    s.draw(circle(point(20, 14), 12), { style: { stroke: '#64748b', fill: '#e2e8f0' } })
-      .text(point(96, 14), 'scope({ opacity: 0.45 }) — the group fades as one', {
-        fontSize: 9,
-        style: { fill: '#475569' },
-      })
+    s.draw(circle(point(20, 14), 12), {
+      style: { stroke: '#64748b', fill: '#e2e8f0' },
+      // `at: 'east'` measures the caption and starts it past the disc.
+      label: {
+        text: 'scope({ opacity: 0.45 }) — the group fades as one',
+        at: 'east',
+        options: { fontSize: 9, style: { fill: '#475569' } },
+      },
+    })
   })
 
-  pic.mount(container, { width: 360, height: 130 })
+  pic.mount(container, { fit: true, padding: 12 })
 }

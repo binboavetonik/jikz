@@ -1,7 +1,6 @@
 # Reference: text & math
 
-Text rendering and measurement. Full API: [generated
-reference](../api/) (`npm run docs:api`).
+Text rendering and measurement. Full API: <a href="../api/index.html" target="_blank">generated reference</a> (`npm run docs:api`).
 
 ## Measuring — `measureText(text, options?)`
 

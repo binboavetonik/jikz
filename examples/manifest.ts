@@ -101,13 +101,13 @@ const meta: DemoMeta[] = [
     id: "triangle-centers",
     category: "geometry-math",
     title: "Triangle centers & circumcircle",
-    description: "Centroid, circumcenter, and the circumscribed circle through all three vertices.",
+    description: "Centroid (where the medians meet) and circumcenter, over `Triangle.circumcircle` — the circle through all three vertices. Every marker is labelled off its own border, so no name lands on a dot.",
   },
   {
     id: "conics",
     category: "geometry-math",
     title: "Conic sections",
-    description: "Ellipse, parabola, and hyperbola as first-class geometry.",
+    description: "Ellipse, parabola, and hyperbola as first-class geometry, auto-fitted — the unbounded conics report the bounds of the range they draw.",
   },
   {
     id: "plotting",
@@ -131,7 +131,7 @@ const meta: DemoMeta[] = [
     id: "derivative-sketch",
     category: "statistics-data",
     title: "Function & derivative with tangent",
-    description: "f and f' on shared axes; the tangent at x=3.5 is computed from the derivative — lineFromAngle turns atan(f'(x)) into geometry. The calculus-slide figure, no hand-computed slope.",
+    description: "f and f' on shared axes; the tangent at x=3.5 comes from the derivative — the plot is y-flipped, so the screen angle is atan2(-f'(x)·yScale, xScale). The calculus-slide figure, no hand-computed slope.",
   },
   {
     id: "normal-curve",
@@ -149,7 +149,7 @@ const meta: DemoMeta[] = [
     id: "polar-roses",
     category: "statistics-data",
     title: "Polar rose gallery",
-    description: "r = cos(k·θ) for k = 3, 5, 7 via plotPolar (degrees, centered) — three curves composed by three centers, each over a dashed unit guide ring.",
+    description: "r = cos(k·θ) for k = 3, 5, 7 via plotRose — which knows an odd k closes after 180° and converts θ for you (plotPolar hands the function DEGREES).",
   },
   {
     id: "lissajous",
@@ -251,7 +251,7 @@ const meta: DemoMeta[] = [
     id: "braces",
     category: "paths-decorations",
     title: "Braces & brackets",
-    description: "Annotation paths: curly braces and square brackets between two points.",
+    description: "Annotation paths: a curly brace (four quarter-circle arcs meeting at a pointed tip) and a square bracket between two points. The third argument is the amplitude — the stand-off from the span.",
   },
   {
     id: "fill-patterns",
@@ -545,13 +545,13 @@ const meta: DemoMeta[] = [
     id: "honeycomb",
     category: "geometry-math",
     title: "Hexagon tessellation",
-    description: "A honeycomb tiled with zero hand-placed cells: jikz hexagons are pointy-top (first vertex at -90°), so columns pitch √3·R, rows 1.5·R, odd columns shift half a cell — the grid derives from the hexagon's own geometry.",
+    description: "A honeycomb tiled with zero hand-placed cells: jikz hexagons are pointy-top (first vertex at -90°), so they tile in offset ROWS — √3·R across, 1.5·R down, odd rows shifted half a cell.",
   },
   {
     id: "golden-spiral",
     category: "geometry-math",
     title: "Golden spiral in Fibonacci squares",
-    description: "Quarter-circle arcTo() arcs with Fibonacci radii, constructed by walking the arc centers (each 90° right of travel); every square is just its arc's bounding box. No corner is hand-placed.",
+    description: "Quarter-circle arcTo() arcs with Fibonacci radii, constructed by walking the arc centers (each 90° right of travel); every square is just its arc's bounding box. Path is immutable, so each arc is reassigned, not just called.",
   },
   {
     id: "pythagoras-tree",

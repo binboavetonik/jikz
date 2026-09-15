@@ -5,7 +5,7 @@
   ],
   "out": "docs/public/api",
   "name": "jikz",
-  "readme": "docs/README.md",
+  "readme": "docs/api-readme.md",
   "disableSources": true,
   "excludePrivate": true,
   "excludeInternal": true,
@@ -16,5 +16,10 @@
   "visibilityFilters": {
     "protected": false,
     "inherited": true
+  },
+  "navigationLinks": {
+    "Documentation": "https://binboavetonik.github.io/jikz/",
+    "Cookbook": "https://binboavetonik.github.io/jikz/cookbook/",
+    "GitHub": "https://github.com/binboavetonik/jikz"
   }
 }

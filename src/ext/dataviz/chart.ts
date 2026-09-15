@@ -19,7 +19,7 @@
  * boundaries (bar series also pin the baseline at 0). Pass an explicit
  * `[min, max]` per axis to override.
  */
-import { point } from '../../core/Point'
+import { point, type Point } from '../../core/Point'
 import type { PointLike } from '../../core/types'
 import type { ShapeSet } from '../../geometry/ShapeKind'
 import type { ItemContainer } from '../../picture/Container'
@@ -72,7 +72,10 @@ export interface ChartAxisOptions extends Omit<AxisOptions, 'domain'> {
 
 /** Legend options inside {@link ChartOptions} — placement optional. */
 export type ChartLegendOptions = Omit<LegendOptions, 'at' | 'entries'> & {
-  /** North west corner; default: inside the plot area, north east. */
+  /**
+   * North west corner. Default: the inside corner of the plot area
+   * with the fewest series samples in it (see {@link chart}).
+   */
   at?: PointLike
 }
 
@@ -83,9 +86,10 @@ export interface ChartOptions extends Omit<AxesOptions, 'x' | 'y'> {
   /** The data to draw, in paint order. */
   series: readonly ChartSeriesSpec[]
   /**
-   * `true` for a framed legend at the default position (north east,
-   * inside the plot area), or legend options with an optional `at`.
-   * Only series with a `label` get an entry.
+   * `true` for a framed legend auto-placed in the emptiest inside
+   * corner of the plot area, or legend options with an optional `at`
+   * (and `frame: false` to drop the box). Only series with a `label`
+   * get an entry.
    */
   legend?: boolean | ChartLegendOptions
 }
@@ -102,6 +106,67 @@ function scatterMarkOf(s: ChartSeriesSpec): PlotMark | undefined {
   if (s.kind === 'scatter' && s.marks === undefined) return 'circleFilled'
   if (s.marks === undefined) return undefined
   return typeof s.marks === 'string' ? s.marks : s.marks.name
+}
+
+/** Inset between the plot area's border and an auto-placed legend, px. */
+const LEGEND_INSET = 8
+
+/**
+ * Picture-space points a series covers, for legend collision scoring.
+ * Line and scatter series are their samples; a bar also fills the
+ * column between the baseline and its top, so that span is sampled too.
+ */
+function coveredPoints(frame: ChartFrame, series: readonly ChartSeriesSpec[]): Point[] {
+  const pts: Point[] = []
+  const baseline = frame.y(0)
+  for (const s of series) {
+    for (const [xv, yv] of s.data) {
+      if (!Number.isFinite(xv) || !Number.isFinite(yv)) continue
+      const p = frame.point(xv, yv)
+      pts.push(p)
+      if (s.kind !== 'bar') continue
+      for (let i = 1; i <= 4; i++) {
+        pts.push(point(p.x, p.y + ((baseline - p.y) * i) / 4))
+      }
+    }
+  }
+  return pts
+}
+
+/**
+ * The inside corner of the plot area holding the fewest series points —
+ * so `legend: true` lands in white space instead of on the data. Ties
+ * keep the first candidate, which is the conventional north east.
+ */
+function freestCorner(
+  frame: ChartFrame,
+  series: readonly ChartSeriesSpec[],
+  size: { width: number; height: number }
+): Point {
+  const [x0, y0, x1, y1] = frame.area
+  const candidates = [
+    point(x1 - size.width - LEGEND_INSET, y0 + LEGEND_INSET),
+    point(x0 + LEGEND_INSET, y0 + LEGEND_INSET),
+    point(x1 - size.width - LEGEND_INSET, y1 - size.height - LEGEND_INSET),
+    point(x0 + LEGEND_INSET, y1 - size.height - LEGEND_INSET),
+  ]
+  const pts = coveredPoints(frame, series)
+  let best = candidates[0]!
+  let bestScore = Infinity
+  for (const c of candidates) {
+    const score = pts.filter(
+      (p) =>
+        p.x >= c.x - LEGEND_INSET &&
+        p.x <= c.x + size.width + LEGEND_INSET &&
+        p.y >= c.y - LEGEND_INSET &&
+        p.y <= c.y + size.height + LEGEND_INSET
+    ).length
+    if (score < bestScore) {
+      bestScore = score
+      best = c
+    }
+  }
+  return best
 }
 
 /**
@@ -152,13 +217,10 @@ export function chart<S extends ShapeSet>(
 
   if (legendOpt && entries.length > 0) {
     const lo: ChartLegendOptions = legendOpt === true ? {} : legendOpt
-    const at =
-      lo.at ??
-      (() => {
-        const size = legendSize({ ...lo, entries })
-        return point(frame.area[2] - size.width - 8, frame.area[1] + 8)
-      })()
-    legend(pic, { ...lo, at, entries })
+    const at = lo.at ?? freestCorner(frame, series, legendSize({ ...lo, entries }))
+    // A legend inside the plot area sits on top of the data, so it is
+    // framed unless the caller opts out.
+    legend(pic, { frame: true, ...lo, at, entries })
   }
 
   return frame

@@ -267,28 +267,62 @@ describe('PathOperations', () => {
 
   describe('brace and bracket', () => {
     describe('bracePath', () => {
-      it('creates curly brace between points', () => {
-        const brace = bracePath(point(0, 0), point(100, 0))
-        expect(brace.isEmpty).toBe(false)
-        expect(brace.toSVGPath()).toContain('C') // Curves
+      // These used to assert only `isEmpty === false`, which a straight
+      // line also satisfies — and for a long time a straight line is
+      // roughly what bracePath drew. Pin the actual brace shape.
+      /** Every on-path node of the brace, in order. */
+      const nodes = (p: ReturnType<typeof bracePath>) =>
+        p.segments.map((seg) => seg.points[seg.points.length - 1]!)
+
+      it('plants both feet on the span', () => {
+        const brace = bracePath(point(0, 0), point(100, 0), 20)
+        const ns = nodes(brace)
+        expect(ns[0]!.x).toBeCloseTo(0)
+        expect(ns[0]!.y).toBeCloseTo(0)
+        expect(ns[ns.length - 1]!.x).toBeCloseTo(100)
+        expect(ns[ns.length - 1]!.y).toBeCloseTo(0)
       })
 
-      it('brace on left side', () => {
-        const brace = bracePath(point(0, 0), point(100, 0), 20, 'left')
-        expect(brace.isEmpty).toBe(false)
+      it('puts a tip at the midpoint, amplitude off the span', () => {
+        const brace = bracePath(point(0, 0), point(100, 0), 20)
+        // Screen convention: 'left' of a west→east span is +y.
+        const tip = nodes(brace).reduce((a, b) => (b.y > a.y ? b : a))
+        expect(tip.x).toBeCloseTo(50)
+        expect(tip.y).toBeCloseTo(20)
       })
 
-      it('brace on right side', () => {
-        const brace = bracePath(point(0, 0), point(100, 0), 20, 'right')
-        expect(brace.isEmpty).toBe(false)
+      it('mirrors for the right side', () => {
+        const tip = (side: 'left' | 'right') =>
+          nodes(bracePath(point(0, 0), point(100, 0), 20, side)).reduce((a, b) =>
+            Math.abs(b.y) > Math.abs(a.y) ? b : a
+          )
+        expect(tip('left').y).toBeCloseTo(20)
+        expect(tip('right').y).toBeCloseTo(-20)
       })
 
-      it('respects amplitude', () => {
-        const small = bracePath(point(0, 0), point(100, 0), 10)
-        const large = bracePath(point(0, 0), point(100, 0), 30)
-        // Both should create valid paths
-        expect(small.isEmpty).toBe(false)
-        expect(large.isEmpty).toBe(false)
+      it('scales the tip with the amplitude', () => {
+        const tipY = (amp: number) =>
+          nodes(bracePath(point(0, 0), point(100, 0), amp)).reduce((a, b) =>
+            b.y > a.y ? b : a
+          ).y
+        expect(tipY(10)).toBeCloseTo(10)
+        expect(tipY(30)).toBeCloseTo(30)
+      })
+
+      it('clamps the curl on a span too short for the amplitude', () => {
+        // amplitude 40 over a 20px span would fold the two halves
+        // through each other; the curl radius caps at span / 4.
+        const ns = nodes(bracePath(point(0, 0), point(20, 0), 40))
+        const tip = ns.reduce((a, b) => (b.y > a.y ? b : a))
+        expect(tip.y).toBeCloseTo(10)
+        for (const n of ns) {
+          expect(n.x).toBeGreaterThanOrEqual(-1e-9)
+          expect(n.x).toBeLessThanOrEqual(20 + 1e-9)
+        }
+      })
+
+      it('degenerates safely when the endpoints coincide', () => {
+        expect(() => bracePath(point(5, 5), point(5, 5), 10)).not.toThrow()
       })
     })
 

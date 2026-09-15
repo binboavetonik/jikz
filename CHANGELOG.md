@@ -1,5 +1,138 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **`star`, `pentagon`, `hexagon`, `regularPolygon` and
+  `isoscelesTriangle` resolved to different things in TypeScript and at
+  runtime.** `geometry/index.ts` exported the vertex-layer Polygon and
+  Triangle factories explicitly *and* pulled `complex/`'s shape-kind
+  factories of the same names in through `export *`. TypeScript took
+  the explicit export; bundlers took the star one. So
+  `star(point(120, 110), 80, 34, 5)` type-checked and then drew a
+  default 10 px star at the ORIGIN — which is exactly what the
+  `clipping` example shipped (an invisible clip mask) and what
+  `honeycomb` shipped (one hexagon instead of a tiling). The complex
+  barrel is now re-exported by name, minus those five; the shape kinds
+  stay reachable as classes (`Star`, `RegularPolygon`,
+  `IsoscelesTriangle`) and by name from `allShapes`/`complexShapes`.
+  Guarded by `test/build/export-identity.test.ts`.
+
+- **`Triangle.orthocenter` was wrong for every non-right triangle.**
+  The hand-derived altitude intersection returned a point nowhere near
+  the altitudes, so the `euler-line` example drew three "collinear"
+  centers that visibly were not. Now computed from Euler's relation
+  H = A + B + C − 2·O, which is exact and needs no case analysis.
+
+- **Rotated shapes drew unrotated, at the origin.** `Rotated` reports
+  its base shape's `type` so shape-set lookups stay transparent, which
+  made the renderer's tag dispatch claim a rotated rectangle as a plain
+  `Rectangle` and emit `<rect width height>` with no `x`/`y`. Any
+  `pic.draw(rotated(rect(…), θ))` silently lost both the rotation and
+  the position. `render()` now claims `Rotated` first and draws it
+  through its (already correct) rotated outline.
+
+- **A label on a bare point landed underneath its own marker.**
+  `pic.draw(p, { label })` measured the gap from the mathematical
+  point, while the renderer paints a disc of `strokeWidth * 3` around
+  it. Point labels now anchor on that disc, so the gap is a real gap.
+
+- **`bracePath` did not draw a brace.** It was a single smooth S
+  through the midpoint, which renders as a shallow valley at any
+  amplitude. It is now the TikZ `decoration={brace}` shape — four
+  quarter-circle cubics: a curl off the span at each end, a straight
+  body, and a pointed tip in the middle. The curl radius is half the
+  amplitude, capped at a quarter of the span so short spans clamp
+  instead of folding through themselves. The old tests asserted only
+  `isEmpty === false`, which a straight line also satisfies; they now
+  pin the tip, the feet and the mirror.
+
+- **`mount({ fit: true })` crashed on a parabola or hyperbola.**
+  Neither had a `bounds` getter, so `contentBounds` read `undefined`
+  and failed with `Cannot read properties of undefined (reading '0')`
+  four frames from the drawing that caused it. Both now report the
+  extent of the parameter range they actually draw, and a renderable
+  with no bounds gets a message naming it and pointing at
+  `{ width, height }`.
+
+- **`plotPolar`'s own doc example was in the wrong angle unit.** It
+  hands the callback DEGREES; the JSDoc showed a bare `Math.cos(theta)`
+  (radians), which draws a spiky mess — and the `polar-roses` example
+  copied it. The doc now says so, and the example uses `plotRose`,
+  which converts for you.
+
+- **The generated API reference was unreachable from the docs site.**
+  Every `reference/*` page links to the TypeDoc output, and the link
+  went nowhere — on the published site VitePress's SPA router
+  intercepted the click, failed to resolve `/api/` as one of its own
+  routes and rendered its 404, while the static TypeDoc site sat right
+  there. Locally it was worse: `vitepress dev` has no directory-index
+  fallback for `public/` subdirectories, so even a direct visit to
+  `/api/` returned an empty app shell. The links are now
+  `<a href="../api/index.html" target="_blank">` — `target="_blank"`
+  opts the click out of the router, and the explicit `index.html`
+  resolves in dev as well as on a static host.
+
+- **The API reference's own landing page linked to raw markdown.**
+  `typedoc.json` used the guide's `docs/README.md` as the readme;
+  TypeDoc copies repo-relative targets into `api/media/*.md`, which
+  browsers show as plain text. The API site now has its own short
+  landing page (`docs/api-readme.md`) plus header links back to the
+  documentation, the cookbook and GitHub.
+
+- **`Point.horAt`/`verAt` docs described the opposite operator.** The
+  code was right (`horAt` is TikZ `|-`, `(this.x, other.y)`); the
+  docstring, tutorial 2 and the README table read the mapping
+  backwards.
+
+### Changed
+
+- **`chart()`'s legend is auto-placed and framed.** `legend: true` was
+  documented as "a framed legend" but never set `frame`, and always
+  used the north-east corner — where a rising series puts its data. It
+  now frames by default and picks whichever inside corner of the plot
+  area holds the fewest series samples (bars counted over their whole
+  column). `legend: { at }` and `legend: { frame: false }` override.
+
+- **The y-axis label clears the topmost tick.** It was centred on the
+  axis line one label-height above the plot, which put it on both the
+  top tick label and the tick-label column.
+
+- **The example gallery is checked, not just rendered.** `npm run
+  check:examples` renders every example headlessly and measures the
+  output for text overlapping text, text sitting on a point marker, and
+  painted geometry escaping the mounted viewBox — the three defects the
+  0.7.0 cookbook shipped. `npm run preview:examples` writes contact
+  sheets to `.preview/` for the judgements a checker cannot make. Both
+  share `scripts/render-examples.ts` with the cookbook generator, so
+  nothing under `docs/cookbook/` is ever produced by hand.
+
+- **Twenty-nine examples redrawn.** Labels that were parked at
+  hand-computed offsets now use `label`/`labels` or `pic.text(p, …,
+  { at })`, which measure the text and place it off the shape's own
+  border. `free-body` gained the incline it was named for (the block is
+  rotated onto a real wedge, with the angle marked); `golden-spiral`
+  reassigns its immutable `Path` so the spiral exists; `clipping` and
+  `honeycomb` benefit from the export fix above; `conics`,
+  `normal-curve` and `layout-tree-horizontal` no longer clip.
+
+- **Docs: a reference page for `ext/gates`**, which had none, plus
+  `pathFromSVG` and the style registry (`registerStyle`) in the path
+  and render references. `docs/README.md` no longer claims 50 examples
+  or points at the retired `/demo/` page.
+
+- **The docs site opens on the gallery.** The landing page renders every
+  module in `examples/` live — a showcase grid with category chips, a
+  `</>` toggle to flip a card to its source, and a copy button — with the
+  documentation sidebar beside it (*Gallery* is its first entry; the old
+  documentation map moved to `/overview/`). The standalone demo page and
+  its separate Vite build are retired: `npm run dev` now starts the docs
+  site alone, and `/demo/` redirects to the root.
+- **README links are absolute.** npm resolves relative README links
+  against the package homepage, which made the `docs/…` and `examples/`
+  links on the npm page 404. CONTRIBUTING records the rule.
+
 ## 0.7.0 — 2026-09-14
 
 0.7.0 is the first release after the move to GitHub, and it changes the

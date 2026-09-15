@@ -11,6 +11,7 @@ import { Rectangle } from '../geometry/Rectangle'
 import { Ellipse } from '../geometry/Ellipse'
 import type { Shape } from '../geometry/Shape'
 import { Polygon } from '../geometry/Polygon'
+import { Rotated } from '../geometry/Rotated'
 import { Plot } from '../geometry/Plot'
 import { plotMarkPath, plotMarkFilled } from '../geometry/PlotMark'
 import { Node } from '../node/Node'
@@ -22,6 +23,7 @@ import {
   TextOptions,
   GroupOptions,
   isPoint,
+  pointMarkerRadius,
   isPath,
   isLine,
   isCircle,
@@ -491,7 +493,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
 
   renderPoint(p: Point, options?: RenderOptions): SVGElement {
     const style = this.getStyle(options)
-    const radius = (style.strokeWidth ?? 1) * 3
+    const radius = pointMarkerRadius(style.strokeWidth)
 
     const el = this.getTarget()
       .circle(radius * 2)
@@ -1048,6 +1050,13 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
   // ─────────────────────────────────────────────────────────────────────────────
 
   render(obj: Renderable, options?: RenderOptions): SVGElement {
+    // Rotated reports its BASE shape's `type` so shape-set lookups stay
+    // transparent — which would route a rotated rectangle to the
+    // axis-aligned <rect> path. Claim it first: its toSVGPath() already
+    // carries the rotation.
+    if (obj instanceof Rotated) {
+      return this.renderShape(obj, options)
+    }
     if (isPoint(obj)) {
       return this.renderPoint(obj, options)
     }

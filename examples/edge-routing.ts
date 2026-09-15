@@ -9,8 +9,12 @@ export default function render(container: HTMLElement) {
 
   pic.edge('A', 'B', { bendAngle: 35, label: 'bend left' }, { style: { stroke: '#2563eb' } })
   pic.edge('B', 'A', { bendAngle: 35 }, { style: { stroke: '#94a3b8', dash: 'dashed' } })
-  pic.edge('B', 'C', { out: 315, in: 225, label: 'out 315 / in 225' }, { style: { stroke: '#7c3aed' } })
+  // labelPos/labelOffset are TikZ's `pos=`/`auto`: move the text along
+  // the edge and out to its side, instead of leaving it on the ink.
+  pic.edge('B', 'C',
+    { out: 315, in: 225, label: 'out 315 / in 225', labelPos: 0.42, labelOffset: 16 },
+    { style: { stroke: '#7c3aed' } })
   pic.edge('C', 'C', { loop: 'above' }, { style: { stroke: '#dc2626' } })
 
-  pic.mount(container, { width: 420, height: 170 })
+  pic.mount(container, { fit: true, padding: 14 })
 }

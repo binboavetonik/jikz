@@ -22,8 +22,8 @@ A.toward(B, 0.5)            // TikZ (A)!0.5!(B) — the midpoint
 A.toward(B, 0.25)           // a quarter of the way from A to B
 A.towardByDistance(B, 30)   // TikZ (A)!30pt!(B) — 30px from A toward B
 A.midpoint(B)               // shorthand for toward(B, 0.5)
-A.horAt(B)                  // TikZ (A |- B) — A's horizontal, B's vertical
-A.verAt(B)                  // TikZ (A -| B) — A's vertical, B's horizontal
+A.horAt(B)                  // TikZ (A |- B) — A's vertical meets B's horizontal
+A.verAt(B)                  // TikZ (A -| B) — A's horizontal meets B's vertical
 A.add(point(10, -5))        // TikZ (A)+(10,-5)
 A.distanceTo(B)             // length of AB
 A.angleTo(B)                // direction A→B, screen-convention degrees
@@ -47,15 +47,22 @@ const A = point(40, 130)
 const B = point(260, 40)
 
 const mid = A.toward(B, 0.5)   // (A)!0.5!(B)
-const corner = A.horAt(B)      // (A |- B)
+const upper = A.horAt(B)       // (A |- B) — straight up from A, then across
+const lower = A.verAt(B)       // (A -| B) — straight across from A, then up
 
 pic.draw(line(A, B), { style: { stroke: '#94a3b8', dash: 'dashed' } })
-pic.draw(line(A, corner), { style: { stroke: '#2563eb' } })
-pic.draw(line(corner, B), { style: { stroke: '#2563eb' } })
+for (const corner of [upper, lower]) {
+  pic.draw(line(A, corner), { style: { stroke: '#2563eb' } })
+  pic.draw(line(corner, B), { style: { stroke: '#2563eb' } })
+}
+pic.draw(mid, { label: { text: 'mid', at: 'south east' } })
 ```
 
 Move `A` or `B` and the whole construction follows — that's the point
-of calc-style code.
+of calc-style code. Note the label: `pic.draw(obj, { label })` measures
+the text and places it clear of the shape's boundary, so annotations
+never need hand-tuned offsets. See
+[Nodes, anchors & labels](./03-nodes-anchors-labels.md).
 
 ## Naming coordinates
 
@@ -77,9 +84,10 @@ Or register one directly: `pic.coordinate('P', point(30, 90))`.
 
 ## What to notice
 
-- **`horAt`/`verAt` read as TikZ does**: `A.horAt(B)` = "horizontal
-  from A, vertical *at* B" = `(A |- B)`. The method order matches the
-  symbol order.
+- **`horAt`/`verAt` name the line you end up travelling along.**
+  `A.horAt(B)` = `(A |- B)` = `point(A.x, B.y)`: you leave A vertically
+  and arrive at B along a *horizontal*. `A.verAt(B)` = `(A -| B)` =
+  `point(B.x, A.y)` is the other corner of the same rectangle.
 - **Everything returns new points.** Points are immutable values;
   operators never mutate.
 - These are the same operators the

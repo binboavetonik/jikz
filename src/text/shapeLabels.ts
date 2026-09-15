@@ -46,9 +46,26 @@ export type DrawLabel = NodeLabel & {
  * them (every Shape does), a Point anchors to itself, anything else
  * (Path, …) anchors against its bounding box.
  */
-export function asAnchorable(obj: Renderable): Anchorable {
+export function asAnchorable(obj: Renderable, pointRadius = 0): Anchorable {
   if (typeof (obj as Anchorable).anchor === 'function') return obj as Anchorable
-  if (obj instanceof Point) return { center: obj, anchor: () => obj }
+  if (obj instanceof Point) {
+    // A bare Point paints as a disc (see `pointMarkerRadius`), so its
+    // labels anchor on that disc — otherwise the text lands under the
+    // very marker the same draw call painted.
+    if (pointRadius <= 0) return { center: obj, anchor: () => obj }
+    return {
+      center: obj,
+      anchor: (spec) => {
+        const angle = parseAnchorSpec(spec)
+        if (angle === null) return obj
+        const rad = degToRad(angle)
+        return point(
+          obj.x + pointRadius * Math.cos(rad),
+          obj.y + pointRadius * Math.sin(rad)
+        )
+      },
+    }
+  }
   const b = (obj as { bounds: [number, number, number, number] }).bounds
   const center = point((b[0] + b[2]) / 2, (b[1] + b[3]) / 2)
   return {
@@ -108,7 +125,11 @@ export function pathLabelPoint(obj: Renderable, label: DrawLabel): Point {
  *     a rotated node. Plain geometry carries no rotation state, so
  *     'local' coincides with 'screen' there.
  */
-export function shapeLabelPoint(obj: Renderable, label: DrawLabel): Point {
+export function shapeLabelPoint(
+  obj: Renderable,
+  label: DrawLabel,
+  pointRadius = 0
+): Point {
   if (label.pos !== undefined) return pathLabelPoint(obj, label)
   const spec = label.at ?? 'north'
   if (isTextAnchor(spec)) {
@@ -118,7 +139,7 @@ export function shapeLabelPoint(obj: Renderable, label: DrawLabel): Point {
     )
   }
   const angle = parseAnchorSpec(spec)
-  const anchorable = asAnchorable(obj)
+  const anchorable = asAnchorable(obj, pointRadius)
   if (angle === null) return anchorable.anchor('center')
 
   const fontSize = label.options?.fontSize ?? DEFAULT_LABEL_FONT_SIZE

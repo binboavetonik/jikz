@@ -21,8 +21,10 @@ export default function render(container: HTMLElement) {
     { style: { stroke: 'none', fill: '#2563eb', 'fill-opacity': 0.3 } },
   )
 
-  // the full curve on top
-  pic.draw(plot((x) => -PHI(x), { domain: [-3.5, 3.5], samples: 120, xScale, yScale, xOffset: xOff, yOffset: yBase }),
+  // The full curve on top. The domain is symmetric but xOff only
+  // leaves room for 0.75σ to the left of the axis, so the left tail is
+  // trimmed to what the frame can actually hold.
+  pic.draw(plot((x) => -PHI(x), { domain: [-xOff / xScale + 0.25, 3.5], samples: 120, xScale, yScale, xOffset: xOff, yOffset: yBase }),
     { style: { stroke: '#2563eb', strokeWidth: 2 } })
 
   // tail boundary marker + area label
@@ -33,5 +35,5 @@ export default function render(container: HTMLElement) {
   pic.text(point(bx + 42, yBase - 40), '$P(X > 1.5)$', { fontSize: 11 })
   pic.text(point(xOff, yBase + 13), '0', { fontSize: 10 })
 
-  pic.mount(container, { width: 420, height: 260 })
+  pic.mount(container, { fit: true, padding: 14 })
 }

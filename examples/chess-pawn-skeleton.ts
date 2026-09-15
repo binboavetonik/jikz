@@ -41,7 +41,11 @@ export default function render(container: HTMLElement) {
   lever(sq(5, 7), sq(5, 6), '\u2026f6!')   // f7 -> f6 attacks the e5 head
 
   // Chain-base annotation (TikZ: attack the base of the chain)
-  pic.text(sq(2, 3), 'chain base — attack it', { at: 'south west', distance: 8, fontSize: 10, style: { stroke: '#7c3aed' } })
+  // Below the board, clear of the pawn it points at (the chain base is
+  // on b2, and a label hung off that square covered the disc).
+  pic.text(sq(1, 1), 'chain base — attack it', {
+    at: 'south', distance: 10, textAnchor: 'start', fontSize: 10, style: { stroke: '#7c3aed' },
+  })
 
   pic.mount(container, { fit: true, padding: 10 })
 }

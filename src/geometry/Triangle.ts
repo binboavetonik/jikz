@@ -116,39 +116,22 @@ export class Triangle extends Polygon {
   }
 
   /**
-   * Orthocenter (intersection of altitudes)
-   * May lie outside the triangle for obtuse triangles
+   * Orthocenter (intersection of the three altitudes). Lies outside the
+   * triangle for obtuse ones, and on the right-angle vertex for right
+   * ones.
+   *
+   * Computed from Euler's relation H = A + B + C − 2·O (O = the
+   * {@link circumcenter}), which is exact and needs no case analysis.
+   * The earlier hand-derived altitude intersection was wrong for
+   * general triangles — it put H off the Euler line, which the
+   * euler-line example drew for months.
    */
   get orthocenter(): Point {
-    const ax = this.A.x, ay = this.A.y
-    const bx = this.B.x, by = this.B.y
-    const cx = this.C.x, cy = this.C.y
-
-    // Using the formula: H = A + B + C - 2*O where O is circumcenter
-    // Alternatively, intersection of two altitudes
-
-    const d = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
-
-    if (approxEqual(d, 0, EPSILON)) {
-      // Degenerate triangle
-      return this.centroid
-    }
-
-    // Altitude from A to BC
-    // Altitude from B to AC
-    const ux = ((by - cy) * (bx * cx + by * cy - ax * cx - ay * cy) -
-                (ay - cy) * (ax * bx + ay * by - ax * cx - ay * cy)) /
-               ((bx - cx) * (ay - cy) - (ax - cx) * (by - cy))
-
-    // Substitute back to find uy
-    if (!approxEqual(ay - cy, 0, EPSILON)) {
-      const uy = ((ax - cx) * (ux - ax) + ay * (ay - cy) - cy * (ay - cy)) / (ay - cy) + cy
-      return point(ux, uy)
-    } else {
-      // Use different altitude
-      const uy = ((bx - cx) * (ux - bx)) / (by - cy) + by
-      return point(ux, uy)
-    }
+    const o = this.circumcenter
+    return point(
+      this.A.x + this.B.x + this.C.x - 2 * o.x,
+      this.A.y + this.B.y + this.C.y - 2 * o.y
+    )
   }
 
   // ─────────────────────────────────────────────────────────────────────────────

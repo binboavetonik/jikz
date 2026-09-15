@@ -34,7 +34,7 @@ export default function render(container: HTMLElement) {
 
   pic.text(C(40, 185), 'main', { fontSize: 11 })
   pic.text(C(210, 65), 'feature/login', { fontSize: 11, style: { stroke: '#7c3aed' } })
-  pic.text(m4.center.add(point(14, 4)), 'HEAD', { fontSize: 10, textAnchor: 'start', style: { stroke: '#64748b' } })
+  pic.text(m4.center, 'HEAD', { at: 'south east', distance: 8, fontSize: 10, style: { stroke: '#64748b' } })
 
   pic.mount(container, { fit: true, padding: 12 })
 }

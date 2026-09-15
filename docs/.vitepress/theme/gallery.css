@@ -1,0 +1,238 @@
+/* Gallery landing page. Colors come from VitePress's theme tokens, so
+   dark mode follows the site toggle; previews sit on white "paper" in
+   both modes because the examples draw with their own explicit colors. */
+
+.jz-gallery {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 28px 32px 64px;
+}
+
+/* ── hero: one line, two buttons, no paragraph ─────────────────────── */
+.jz-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding-bottom: 20px;
+}
+.jz-wordmark {
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--vp-c-text-1);
+}
+.jz-tagline {
+  margin: 8px 0 0;
+  font-size: 16px;
+  color: var(--vp-c-text-2);
+}
+.jz-actions { display: flex; gap: 10px; }
+.jz-btn {
+  display: inline-block;
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+.jz-btn:hover { border-color: var(--vp-c-brand-1); }
+.jz-btn-primary {
+  background: var(--vp-c-brand-1);
+  border-color: var(--vp-c-brand-1);
+  color: #fff;
+}
+.jz-btn-primary:hover { background: var(--vp-c-brand-2); border-color: var(--vp-c-brand-2); }
+
+/* ── sticky category chips ─────────────────────────────────────────── */
+.jz-chips {
+  position: sticky;
+  top: var(--vp-nav-height);
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 0;
+  margin: 0 -4px;
+  background: var(--vp-c-bg);
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+.jz-chip {
+  appearance: none;
+  border: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-2);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.jz-chip:hover { color: var(--vp-c-text-1); border-color: var(--vp-c-text-3); }
+.jz-chip.active {
+  background: var(--vp-c-brand-soft);
+  border-color: var(--vp-c-brand-1);
+  color: var(--vp-c-brand-1);
+  font-weight: 600;
+}
+.jz-count { opacity: 0.6; font-size: 12px; margin-left: 4px; }
+.jz-blurb {
+  margin: 12px 0 0;
+  font-size: 14px;
+  color: var(--vp-c-text-2);
+}
+
+/* ── grid + cards ──────────────────────────────────────────────────── */
+.jz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 18px;
+  margin-top: 20px;
+}
+.jz-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  background: var(--vp-c-bg-soft);
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.jz-card:hover { border-color: var(--vp-c-text-3); box-shadow: 0 6px 24px -12px rgb(0 0 0 / 0.25); }
+.jz-card.is-code { grid-column: span 2; }
+@media (max-width: 720px) { .jz-card.is-code { grid-column: auto; } }
+
+.jz-preview {
+  position: relative;
+  height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background:
+    linear-gradient(45deg, var(--vp-c-bg-alt) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--vp-c-bg-alt) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--vp-c-bg-alt) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--vp-c-bg-alt) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  overflow: hidden;
+}
+.jz-canvas { max-width: 100%; max-height: 100%; }
+.jz-canvas > svg {
+  display: block;
+  max-width: 100%;
+  max-height: 216px;
+  height: auto;
+  background: #fff;
+  /* foreignObject text (KaTeX labels) inherits `color`; keep it ink on paper
+     even when the site is in dark mode */
+  color: #1f2937;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+.jz-error {
+  position: absolute;
+  inset: 12px;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  background: #fee2e2;
+  color: #991b1b;
+  font-family: var(--vp-font-family-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  border-radius: 6px;
+}
+
+.jz-codewrap { display: flex; flex-direction: column; min-height: 240px; }
+.jz-codehead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--vp-c-divider);
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+}
+.jz-desc { flex: 1; }
+.jz-copy {
+  appearance: none;
+  border: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-2);
+  border-radius: 6px;
+  padding: 2px 10px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.jz-copy:hover { color: var(--vp-c-text-1); border-color: var(--vp-c-text-3); }
+.jz-code {
+  margin: 0;
+  padding: 14px 16px;
+  max-height: 480px;
+  overflow: auto;
+  background: var(--vp-code-block-bg);
+  color: var(--vp-c-text-1);
+  font-family: var(--vp-font-family-mono);
+  font-size: 12.5px;
+  line-height: 1.55;
+  white-space: pre;
+}
+.jz-hint {
+  margin: 0;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--vp-c-text-3);
+}
+.jz-hint code { font-size: 11.5px; }
+
+.jz-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--vp-c-divider);
+}
+.jz-title {
+  flex: 1;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jz-toggle {
+  appearance: none;
+  border: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-2);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-family: var(--vp-font-family-mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+.jz-toggle:hover, .jz-toggle.active { color: var(--vp-c-brand-1); border-color: var(--vp-c-brand-1); }
+.jz-src {
+  font-size: 12px;
+  color: var(--vp-c-text-3);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.jz-src:hover { color: var(--vp-c-brand-1); }
+
+@media (max-width: 640px) {
+  .jz-gallery { padding: 20px 16px 48px; }
+  .jz-wordmark { font-size: 32px; }
+}

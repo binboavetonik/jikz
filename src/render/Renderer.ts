@@ -338,6 +338,19 @@ function tagOf(obj: unknown): string | undefined {
 }
 
 /**
+ * Radius, in px, of the disc a renderer paints for a BARE Point
+ * (`pic.draw(somePoint)`). The marker scales with the stroke width
+ * because that is the only size knob a point carries.
+ *
+ * Shared so label placement can treat a drawn point as the disc it
+ * actually becomes: with a zero-size reference, `pic.draw(p, { label })`
+ * put its own text underneath its own marker.
+ */
+export function pointMarkerRadius(strokeWidth = 1): number {
+  return strokeWidth * 3
+}
+
+/**
  * Type guard to check if an object is a Point
  */
 export function isPoint(obj: unknown): obj is Point {

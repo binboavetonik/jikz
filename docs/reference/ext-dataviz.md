@@ -5,7 +5,7 @@ The data-visualization extension — jikz's
 gridlines, a legend, and line/scatter/bar series builders. Ships in
 the package; nothing to register — it is pure drawing on the public
 container verbs, so it composes with any shape set. Full API:
-[generated reference](../api/) (`npm run docs:api`).
+<a href="../api/index.html" target="_blank">generated reference</a> (`npm run docs:api`).
 
 ## Setup
 
@@ -38,9 +38,14 @@ chart(pic, {
 
 Domains default to `'auto'` — the data extent of all series, widened
 to nice tick boundaries (bar series pin the y baseline at 0). Pass
-`[min, max]` per axis to pin the range. Labeled series collect into a
-framed legend at the north-east corner of the plot area; `legend: {
-at, frame, … }` overrides placement and paint.
+`[min, max]` per axis to pin the range.
+
+Labeled series collect into a legend. `legend: true` frames it and
+auto-places it in whichever inside corner of the plot area holds the
+fewest series samples — on a rising line that is the north-west, not
+the conventional north-east, which is where the data is. Override with
+`legend: { at: point(…) }`, and drop the box with `legend: { frame:
+false }`.
 
 ## The pieces: axes() and the ChartFrame
 

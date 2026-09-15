@@ -39,7 +39,7 @@ Exact line-circle and circle-circle intersections, marked on the drawing.
 
 ![Triangle centers & circumcircle](img/triangle-centers.svg)
 
-Centroid, circumcenter, and the circumscribed circle through all three vertices.
+Centroid (where the medians meet) and circumcenter, over `Triangle.circumcircle` — the circle through all three vertices. Every marker is labelled off its own border, so no name lands on a dot.
 
 **Source:** [`examples/triangle-centers.ts`](../../examples/triangle-centers.ts)
 
@@ -47,7 +47,7 @@ Centroid, circumcenter, and the circumscribed circle through all three vertices.
 
 ![Conic sections](img/conics.svg)
 
-Ellipse, parabola, and hyperbola as first-class geometry.
+Ellipse, parabola, and hyperbola as first-class geometry, auto-fitted — the unbounded conics report the bounds of the range they draw.
 
 **Source:** [`examples/conics.ts`](../../examples/conics.ts)
 
@@ -159,7 +159,7 @@ The circle tangent to all three sides: center = tri.incenter, radius = its proje
 
 ![Hexagon tessellation](img/honeycomb.svg)
 
-A honeycomb tiled with zero hand-placed cells: jikz hexagons are pointy-top (first vertex at -90°), so columns pitch √3·R, rows 1.5·R, odd columns shift half a cell — the grid derives from the hexagon's own geometry.
+A honeycomb tiled with zero hand-placed cells: jikz hexagons are pointy-top (first vertex at -90°), so they tile in offset ROWS — √3·R across, 1.5·R down, odd rows shifted half a cell.
 
 **Source:** [`examples/honeycomb.ts`](../../examples/honeycomb.ts)
 
@@ -167,7 +167,7 @@ A honeycomb tiled with zero hand-placed cells: jikz hexagons are pointy-top (fir
 
 ![Golden spiral in Fibonacci squares](img/golden-spiral.svg)
 
-Quarter-circle arcTo() arcs with Fibonacci radii, constructed by walking the arc centers (each 90° right of travel); every square is just its arc's bounding box. No corner is hand-placed.
+Quarter-circle arcTo() arcs with Fibonacci radii, constructed by walking the arc centers (each 90° right of travel); every square is just its arc's bounding box. Path is immutable, so each arc is reassigned, not just called.
 
 **Source:** [`examples/golden-spiral.ts`](../../examples/golden-spiral.ts)
 
@@ -364,7 +364,7 @@ The datavisualization extension: chart() infers domains from the series (nice 1/
 
 ![Function & derivative with tangent](img/derivative-sketch.svg)
 
-f and f' on shared axes; the tangent at x=3.5 is computed from the derivative — lineFromAngle turns atan(f'(x)) into geometry. The calculus-slide figure, no hand-computed slope.
+f and f' on shared axes; the tangent at x=3.5 comes from the derivative — the plot is y-flipped, so the screen angle is atan2(-f'(x)·yScale, xScale). The calculus-slide figure, no hand-computed slope.
 
 **Source:** [`examples/derivative-sketch.ts`](../../examples/derivative-sketch.ts)
 
@@ -388,7 +388,7 @@ Noisy samples as a scatter of circleFilled markers over the curve they come from
 
 ![Polar rose gallery](img/polar-roses.svg)
 
-r = cos(k·θ) for k = 3, 5, 7 via plotPolar (degrees, centered) — three curves composed by three centers, each over a dashed unit guide ring.
+r = cos(k·θ) for k = 3, 5, 7 via plotRose — which knows an odd k closes after 180° and converts θ for you (plotPolar hands the function DEGREES).
 
 **Source:** [`examples/polar-roses.ts`](../../examples/polar-roses.ts)
 
@@ -684,7 +684,7 @@ TikZ dash vocabulary: dashed, dotted, dashdotted, and the densely/loosely varian
 
 ![Braces & brackets](img/braces.svg)
 
-Annotation paths: curly braces and square brackets between two points.
+Annotation paths: a curly brace (four quarter-circle arcs meeting at a pointed tip) and a square bracket between two points. The third argument is the amplitude — the stand-off from the span.
 
 **Source:** [`examples/braces.ts`](../../examples/braces.ts)
 

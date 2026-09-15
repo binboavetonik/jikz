@@ -29,19 +29,25 @@ npm install katex
 
 ## Documentation
 
-Hosted at **https://binboavetonik.github.io/jikz/** (built from
-[`docs/`](docs/README.md) on every push):
+**https://binboavetonik.github.io/jikz/** — the site opens on the
+**gallery**: 100 examples rendered live, each with its source one click
+away. The documentation lives in the sidebar next to it:
 
-- **[TikZ → jikz mapping](docs/concepts/tikz-mapping.md)** — if you know
-  TikZ, start here: the idiom-by-idiom translation table.
-- **[Coordinate system](docs/concepts/coordinate-system.md)** — SVG
-  screen space, clockwise angles, and porting rules.
-- **[Two API levels](docs/concepts/two-api-levels.md)** — `picture()`
-  vs `SVGRenderer`.
-- **[ViewBox, sizing & fit](docs/concepts/viewbox-and-fit.md)** and
-  **[Node, SSR & browser](docs/concepts/node-ssr-browser.md)**.
-- **[Examples](examples/)** — 50 type-checked, snapshot-tested
-  modules; browse them live with `npm run dev`.
+- **[TikZ → jikz mapping](https://binboavetonik.github.io/jikz/concepts/tikz-mapping)** —
+  if you know TikZ, start here: the idiom-by-idiom translation table.
+- **[Coordinate system](https://binboavetonik.github.io/jikz/concepts/coordinate-system)** —
+  SVG screen space, clockwise angles, and porting rules.
+- **[Two API levels](https://binboavetonik.github.io/jikz/concepts/two-api-levels)** —
+  `picture()` vs `SVGRenderer`.
+- **[ViewBox, sizing & fit](https://binboavetonik.github.io/jikz/concepts/viewbox-and-fit)**
+  and **[Node, SSR & browser](https://binboavetonik.github.io/jikz/concepts/node-ssr-browser)**.
+- **[Examples](https://binboavetonik.github.io/jikz/)** — every card is a
+  real module in
+  [`examples/`](https://github.com/binboavetonik/jikz/tree/master/examples),
+  type-checked and snapshot-tested.
+
+(Links are absolute because npm resolves relative README links against
+the package homepage.)
 
 ## Quick start
 
@@ -149,7 +155,7 @@ pic.pen({ style: { stroke: '#0f172a', strokeWidth: 1.6 } })
 
 | Area | Contents |
 |---|---|
-| `core` | Immutable `Point` with TikZ operators (`toward` = `(A)!t!(B)`, `horAt`/`verAt` = `-\|`/`\|-`), affine `Transform` |
+| `core` | Immutable `Point` with TikZ operators (`toward` = `(A)!t!(B)`, `horAt`/`verAt` = `\|-`/`-\|`), affine `Transform` |
 | `geometry` | Line, Circle, Arc, Rectangle, Polygon, Triangle, Ellipse, Parabola, Hyperbola, function plotting (Cartesian/parametric/polar) with scatter plot marks (`circle`, `square`, `triangle`, `diamond`, `pentagon`, `plus`, `cross`, `asterisk`, `oplus`, `otimes` — open or `*Filled`), pairwise intersections |
 | `node` | `Node` (any shape + text + inner/outer sep + TikZ-style `labels` = `label=<angle>:<text>`), `Edge` (auto boundary anchors, bend/out/in/looseness, labels, arrow tips), **33 shape kinds** via `allShapes`, TikZ-style positioning (`nodeAbove`, …) |
 | `picture` | Named-node registry, named coordinates (`pic.coordinate('A', p)`), string anchor resolution (`'A.north'`), fluent path statements (`pic.pen()` — TikZ `\draw (a) -- (b) node[right]{x} -- cycle` as a chain, with `pos` labels, named endpoints, mid-statement restyling via `push`), `path`/`draw`/`fill`/`filldraw`/`shade` verbs with TikZ-style shape labels (`draw(l, { label: { text, at: 'east' } })` = `node[right]` inside a `\draw`), bare `text` with directional placement (`pic.text(p, 'h', { at: 'south east' })` = `\node[below right] at (p) {h}`), `toSVG`/`mount` with fixed or auto-fit viewBox (`{ fit: true }` sizes from content, TikZ-style) |
@@ -401,19 +407,17 @@ render time — and when one is wrong at runtime, the error names the
 ports that shape does answer to. The rotation caveat above applies here
 too: a rotated gate's ports come from the picture, not the instance.
 
-## Demo
+## Gallery
 
-The demo page renders every example through the library itself — the
-code in each *Code* tab is exactly what produced the preview. Every
-example is a real module in `examples/`: type-checked by `tsc` and
-snapshot-tested by `vitest`, so the gallery can never drift from the
-library's API.
+The site's landing page renders every example through the library
+itself — the code behind each card's `</>` toggle is exactly what
+produced the preview. Every example is a real module in `examples/`:
+type-checked by `tsc` and snapshot-tested by `vitest`, so the gallery
+can never drift from the library's API.
 
 ```sh
-npm run dev    # vite dev server; examples import the live src/
+npm run dev    # the docs site, gallery first, against the live src/
 ```
-
-Then open `http://localhost:5173/demo/index.html` (vite port may vary).
 
 ## Develop
 
@@ -422,7 +426,7 @@ npm install
 npm test          # vitest, incl. SVG-output + example-gallery snapshot suites
 npm run lint      # eslint (correctness rules; style is by convention, see CONTRIBUTING.md)
 npm run build     # tsc typecheck (src + examples) + vite library build → dist/
-npm run dev       # vite dev server (demo page)
+npm run dev       # docs site with the live gallery (vitepress dev)
 ```
 
 `scripts/audit-probes*.ts` are manual numerical sanity checks (known

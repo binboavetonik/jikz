@@ -2,7 +2,7 @@
 
 Structure in, coordinates out. The three builders return plain
 geometry — `{ nodes, edges }` — that you render with `SVGRenderer`
-or `picture`. Full API: [generated reference](../api/) (`npm run
+or `picture`. Full API: <a href="../api/index.html" target="_blank">generated reference</a> (`npm run
 docs:api`).
 
 Layout builders take node options as values: `shape` is a kind

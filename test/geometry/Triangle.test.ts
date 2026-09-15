@@ -93,6 +93,31 @@ describe('Triangle', () => {
       expect(oc.x).toBeCloseTo(0)
       expect(oc.y).toBeCloseTo(0)
     })
+
+    // Regression: the right triangle above passed even while the
+    // general case was wrong — the hand-derived altitude intersection
+    // returned a point nowhere near the altitudes for a scalene
+    // triangle, and the euler-line example drew H off the line.
+    it('orthocenter lies on both altitudes of a scalene triangle', () => {
+      const s = triangle(point(60, 190), point(320, 180), point(150, 40))
+      const h = s.orthocenter
+      // (H − A) ⟂ BC and (H − B) ⟂ AC
+      expect(
+        (h.x - s.A.x) * (s.C.x - s.B.x) + (h.y - s.A.y) * (s.C.y - s.B.y)
+      ).toBeCloseTo(0)
+      expect(
+        (h.x - s.B.x) * (s.C.x - s.A.x) + (h.y - s.B.y) * (s.C.y - s.A.y)
+      ).toBeCloseTo(0)
+    })
+
+    it('puts centroid, circumcenter and orthocenter on one Euler line', () => {
+      const s = triangle(point(40, 200), point(300, 170), point(170, 30))
+      const g = s.centroid, o = s.circumcenter, h = s.orthocenter
+      const cross = (g.x - o.x) * (h.y - o.y) - (g.y - o.y) * (h.x - o.x)
+      expect(cross).toBeCloseTo(0)
+      // and OG : GH = 1 : 2
+      expect(o.distanceTo(h)).toBeCloseTo(3 * o.distanceTo(g))
+    })
   })
 
   describe('medians', () => {

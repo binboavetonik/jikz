@@ -3,7 +3,7 @@
 Paths are jikz's compound geometry: multi-segment, multi-subpath
 curves. Two construction styles — the builder (`path()`) for paths as
 *data*, the pen (`pic.pen()`) for paths as *statements*. Full API:
-[generated reference](../api/) (`npm run docs:api`).
+<a href="../api/index.html" target="_blank">generated reference</a> (`npm run docs:api`).
 
 ## `Path` builder
 
@@ -42,8 +42,30 @@ TikZ `decorations.pathmorphing` — transform any base path:
 | `snakePath(base, { amplitude, wavelength })` | `snake` |
 | `zigzagPath(base, { amplitude, wavelength })` | `zigzag` |
 | `coilPath(base, { amplitude })` | `coil` |
-| `bracePath(a, b, amplitude)` | `brace` (annotation) |
-| `bracketPath(a, b, amplitude)` | square-bracket annotation |
+| `bracePath(a, b, amplitude, side)` | `brace` (annotation) |
+| `bracketPath(a, b, amplitude, side)` | square-bracket annotation |
+
+The two annotations span from `a` to `b` and stand `amplitude` off
+that span, on `side` (`'left'` of a→b by default). `amplitude` has to
+be a visible fraction of the span or the brace flattens: the curl
+radius is half of it, capped at a quarter of the span so the two
+halves cannot fold through each other. See
+[`examples/braces.ts`](../../examples/braces.ts).
+
+## SVG path import (`pathFromSVG`)
+
+`pathFromSVG(d)` parses any SVG `d` string — absolute and relative
+commands, the `H`/`V` shorthands, the `S`/`T` smooth forms, and elliptical
+arcs — into a `Path`. That makes an icon exported from a drawing tool
+a first-class jikz path: drawable, decoratable, measurable,
+splittable.
+
+```ts
+import { pathFromSVG, subPath } from '@ozan.e/jikz'
+
+const glyph = pathFromSVG('M 10 80 C 40 10, 65 10, 95 80 S 150 150, 180 80')
+pic.draw(subPath(glyph, 0.2, 0.8), { style: { stroke: '#2563eb' } })
+```
 
 ## Arc math (`src/path/arcMath.ts`)
 

@@ -15,14 +15,16 @@ export default function render(container: HTMLElement) {
   pic.draw(line(point(30, AXIS), point(470, AXIS)), { style: { stroke: '#94a3b8' } })
   pic.draw(ellipse(point(LENS_X, AXIS), 8, 85), { style: { stroke: '#2563eb', strokeWidth: 2 } })
   for (const fx of [LENS_X - F, LENS_X + F]) {
-    pic.draw(point(fx, AXIS), { style: { stroke: '#334155', strokeWidth: 2.5 } })
-    pic.text(point(fx, AXIS + 16), 'F', { fontSize: 10 })
+    pic.draw(point(fx, AXIS), {
+      style: { stroke: '#334155', strokeWidth: 2.5 },
+      label: { text: 'F', at: 'south', options: { fontSize: 10 } },
+    })
   }
 
   // object arrow
   const obj = point(OBJ_X, AXIS - OBJ_H)
   pic.edge(point(OBJ_X, AXIS), obj, { arrowEnd: 'stealth' }, { style: { stroke: '#334155', strokeWidth: 2 } })
-  pic.text(obj.add(point(0, -10)), 'object', { fontSize: 10 })
+  pic.text(obj, 'object', { at: 'north', distance: 6, fontSize: 10 })
 
   // principal rays from the object tip
   // 1: parallel to axis, then refract through far focus
@@ -41,7 +43,7 @@ export default function render(container: HTMLElement) {
   const imgTip = intersectLineLine(line(r1knee, r1end), line(obj, r2end)).points[0]!
   pic.edge(point(imgTip.x, AXIS), imgTip, { arrowEnd: 'stealth' },
     { style: { stroke: '#7c3aed', strokeWidth: 2 } })
-  pic.text(imgTip.add(point(0, 16)), 'image', { fontSize: 10, style: { stroke: '#7c3aed' } })
+  pic.text(imgTip, 'image', { at: 'south', distance: 6, fontSize: 10, style: { stroke: '#7c3aed' } })
 
   pic.mount(container, { fit: true, padding: 14 })
 }

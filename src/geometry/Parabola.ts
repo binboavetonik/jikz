@@ -108,6 +108,19 @@ export class Parabola {
   }
 
   /**
+   * Bounding box of the curve AS DRAWN — the same default parameter
+   * range `toSVGPath()` samples. An unbounded conic has no finite box
+   * of its own, so `fit: true` needs this to mean the visible extent;
+   * without it `Picture.contentBounds` read `undefined` and threw.
+   */
+  get bounds(): [number, number, number, number] {
+    const pts = this.getPoints()
+    const xs = pts.map((p) => p.x)
+    const ys = pts.map((p) => p.y)
+    return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]
+  }
+
+  /**
    * Transform local coordinates (vertex at origin) to world coordinates
    */
   private localToWorld(x: number, y: number): Point {

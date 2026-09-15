@@ -15,8 +15,10 @@ export default function render(container: HTMLElement) {
   pic.draw(q, { style: { stroke: '#2563eb', strokeWidth: 2 } })
   pic.pen({ style: { stroke: '#93c5fd', dash: 'dashed' } })
     .moveTo(A).lineTo(point(160, 30)).lineTo(B)
-  pic.draw(point(160, 30), { style: { stroke: '#2563eb', strokeWidth: 2.5 } })
-  pic.text(point(160, 20), 'quadratic — 1 control point', { fontSize: 10, style: { stroke: '#2563eb' } })
+  pic.draw(point(160, 30), {
+    style: { stroke: '#2563eb', strokeWidth: 2.5 },
+    label: { text: 'quadratic — 1 control point', at: 'north', options: { fontSize: 10, style: { stroke: '#2563eb' } } },
+  })
 
   // cubic: two control points, ends aim up and down
   const cubic = path().moveTo(point(40, 240)).curveTo(point(100, 320), point(230, 120), point(280, 240))
@@ -24,9 +26,11 @@ export default function render(container: HTMLElement) {
   pic.pen({ style: { stroke: '#fca5a5', dash: 'dashed' } })
     .moveTo(40, 240).lineTo(100, 320)
     .moveTo(280, 240).lineTo(230, 120)
-  pic.draw(point(100, 320), { style: { stroke: '#dc2626', strokeWidth: 2.5 } })
+  pic.draw(point(100, 320), {
+    style: { stroke: '#dc2626', strokeWidth: 2.5 },
+    label: { text: 'cubic — 2 control points, independent ends', at: 'south', options: { fontSize: 10, style: { stroke: '#dc2626' } } },
+  })
   pic.draw(point(230, 120), { style: { stroke: '#dc2626', strokeWidth: 2.5 } })
-  pic.text(point(160, 330), 'cubic — 2 control points, independent ends', { fontSize: 10, style: { stroke: '#dc2626' } })
 
   pic.mount(container, { fit: true, padding: 12 })
 }

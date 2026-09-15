@@ -1,7 +1,6 @@
 # Reference: core
 
-The value layer everything stands on. Full API: [generated
-reference](../api/) (`npm run docs:api`).
+The value layer everything stands on. Full API: <a href="../api/index.html" target="_blank">generated reference</a> (`npm run docs:api`).
 
 ## Point
 

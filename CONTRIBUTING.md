@@ -19,13 +19,15 @@ Useful scripts:
 
 | Script | What it does |
 |---|---|
-| `npm run dev` | Demo page (`:5173/demo/`) and docs site (`:5174`) together, live against `src/` |
+| `npm run dev` | The docs site — gallery first — with the examples rendered against the live `src/` |
 | `npm test` / `npm run test:watch` | Vitest, once or in watch mode |
 | `npm run lint` | ESLint (correctness rules only; see below) |
 | `npm run typecheck` | `tsc` over `src/` + `examples/`, then over `test/` (so `@ts-expect-error` assertions in tests are real) |
 | `npm run build` | `npm run typecheck`, Vite library build, declaration post-processing |
 | `npm run check:pkg` | publint + arethetypeswrong against the packed tarball |
 | `npm run docs:cookbook` | Regenerate `docs/cookbook/` from `examples/manifest.ts` |
+| `npm run check:examples` | Measure every rendered example for label collisions and viewBox clipping |
+| `npm run preview:examples` | Contact sheets of the gallery in `.preview/`, for eyeballing |
 | `npm run docs:build` | Build the VitePress site |
 
 CI (`.github/workflows/ci.yml`) runs lint, build, test, `check:pkg`, the
@@ -106,6 +108,38 @@ docs/         Concepts, tutorials, reference, generated cookbook
   HTML or SVG element names in the description in backticks; the
   cookbook generator rejects raw `<tags>`), then run
   `npm run docs:cookbook` and commit the regenerated page and thumbnail.
+- **Linking to the generated API reference.** It is TypeDoc output in
+  `docs/public/api`, a static site VitePress copies verbatim — not a
+  VitePress route. Link it as
+  `<a href="../api/index.html" target="_blank">…</a>`, never as a
+  markdown link: VitePress's SPA router intercepts same-origin clicks
+  and renders its own 404 for `/api/`, and `vitepress dev` has no
+  directory-index fallback for `public/` subdirectories, so the bare
+  `/api/` serves an empty shell locally. Both halves of that markup are
+  load-bearing; the same rule applies to anything else added under
+  `docs/public/`.
+- **Never edit a file under `docs/cookbook/`.** Page and thumbnails are
+  both generated from `examples/*.ts`; a hand-tweaked SVG is a lie the
+  next regeneration silently reverts. Fix the example instead.
+- **Look at what you changed.** A snapshot diff proves the output moved,
+  not that it is right — every example defect this repo has shipped
+  (a label under its own marker, a curve outside the viewBox, a "brace"
+  that was a straight line) passed the snapshot suite. Run
+  `npm run check:examples` for the measurable half and
+  `npm run preview:examples` for the rest.
+- **Prefer `label` over a hand-placed `pic.text`.** `pic.draw(obj,
+  { label })`, `node({ labels })` and `pic.text(p, s, { at })` all
+  measure the text and place it off the shape's own border, so the gap
+  survives a font change, a longer string or a moved vertex. A text
+  item at `p.add(point(12, -8))` does not, and is how most of them
+  ended up on top of something.
+
+## README links
+
+Every link in `README.md` must be absolute (`https://…`). npm renders
+the README on the package page and resolves relative links against the
+package `homepage`, which turns `docs/…` and `examples/` into dead
+links there.
 
 ## Changelog
 

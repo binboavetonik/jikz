@@ -2,7 +2,7 @@
 
 `picture()` — the declarative registry that is jikz's main API.
 Collects statements, resolves names, compiles to SVG. Full API:
-[generated reference](../api/) (`npm run docs:api`).
+<a href="../api/index.html" target="_blank">generated reference</a> (`npm run docs:api`).
 
 Conceptual intro: [Two API levels](../concepts/two-api-levels.md).
 

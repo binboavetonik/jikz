@@ -34,8 +34,11 @@ export default function render(container: HTMLElement) {
         borderRadius: 6,
       },
     })
+    // Caption inside its own box, not floating above it: nested
+    // clusters sit only clusterPadding apart, so labels hung above the
+    // border collided with the parent's.
     if (c.label) {
-      pic.text(point(x0 + 6, y0 - 8), c.label, {
+      pic.text(point(x0 + 6, y0 + 9), c.label, {
         fontSize: 10,
         textAnchor: 'start',
         style: { fill: c.depth === 0 ? '#64748b' : '#7c3aed' },

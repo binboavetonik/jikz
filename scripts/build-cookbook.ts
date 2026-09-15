@@ -13,8 +13,8 @@
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { JSDOM } from 'jsdom'
 import { demos, CATEGORY_INFO } from '../examples/manifest'
+import { renderExamples } from './render-examples'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const OUT_DIR = join(ROOT, 'docs/cookbook')
@@ -24,22 +24,10 @@ const CATEGORY_ORDER = CATEGORY_INFO
 
 // ── Render thumbnails through the string pipeline ───────────────────────────
 
-const dom = new JSDOM('<!doctype html><html><body></body></html>')
-// The library checks for a DOM via the globals — install jsdom's.
-globalThis.document = dom.window.document as unknown as Document
-globalThis.window = dom.window as unknown as Window & typeof globalThis
-const document = dom.window.document
-
 mkdirSync(IMG_DIR, { recursive: true })
 
-for (const demo of demos) {
-  const container = document.createElement('div')
-  demo.render(container)
-  const svg = container.innerHTML
-  if (!svg.includes('<svg')) {
-    throw new Error(`${demo.id}: render produced no SVG`)
-  }
-  writeFileSync(join(IMG_DIR, `${demo.id}.svg`), svg)
+for (const { demo, html } of renderExamples()) {
+  writeFileSync(join(IMG_DIR, `${demo.id}.svg`), html)
 }
 console.log(`rendered ${demos.length} thumbnails → docs/cookbook/img/`)
 

@@ -2,7 +2,7 @@
 
 The render layer: `SVGRenderer` (imperative, geometry → SVG),
 `SVGBuilder` (DOM-free element tree → string or live DOM), and the
-complete style system. Full API: [generated reference](../api/)
+complete style system. Full API: <a href="../api/index.html" target="_blank">generated reference</a>
 (`npm run docs:api`).
 
 ## The complete `RenderStyle` key table
@@ -48,6 +48,39 @@ stroke colors (`red`, `blue`, …), fill colors (`fillRed`, …), patterns
 (`patternNorthEastLines`, …), shadows (`shadow`, `shadowSm`,
 `shadowLg`), radii (`rounded`, …`roundedFull`), `double`. Frozen
 objects; introspect via `PRESET_OBJECTS`.
+
+### Naming your own — the style registry
+
+`registerStyle(name, recipe)` is TikZ's `\tikzset{name/.style={…}}`.
+The recipe is resolved once, at registration, and the call hands back
+the frozen preset object — so one registration serves both the typed
+array form and the string form:
+
+```ts
+import { dashed, parseStyleString, registerStyle, thick } from '@ozan.e/jikz'
+
+const wire = registerStyle('wire', [thick, { stroke: '#0f172a' }])
+const hot  = registerStyle('hot wire', ['wire', { stroke: '#dc2626' }])
+
+pic.draw(e, { style: hot })                                   // typed
+pic.draw(e, { style: [wire, dashed] })                        // composed
+pic.draw(e, { style: parseStyleString('hot wire, dashed') })  // string
+```
+
+A recipe may reference other registered names, so styles compose the
+way TikZ's do; re-registering a name replaces it. `hasStyle(name)` and
+`registeredStyleNames()` introspect the table, and an unknown name in
+a string warns once and is ignored rather than throwing — check with
+`hasStyle` if you need it to be fatal.
+
+Note that `style` itself never takes a bare name: it takes a partial
+or an array of partials. `parseStyleString` is the bridge from names
+to that, which keeps `RenderStyle` free of string lookups at render
+time. Unlike shapes and fill patterns — which became plain values in
+0.7.0 — arrow tips, decorations and styles stay registries on purpose:
+their tables are small and nearly every picture touches them, so the
+ceremony would cost more than the bytes (CONTRIBUTING records that
+split).
 
 ## Fill patterns
 

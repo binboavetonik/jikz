@@ -26,8 +26,10 @@ export default function render(container: HTMLElement) {
     pic.draw(line(V, end), { style: { stroke: '#2563eb', dash: 'dashed' } })
   }
 
-  pic.draw(I, { style: { stroke: '#dc2626', strokeWidth: 3 } })
-  pic.text(I.add(point(12, -8)), 'I', { fontSize: 11, style: { stroke: '#dc2626' } })
+  pic.draw(I, {
+    style: { stroke: '#dc2626', strokeWidth: 3 },
+    label: { text: 'I', at: 'north east', distance: 6, options: { fontSize: 11, style: { stroke: '#dc2626' } } },
+  })
 
   pic.mount(container, { fit: true, padding: 14 })
 }

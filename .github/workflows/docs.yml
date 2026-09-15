@@ -30,16 +30,10 @@ jobs:
       - run: npm ci --no-audit --no-fund
       # TypeDoc → docs/public/api, served at /api/ next to the site
       - run: npm run docs:api
+      # The gallery (site root) renders examples/ live; nothing else to build
       - run: npm run docs:build
         env:
           DOCS_BASE: /jikz/
-          # the nav's "Live demos" entry, absolute so the SPA router leaves it alone
-          DOCS_DEMO_URL: https://binboavetonik.github.io/jikz/demo/
-      # The demo page + every example, as a static app at /jikz/demo/
-      # (must run after docs:build, which empties the output directory)
-      - run: npm run demo:build
-        env:
-          DEMO_BASE: /jikz/demo/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs/.vitepress/dist

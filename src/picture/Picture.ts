@@ -528,7 +528,23 @@ function growBounds(
     if (item.obj instanceof Point) {
       add([item.obj.x, item.obj.y, item.obj.x, item.obj.y])
     } else {
-      add((item.obj as { bounds: [number, number, number, number] }).bounds)
+      const b = (item.obj as { bounds?: [number, number, number, number] }).bounds
+      // A renderable with no bounds used to reach Math.min as undefined
+      // and fail with "Cannot read properties of undefined (reading '0')"
+      // four frames away from the drawing that caused it.
+      if (!b) {
+        const kind =
+          (item.obj as { kind?: string; type?: string }).kind ??
+          (item.obj as { type?: string }).type ??
+          item.obj.constructor?.name ??
+          'object'
+        throw new Error(
+          `Picture: cannot auto-fit the viewBox — a drawn ${kind} has no ` +
+            `\`bounds\`. Give the shape a bounds getter, or mount with an ` +
+            `explicit { width, height } instead of { fit: true }.`
+        )
+      }
+      add(b)
     }
   } else if (item.kind === 'pen') {
     for (const sub of item.pen.items()) growBounds(sub, grow, transform)

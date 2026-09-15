@@ -430,9 +430,12 @@ export function axes<S extends ShapeSet>(
     })
   }
   if (yo.label) {
-    pic.text(point(x0, yTop - labelFontSize), yo.label, {
+    // Above the axis and to its RIGHT: centred on x0 it reached back
+    // over the tick-label column, and one tick-label height of
+    // clearance is what keeps it off the topmost tick.
+    pic.text(point(x0, yTop - fontSize - labelFontSize), yo.label, {
       fontSize: labelFontSize,
-      textAnchor: 'middle',
+      textAnchor: 'start',
     })
   }
 

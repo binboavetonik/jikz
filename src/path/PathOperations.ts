@@ -463,7 +463,18 @@ export function joinPaths(paths: Path[], close: boolean = false): Path {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Create a curly brace path between two points
+ * Create a curly brace path between two points — TikZ's
+ * `decoration={brace}` shape: a foot that curls off the span at each
+ * end, a straight body, and a pointed tip in the middle standing
+ * `amplitude` off the span, on `position`'s side of start→end.
+ *
+ * Built from four quarter-circle cubics (k = 4(√2−1)/3), which is what
+ * gives the tip its cusp. The previous implementation drew one smooth
+ * S through the midpoint, so it rendered as a shallow valley rather
+ * than a brace at any amplitude.
+ *
+ * The curl radius is `amplitude / 2`, clamped so the two halves cannot
+ * overlap on a short span.
  */
 export function bracePath(
   from: PointLike,
@@ -473,43 +484,35 @@ export function bracePath(
 ): Path {
   const start = point(from.x, from.y)
   const end = point(to.x, to.y)
-  const mid = start.toward(end, 0.5)
+  const span = start.distanceTo(end)
+  if (span === 0) return path().moveTo(start)
 
   const angle = start.angleTo(end)
-  const normalAngle = angle + (position === 'left' ? 90 : -90)
-  const rad = degToRad(normalAngle)
+  const alongRad = degToRad(angle)
+  const normalRad = degToRad(angle + (position === 'left' ? 90 : -90))
+  const ux = Math.cos(alongRad), uy = Math.sin(alongRad)
+  const nx = Math.cos(normalRad), ny = Math.sin(normalRad)
+  /** Local (along, out) → world. */
+  const at = (u: number, v: number): Point =>
+    point(start.x + ux * u + nx * v, start.y + uy * u + ny * v)
 
-  // Brace tip
-  const tip = point(
-    mid.x + amplitude * Math.cos(rad),
-    mid.y + amplitude * Math.sin(rad)
-  )
-
-  // Control points for the curved brace
-  const q1 = start.toward(mid, 0.25)
-  const q3 = mid.toward(end, 0.75)
-
-  const cp1 = point(
-    q1.x + amplitude * 0.5 * Math.cos(rad),
-    q1.y + amplitude * 0.5 * Math.sin(rad)
-  )
-  const cp2 = point(
-    tip.x - (mid.x - q1.x) * 0.3,
-    tip.y - (mid.y - q1.y) * 0.3
-  )
-  const cp3 = point(
-    tip.x + (q3.x - mid.x) * 0.3,
-    tip.y + (q3.y - mid.y) * 0.3
-  )
-  const cp4 = point(
-    q3.x + amplitude * 0.5 * Math.cos(rad),
-    q3.y + amplitude * 0.5 * Math.sin(rad)
-  )
+  // Curl radius: half the stand-off, but never so large that the two
+  // halves would meet before the shoulders.
+  const r = Math.min(amplitude / 2, span / 4)
+  const k = 0.5522847498307936 // circle → cubic control-point factor
+  const mid = span / 2
 
   return path()
-    .moveTo(start)
-    .curveTo(cp1, cp2, tip)
-    .curveTo(cp3, cp4, end)
+    .moveTo(at(0, 0))
+    // foot: off the span, turning to run along it
+    .curveTo(at(0, r * k), at(r - r * k, r), at(r, r))
+    .lineTo(at(mid - r, r))
+    // shoulder: up to the tip, arriving perpendicular (the cusp)
+    .curveTo(at(mid - r + r * k, r), at(mid, 2 * r - r * k), at(mid, 2 * r))
+    // mirror image back down to the far foot
+    .curveTo(at(mid, 2 * r - r * k), at(mid + r - r * k, r), at(mid + r, r))
+    .lineTo(at(span - r, r))
+    .curveTo(at(span - r + r * k, r), at(span, r * k), at(span, 0))
 }
 
 /**

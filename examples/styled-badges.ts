@@ -1,4 +1,4 @@
-import { allShapes, circle, picture, point, rect } from 'jikz'
+import { allShapes, picture, point, rect } from 'jikz'
 
 // The styling vocabulary applied to nodes as "UI badges": rounded
 // corners via the 'rounded rectangle' shape's cornerRadius (style
@@ -42,11 +42,13 @@ export default function render(container: HTMLElement) {
     labels: [{ text: 'label gap = distance + outerSep', at: 'north', options: { fontSize: 9 } }],
   }, { style: { stroke: '#dc2626', fill: '#fee2e2', strokeWidth: 1.5 } })
 
-  pic.draw(circle(point(360, 150), 34), { style: { stroke: '#0f172a', strokeWidth: 1.5 } })
-  pic.filldraw(rect(330, 120, 60, 60), {
+  // borderRadius is a STYLE, so it rounds bare rect() geometry — the
+  // 'rounded rectangle' SHAPE above is the node-level equivalent.
+  // Parked clear of the badge on its left, whose label is wide.
+  pic.filldraw(rect(440, 120, 60, 60), {
     style: { stroke: '#0f172a', fill: '#f8fafc', strokeWidth: 1.5, borderRadius: 14 },
+    label: { text: 'bare rect + borderRadius style', at: 'south', options: { fontSize: 9 } },
   })
-  pic.text(point(360, 205), 'bare rect + borderRadius style', { fontSize: 9 })
 
   pic.mount(container, { fit: true, padding: 18 })
 }

@@ -321,10 +321,14 @@ export function plotParametric(
 }
 
 /**
- * Plot a polar curve r = f(theta)
+ * Plot a polar curve r = f(theta).
+ *
+ * `theta` reaches `fn` in DEGREES (the library's angle unit), so a
+ * trig function inside needs converting — `degToRad`, or the ready-made
+ * {@link plotRose}/{@link plotCardioid} helpers.
  *
  * @example
- * plotPolar(theta => 2 + Math.cos(theta * 3), { domain: [0, 360] })
+ * plotPolar(theta => 2 + Math.cos(degToRad(theta) * 3), { domain: [0, 360] })
  */
 export function plotPolar(
   fn: (theta: number) => number,

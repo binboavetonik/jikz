@@ -1,38 +1,56 @@
-import { picture, rect, point } from 'jikz'
+import { picture, polygon, rectFromCenter, rotated, arc, point, polar } from 'jikz'
 
-// The mechanics textbook figure: a block on an incline with weight,
-// normal force, and friction as stealth-arrow vectors from the body's
-// center. Every vector is an edge from the center point — rotate the
-// hill angle and only the vector angles change.
+// The mechanics textbook figure: a block resting on a 20° incline,
+// with weight, normal force and friction drawn from its center as
+// stealth-arrow vectors. The wedge, the contact point, the block's
+// rotation and every vector angle are derived from ANGLE — change it
+// and the whole figure tilts with it.
+
+const ANGLE = 20                       // incline angle, degrees
+const SLOPE = -ANGLE                   // screen convention: up to the right
+const BASE_Y = 200, X0 = 30, X1 = 370  // the wedge's ground line
 
 export default function render(container: HTMLElement) {
   const pic = picture()
-  const C = point(200, 130) // body center
-  const slope = -20         // incline angle, screen convention
 
-  // incline surface
-  pic.pen({ style: { stroke: '#334155', strokeWidth: 2 } })
-    .moveTo(30, 190).lineTo(370, 190).lineTo(370, 190 - 340 * Math.tan(20 * Math.PI / 180))
+  // The wedge: ground, vertical riser, and the incline surface back to
+  // the corner. The surface is the hypotenuse — the line the block sits on.
+  const foot = point(X0, BASE_Y)
+  const apex = point(X1, BASE_Y - (X1 - X0) * Math.tan((ANGLE * Math.PI) / 180))
+  pic.filldraw(polygon([foot, point(X1, BASE_Y), apex]), {
+    style: { stroke: '#334155', fill: '#f1f5f9', strokeWidth: 2 },
+  })
 
-  // the block
-  pic.filldraw(rect(C.x - 28, C.y - 22, 56, 44), {
+  // the incline angle at the foot, between the ground and the surface
+  pic.draw(arc(foot, 52, SLOPE, 0), {
+    style: { stroke: '#64748b', strokeWidth: 1.5 },
+    label: { text: `${ANGLE}°`, at: SLOPE / 2, distance: 8, options: { fontSize: 11 } },
+  })
+
+  // The block: centered half a block-height along the surface normal,
+  // so it rests ON the incline rather than intersecting it, and rotated
+  // to match. `rotated` keeps the rectangle a value — no transform state.
+  const W = 60, H = 44
+  const contact = foot.toward(apex, 0.55)
+  const C = contact.add(polar(SLOPE - 90, H / 2))
+  pic.filldraw(rotated(rectFromCenter(C, W, H), SLOPE), {
     style: { stroke: '#334155', fill: '#dbeafe', strokeWidth: 1.5 },
   })
 
-  // force vectors from the center
-  const F = 70
+  // Force vectors from the center — each angle stated against the slope.
+  const F = 66
   const vectors: [label: string, deg: number, len: number, color: string][] = [
-    ['$mg$', 90, F, '#dc2626'],               // gravity: straight down
-    ['$N$', slope - 90, F * 0.85, '#2563eb'], // normal: perpendicular to surface
-    ['$f$', slope, F * 0.5, '#16a34a'],       // friction: up the slope
+    ['mg', 90, F, '#dc2626'],                 // weight: straight down
+    ['N', SLOPE - 90, F * 0.9, '#2563eb'],    // normal: out of the surface
+    ['f', SLOPE, F * 0.6, '#16a34a'],         // friction: up the slope
   ]
   for (const [label, deg, len, color] of vectors) {
-    const tip = C.add(point(Math.cos(deg * Math.PI / 180) * len, Math.sin(deg * Math.PI / 180) * len))
+    const tip = C.add(polar(deg, len))
     pic.edge(C, tip, { arrowEnd: 'stealth' }, { style: { stroke: color, strokeWidth: 2 } })
-    const lp = C.add(point(Math.cos(deg * Math.PI / 180) * (len + 18), Math.sin(deg * Math.PI / 180) * (len + 18)))
-    pic.text(lp, label, { fontSize: 12, style: { stroke: color } })
+    // `at: deg` continues the vector's own direction, so the label sits
+    // past the arrowhead however the incline is tilted.
+    pic.text(tip, label, { at: deg, distance: 5, fontSize: 12, style: { stroke: color } })
   }
 
-  pic.text(point(30, 220), 'free-body on a 20° incline', { fontSize: 10, textAnchor: 'start', style: { stroke: '#64748b' } })
-  pic.mount(container, { fit: true, padding: 14 })
+  pic.mount(container, { fit: true, padding: 16 })
 }

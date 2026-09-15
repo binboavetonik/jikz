@@ -12,3 +12,6 @@ docs/.vitepress/dist/
 vite.config.ts.timestamp-*
 scratch-*.ts
 etc/
+
+# Review artifacts from `npm run preview:examples`
+.preview/
