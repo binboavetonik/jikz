@@ -18,6 +18,8 @@ import {
   diode,
   wire,
   Meter,
+  junctionDot,
+  openTerminal,
   BATTERY_DEFAULT_WIDTH,
   BATTERY_DEFAULT_HEIGHT,
   METER_DEFAULT_WIDTH,
@@ -167,6 +169,38 @@ describe('schottky diode', () => {
     pic.node('D1', circuit.diode({ at: point(0, 0), variant: 'schottky' }))
     pic.node('D2', { at: point(0, 0), shape: 'diode', shapeOptions: { variant: 'schottky' } })
     expect(pic.getNode('D1')!.shape.toSVGPath()).toBe(pic.getNode('D2')!.shape.toSVGPath())
+  })
+})
+
+describe('openTerminal', () => {
+  it('is a ring where junctionDot is a blob', () => {
+    // Same geometry, opposite paint — which is also what tells them
+    // apart on paper. The helper names the intent; the verb paints it.
+    const p = point(40, 40)
+    expect(openTerminal(p).radius).toBeGreaterThan(junctionDot(p).radius)
+    expect(openTerminal(p).center).toEqual(junctionDot(p).center)
+  })
+
+  it('draws stroked and unfilled through the draw verb', () => {
+    const pic = picture({ shapes: SHAPES })
+    pic.draw(openTerminal(point(20, 20)), { style: { stroke: '#0f172a' } })
+    const svg = pic.toSVG({ width: 60, height: 60 })
+    expect(svg).toContain('fill="none"')
+    expect(svg).toContain('#0f172a')
+  })
+
+  it('marks an open pair, which is all circuitikz `open` amounts to', () => {
+    // `to[open]` declares an EMPTY drawing body upstream — it reserves
+    // a box for a voltage annotation and draws nothing. So an open
+    // pair in jikz is two terminals and no wire between them.
+    const pic = picture({ shapes: SHAPES })
+    const a = point(40, 40)
+    const b = point(40, 100)
+    pic.draw(openTerminal(a))
+    pic.draw(openTerminal(b))
+    const svg = pic.toSVG({ width: 120, height: 140 })
+    expect((svg.match(/<circle/g) ?? []).length).toBe(2)
+    expect(svg).not.toContain('<line')
   })
 })
 

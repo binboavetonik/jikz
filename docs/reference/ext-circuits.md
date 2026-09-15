@@ -71,14 +71,25 @@ Both styles produce the same objects and mix freely — see
 ## Wiring
 
 ```ts
-import { wire, junctionDot } from '@ozan.e/jikz'
+import { wire, junctionDot, openTerminal } from '@ozan.e/jikz'
 
 wire(pic, ['V1.in', point(60, 60), 'R1.in'])  // chained endpoints, arrows off
-pic.fill(junctionDot(point(220, 60)))         // connection dot
+pic.fill(junctionDot(point(220, 60)))         // ● wires meet here
+pic.draw(openTerminal(point(300, 60)))        // ○ an accessible terminal
 ```
 
 `wire()` accepts name.port strings, typed port `Point`s, and raw
-points in one chain. Full schematics:
+points in one chain.
+
+**Terminals.** `junctionDot` and `openTerminal` are circuitikz's two
+poles, `*` and `o`. Both return a plain `Circle`; the verb you paint
+it with is what tells them apart, on screen and on paper — `fill()`
+for a connection, `draw()` for an open terminal.
+
+There is no "open" symbol, and there should not be: circuitikz's
+`to[open]` declares an *empty* drawing body and exists only to reserve
+a box for a voltage annotation. An open pair in jikz is two terminals
+with no wire drawn between them. Full schematics:
 [RC filter](../../examples/circuit-rc-filter.ts),
 [inverting amplifier](../../examples/circuit-opamp.ts).
 

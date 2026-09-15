@@ -14,6 +14,27 @@ export function junctionDot(center: PointLike, radius = 2): Circle {
 }
 
 /**
+ * An open terminal — circuitikz's `ocirc` pole, the `o` in `o-o`.
+ * Where {@link junctionDot} is a *connection*, this is an accessible
+ * terminal that nothing is connected to: the end of a lead a probe
+ * would touch.
+ *
+ * Both return a plain {@link Circle}; what distinguishes them is how
+ * you paint it, which is also what distinguishes them on paper:
+ *
+ * ```ts
+ * pic.fill(junctionDot(p))    // ● wires meet here
+ * pic.draw(openTerminal(p))   // ○ a terminal, open
+ * ```
+ *
+ * Slightly larger than a junction dot by default, matching
+ * circuitikz, where an open pole reads as a ring rather than a blob.
+ */
+export function openTerminal(center: PointLike, radius = 3): Circle {
+  return circle(center, radius)
+}
+
+/**
  * Draw a wire through a chain of endpoints — node names, `"name.port"`
  * specs, raw points — as consecutive straight edges with arrows
  * OFF (jikz edges default to a stealth arrowhead, which is wrong for

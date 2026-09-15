@@ -68,7 +68,7 @@ export type {
   GroundPort,
   CircuitPort,
 } from './ports'
-export { junctionDot, wire } from './wires'
+export { junctionDot, openTerminal, wire } from './wires'
 export { circuit } from './builders'
 export type { CircuitBuilder } from './builders'
 

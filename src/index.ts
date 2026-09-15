@@ -709,6 +709,7 @@ export {
   GROUND_PORTS,
   CIRCUIT_PORTS,
   junctionDot,
+  openTerminal,
   circuitShapes,
   wire,
   Resistor,

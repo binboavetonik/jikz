@@ -74,6 +74,17 @@
   all: a symbol is one path and one stroke, so a dash pattern would
   have dashed the leads and the circle too.
 
+- **`openTerminal()`** beside `junctionDot()` — circuitikz's two
+  poles, `o` and `*`. Both return a `Circle`; the verb you paint it
+  with is what distinguishes them, on screen as on paper:
+  `pic.fill(junctionDot(p))` for a connection, `pic.draw(openTerminal(p))`
+  for an accessible terminal.
+
+  Deliberately *not* added: an `open` symbol. `to[open]` declares an
+  empty drawing body upstream — it draws nothing, and exists only to
+  reserve a box for a voltage annotation. An open pair is two
+  terminals with no wire between them, which needs no new shape.
+
 ### Changed
 
 - **The cookbook renders real math.** Every `$...$` label in a gallery
