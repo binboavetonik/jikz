@@ -822,3 +822,30 @@ export type {
   NiceTicks,
   DataSeries,
 } from './ext/dataviz'
+
+// Petri nets (TikZ petri) — place and transition shapes, the arc
+// styles for the flow relation, and token positions. Tokens are values
+// rather than part of the place: a pale place with solid dots is two
+// paints, which one shape cannot carry.
+
+export {
+  petriShapes,
+  petri,
+  petriArcs,
+  tokens,
+  tokenPositions,
+  PLACE_MIN_SIZE,
+  TRANSITION_MIN_SIZE,
+  TOKEN_SIZE,
+  TOKEN_DISTANCE_DEFAULT,
+  TOKEN_COLOR_DEFAULT,
+  PETRI_INNER_SEP,
+  MAX_LAID_OUT_TOKENS,
+} from './ext/petri'
+
+export type {
+  PetriShapeName,
+  PetriBuilder,
+  Token,
+  TokenOptions,
+} from './ext/petri'

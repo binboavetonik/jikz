@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### Added
+
+- **`ext/petri` — Petri nets (TikZ `petri`).** `place` and
+  `transition` shapes carrying the library's `minimum size=5ex` and
+  `4mm`, `petriArcs` for its `pre`/`post`/`pre and post` flow arcs
+  (`shorten` included), and `tokens()` for a marking. Token positions
+  come straight from the table `\tikz@def@grow@tokens` hard-codes for
+  one through nine, flipped for a y-down canvas — including the two
+  arrangements that are not vertically balanced (three is slightly
+  top-heavy, eight is two over three over three), carried over rather
+  than quietly corrected. Past nine TikZ expands an undefined macro;
+  a ring is used instead. `colored tokens` and `structured tokens`
+  are the `colors` and `labels` options.
+
+  Tokens are values rather than part of the place: a pale place with
+  solid dots is two paints, which one shape's `toSVGPath()` cannot
+  carry. TikZ's `tokens=n` expands to child nodes for the same reason.
+
+  The builders also stand jikz's default node minimum (20) down, so
+  the shapes' own TikZ minimums apply — without that a transition
+  drawn as the usual thin bar comes back 20 wide.
+
 ### Fixed
 
 - **`star`, `pentagon`, `hexagon`, `regularPolygon` and

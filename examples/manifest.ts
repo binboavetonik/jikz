@@ -448,8 +448,8 @@ const meta: DemoMeta[] = [
   {
     id: "petri-net",
     category: "cs-automata",
-    title: "Petri net with marking",
-    description: "Places, transitions (bars), and token dots: a marked net where t1 is enabled, its in/out edges highlighted. The networking-theory classic as pure node+edge work.",
+    title: "Petri net with marking (petri library)",
+    description: "ext/petri, jikz's port of TikZ's petri library: place and transition shapes carrying the library's 5ex and 4mm minimums, petriArcs.post for its `->` shortened by a point, and tokens() for the marking \u2014 positions read straight off the table TikZ hard-codes for one through nine. Tokens stay separate from the place because a pale circle with solid dots is two paints, which one shape cannot carry; TikZ's own tokens=n expands to child nodes for the same reason. t1 is enabled, so its arcs are highlighted.",
   },
   {
     id: "neural-network",
