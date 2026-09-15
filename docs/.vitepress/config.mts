@@ -105,6 +105,7 @@ export default defineConfig({
           { text: 'ext/circuits', link: '/reference/ext-circuits' },
           { text: 'ext/dataviz', link: '/reference/ext-dataviz' },
           { text: 'ext/gates', link: '/reference/ext-gates' },
+          { text: 'ext/petri', link: '/reference/ext-petri' },
         ],
       },
       {

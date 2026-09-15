@@ -70,6 +70,7 @@ generated API (`npm run docs:api` → `docs/api/`):
 - [ext/circuits](reference/ext-circuits.md) — the circuits extension
 - [ext/dataviz](reference/ext-dataviz.md) — axes, series, legends, `chart()`
 - [ext/gates](reference/ext-gates.md) — logic gates and their typed ports
+- [ext/petri](reference/ext-petri.md) — Petri net places, transitions and tokens
 
 ## Cookbook
 
