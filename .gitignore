@@ -4,7 +4,10 @@ dist/
 *.log
 .vscode/
 .idea/
-implementation-plans/
+# Planning docs are local by default — they reference other projects.
+# Un-ignore one only when something tracked points at it.
+implementation-plans/*
+!implementation-plans/2026-09-15-tikz-parser-plan.md
 docs/public/api/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
