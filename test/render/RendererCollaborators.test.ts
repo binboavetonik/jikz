@@ -91,6 +91,55 @@ describe('MathRenderer injection', () => {
     spy.mockRestore()
   })
 
+  // ─────────────────────────────────────────────────────────────────
+  // KNOWN DEFECT — filed 2026-09-15, not yet fixed.
+  //
+  // A label that MIXES text and math renders its `$` delimiters as
+  // literal characters. `isLaTeX` (MathRenderer.ts:94) matches any
+  // string *containing* `$…$`, so a mixed label is routed to the math
+  // path; `extractLaTeX` (:109) only unwraps a string that *is* math
+  // (`/^\$(.*)\$$/`, anchored), so the match fails and the string
+  // falls through to the "raw LaTeX (no delimiters)" branch with its
+  // delimiters still attached. KaTeX then typesets them, since `$` is
+  // an ordinary character to KaTeX.
+  //
+  // Reproduces with KaTeX injected and without, so it is independent
+  // of the optional peer dependency. It bites ordinary jikz use
+  // (`pic.text(p, 'speed $v$')`) and every ported TikZ label of the
+  // form `\node {time $t$}`.
+  //
+  // Fixing it means splitting a label into text and math runs and
+  // rendering each — a feature, not a patch — which is why this is
+  // pinned rather than fixed here.
+  //
+  // `it.fails` asserts the CORRECT behaviour and expects it to fail
+  // today, so the suite stays green while the defect is recorded.
+  // Once MathRenderer handles mixed labels this flips to "expected to
+  // fail but passed": drop the `.fails` at that point.
+  it.fails('renders only the math run of a mixed text/math label', () => {
+    const spy = vi.spyOn(fakeMath, 'renderToString')
+    const renderer = new SVGRenderer(undefined, undefined, { mathRenderer: fakeMath })
+    renderer.renderText('CuSO$_{4}$', point(50, 50))
+    const svg = renderer.toSVG({ width: 100, height: 100 })
+    // Only `_{4}` is math; `CuSO` is text. Whatever the eventual split
+    // looks like, no `$` may reach the output.
+    expect(spy).toHaveBeenCalledWith('_{4}', expect.objectContaining({ displayMode: false }))
+    expect(svg).not.toContain('$')
+    spy.mockRestore()
+  })
+
+  it('currently leaks the delimiters instead — remove when the above is fixed', () => {
+    // The companion to the pin above: what actually happens today, so
+    // the defect has a green, readable record rather than only an
+    // inverted one.
+    const spy = vi.spyOn(fakeMath, 'renderToString')
+    const renderer = new SVGRenderer(undefined, undefined, { mathRenderer: fakeMath })
+    renderer.renderText('CuSO$_{4}$', point(50, 50))
+    expect(spy).toHaveBeenCalledWith('CuSO$_{4}$', expect.anything())
+    spy.mockRestore()
+  })
+  // ─────────────────────────────────────────────────────────────────
+
   it('katexAdapter forwards renderToString calls', () => {
     const katexLike = { renderToString: vi.fn(() => '<b>y</b>') }
     const adapter = katexAdapter(katexLike)

@@ -183,9 +183,18 @@ Results are plain `Point`s — draw them, label them, compute with them.
 
 ## Math in labels (`$...$`)
 
-Identical spelling: any `$...$` text renders through KaTeX (an
-optional peer dependency). Without KaTeX installed, jikz falls back to
-plain italic text — the diagram still works.
+Identical spelling: a label that is **wholly** math — `'$\\alpha$'`,
+`'$x^2$'` — renders through KaTeX (an optional peer dependency, which
+you inject: `new SVGRenderer(undefined, undefined, { mathRenderer:
+katexAdapter(katex) })`). Without it, jikz falls back to plain italic
+text and the diagram still works.
+
+**Known limitation: a label may not mix text and math.** `'CuSO$_{4}$'`
+renders its `$` as literal characters, because detection matches any
+string containing `$…$` while extraction only unwraps a string that is
+entirely math. Port `\node {time $t$}` as two labels, or as plain text
+without the delimiters, until this is fixed. Pinned by
+`test/render/RendererCollaborators.test.ts`.
 
 ## Circuits (`circuitikz` / `circuits.ee`)
 
