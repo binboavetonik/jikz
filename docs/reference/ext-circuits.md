@@ -89,7 +89,41 @@ for a connection, `draw()` for an open terminal.
 There is no "open" symbol, and there should not be: circuitikz's
 `to[open]` declares an *empty* drawing body and exists only to reserve
 a box for a voltage annotation. An open pair in jikz is two terminals
-with no wire drawn between them. Full schematics:
+with no wire drawn between them.
+
+## Annotations
+
+What a schematic *means*, rather than what it contains — circuitikz's
+`v=`, `i=` and `f=`:
+
+```ts
+import { voltage, current } from '@ozan.e/jikz'
+
+voltage(pic, 'R1.in', 'R1.out', { label: '$u_R$' })   // across a component
+current(pic, 'V1.out', 'R1.in', { label: '$i_1$' })   // through a wire
+voltage(pic, a, b, { label: '$u$', curly: true })     // across an open pair
+```
+
+Both take two endpoints — a `"name.port"` spec or a point — and a
+frame is built from them: a direction along the span, and a normal to
+one side of it.
+
+| option | circuitikz | meaning |
+|---|---|---|
+| `side` | `v^` / `v_` | `left` (default) or `right` **of travel**, so reversing the endpoints flips it |
+| `sense` | `v>` / `v<` | `forward` (default) or `reverse` arrow |
+| `distance` | `voltage shift` | perpendicular offset; `current` sits on the wire at 0, and a non-zero value is circuitikz's `f=` |
+| `curly` | curly voltages | a brace instead of an arrow |
+| `inset` | — | shortens a voltage mark at both ends so it clears the terminals |
+| `pos`, `length` | — | where a current arrow sits along the span, and how long |
+
+`voltage` spans the interval; `current` marks a direction with a short
+arrow at `pos`. Both take a `label` (KaTeX math included) and a
+`style` that paints the mark and its text together.
+
+These are functions over two points rather than keys on a component,
+which is why the open pair above needs no placeholder: there is
+nothing to attach to, and nothing that needs attaching to. Full schematics:
 [RC filter](../../examples/circuit-rc-filter.ts),
 [inverting amplifier](../../examples/circuit-opamp.ts).
 

@@ -74,6 +74,23 @@
   all: a symbol is one path and one stroke, so a dash pattern would
   have dashed the leads and the circle too.
 
+- **`voltage()` and `current()` — circuitikz's `v=`, `i=` and `f=`.**
+  The marks that say what a schematic *means* rather than what it
+  contains, and the first annotations `ext/circuits` has had.
+
+  Functions over two endpoints rather than keys on a component, which
+  is the whole difference. A frame is built from the pair — a
+  direction along the span and a normal to one side — so `side` is
+  relative to **travel**: reverse the endpoints and the mark follows,
+  as circuitikz's `^`/`_` do. `sense` flips the arrow without moving
+  it, `curly` swaps a voltage arrow for a brace, and a `distance` on
+  `current` lifts it off the wire, which is circuitikz's `f=`.
+
+  Because they span two points and not a component, an open pair needs
+  no placeholder: `voltage(pic, a, b, { curly: true })` measures across
+  a gap with nothing in it. That is what circuitikz needs its `open`
+  bipole for, and why jikz does not need one.
+
 - **`openTerminal()`** beside `junctionDot()` — circuitikz's two
   poles, `o` and `*`. Both return a `Circle`; the verb you paint it
   with is what distinguishes them, on screen as on paper:

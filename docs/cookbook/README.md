@@ -239,6 +239,14 @@ Principal rays from the arrow tip: parallel-then-focus, through-center-straight 
 
 **Source:** [`examples/lens-rays.ts`](../../examples/lens-rays.ts)
 
+### Voltage and current annotations — ext/circuits
+
+![Voltage and current annotations — ext/circuits](img/circuit-annotations.svg)
+
+What a schematic MEANS rather than what it contains: voltage() and current() are jikz's circuitikz v= and i=, but as functions over two endpoints rather than keys on a component. A frame is built from the pair — a direction along the span and a normal to one side — so `side` is relative to travel and follows the endpoints rather than the page. The output terminals here are open, and the open-circuit voltage is braced across them: circuitikz needs a placeholder bipole for that, one which declares an empty drawing body and exists only to hang a voltage on, while here it is two points and the mark between them.
+
+**Source:** [`examples/circuit-annotations.ts`](../../examples/circuit-annotations.ts)
+
 ### Circuit symbol gallery — ext/circuits
 
 ![Circuit symbol gallery — ext/circuits](img/circuit-symbols.svg)

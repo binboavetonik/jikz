@@ -710,6 +710,8 @@ export {
   CIRCUIT_PORTS,
   junctionDot,
   openTerminal,
+  voltage,
+  current,
   circuitShapes,
   wire,
   Resistor,
@@ -777,6 +779,12 @@ export type {
   MeterOptions,
   MeterVariant,
   SupplyOptions,
+  AnnotationSide,
+  AnnotationSense,
+  AnnotationEndpoint,
+  AnnotationOptions,
+  VoltageOptions,
+  CurrentOptions,
 } from './ext/circuits'
 
 // Logic gates (TikZ shapes.gates.logic) — opt-in shape set

@@ -650,6 +650,12 @@ const meta: DemoMeta[] = [
     description: "Puzzle success rate by motif as a polar spider chart — the diagram charting libraries do badly and jikz does natively: rings and axes derive from polar(), both series are closed filldraw pen statements, and axis labels sit on compass placement. Overlaying the previous period (grey) shows training progress per theme at a glance.",
   },
   {
+    id: "circuit-annotations",
+    category: "physics-engineering",
+    title: "Voltage and current annotations — ext/circuits",
+    description: "What a schematic MEANS rather than what it contains: voltage() and current() are jikz's circuitikz v= and i=, but as functions over two endpoints rather than keys on a component. A frame is built from the pair \u2014 a direction along the span and a normal to one side \u2014 so `side` is relative to travel and follows the endpoints rather than the page. The output terminals here are open, and the open-circuit voltage is braced across them: circuitikz needs a placeholder bipole for that, one which declares an empty drawing body and exists only to hang a voltage on, while here it is two points and the mark between them.",
+  },
+  {
     id: "circuit-symbols",
     category: "physics-engineering",
     title: "Circuit symbol gallery — ext/circuits",

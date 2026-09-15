@@ -69,6 +69,15 @@ export type {
   CircuitPort,
 } from './ports'
 export { junctionDot, openTerminal, wire } from './wires'
+export { voltage, current } from './annotations'
+export type {
+  AnnotationSide,
+  AnnotationSense,
+  AnnotationEndpoint,
+  AnnotationOptions,
+  VoltageOptions,
+  CurrentOptions,
+} from './annotations'
 export { circuit } from './builders'
 export type { CircuitBuilder } from './builders'
 
