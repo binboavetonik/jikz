@@ -12,13 +12,18 @@
   one through nine, flipped for a y-down canvas — including the two
   arrangements that are not vertically balanced (three is slightly
   top-heavy, eight is two over three over three), carried over rather
-  than quietly corrected. Past nine TikZ expands an undefined macro;
-  a ring is used instead. `colored tokens` and `structured tokens`
-  are the `colors` and `labels` options.
+  than quietly corrected. Past nine TikZ has no arrangement and fails
+  quietly — the lookup expands to `\relax`, so every token lands on the
+  place's centre; a ring is used instead. `colored tokens` and
+  `structured tokens` are the `colors` and `labels` options, the
+  latter carrying TikZ's white `\tiny` text for the caller to draw. Token spacing is held as a
+  ratio of the token size rather than as TikZ's fixed `1.5ex`, so
+  sizing the dots up spreads them to match instead of piling them into
+  each other; at the default size it is exactly TikZ's length.
 
-  Tokens are values rather than part of the place: a pale place with
-  solid dots is two paints, which one shape's `toSVGPath()` cannot
-  carry. TikZ's `tokens=n` expands to child nodes for the same reason.
+  Tokens are values rather than part of the place: a place and its
+  dots are two paints, which one shape's `toSVGPath()` cannot carry.
+  TikZ's `tokens=n` expands to child nodes for the same reason.
 
   The builders also stand jikz's default node minimum (20) down, so
   the shapes' own TikZ minimums apply — without that a transition

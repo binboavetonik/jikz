@@ -14,8 +14,11 @@ import {
   PLACE_MIN_SIZE,
   TRANSITION_MIN_SIZE,
   TOKEN_SIZE,
+  TOKEN_DISTANCE_RATIO,
   TOKEN_DISTANCE_DEFAULT,
   TOKEN_COLOR_DEFAULT,
+  TOKEN_TEXT_COLOR_DEFAULT,
+  TOKEN_FONT_SIZE,
   PETRI_INNER_SEP,
   MAX_LAID_OUT_TOKENS,
 } from '../../../src/ext/petri'
@@ -195,6 +198,29 @@ describe('token arrangements', () => {
 })
 
 describe('tokens', () => {
+  it('spreads tokens with the size, so scaled dots never touch', () => {
+    // TikZ states minimum size=1ex and token distance=1.5ex in the
+    // same unit, so the pair is a ratio. Honouring it as one is what
+    // keeps a scaled-up token clear: at size 8 the two dots on a place
+    // sit 12 apart, a full radius of daylight between them.
+    const [a, b] = tokens(ORIGIN, 2, { size: 8 })
+    expect(b!.center.x - a!.center.x).toBeCloseTo(TOKEN_DISTANCE_RATIO * 8, 6)
+    const gap = b!.center.x - a!.center.x - (a!.radius + b!.radius)
+    expect(gap, 'dots must not overlap').toBeGreaterThan(0)
+  })
+
+  it('still spaces the default size exactly as TikZ does', () => {
+    expect(TOKEN_DISTANCE_RATIO).toBe(1.5)
+    expect(TOKEN_DISTANCE_DEFAULT).toBeCloseTo(TOKEN_DISTANCE_RATIO * TOKEN_SIZE, 6)
+    const [a, b] = tokens(ORIGIN, 2)
+    expect(b!.center.x - a!.center.x).toBeCloseTo(TOKEN_DISTANCE_DEFAULT, 6)
+  })
+
+  it('lets an explicit distance outrank the size', () => {
+    const [a, b] = tokens(ORIGIN, 2, { size: 8, distance: 30 })
+    expect(b!.center.x - a!.center.x).toBeCloseTo(30, 6)
+  })
+
   it('sizes each dot at half the token size', () => {
     expect(tokens(ORIGIN, 1)[0]!.radius).toBeCloseTo(TOKEN_SIZE / 2, 6)
     expect(tokens(ORIGIN, 1, { size: 9 })[0]!.radius).toBe(4.5)
@@ -208,6 +234,44 @@ describe('tokens', () => {
   it('takes per-token labels, TikZ\'s structured tokens', () => {
     const t = tokens(ORIGIN, 3, { labels: ['x', 'y'] })
     expect(t.map((x) => x.text)).toEqual(['x', 'y', undefined])
+  })
+
+  it('carries TikZ\'s white \\tiny text along with a label', () => {
+    const [labelled, bare] = tokens(ORIGIN, 2, { labels: ['x'] })
+    expect(labelled!.textColor).toBe(TOKEN_TEXT_COLOR_DEFAULT)
+    expect(labelled!.fontSize).toBe(TOKEN_FONT_SIZE)
+    expect(TOKEN_TEXT_COLOR_DEFAULT).toBe('#ffffff')
+    expect(TOKEN_FONT_SIZE).toBe(5)
+    // An unlabelled token carries neither — there is nothing to draw.
+    expect(bare!.textColor).toBeUndefined()
+    expect(bare!.fontSize).toBeUndefined()
+  })
+
+  it('overrides the label fill and size', () => {
+    const [t] = tokens(ORIGIN, 1, { labels: ['x'], textColor: '#111111', fontSize: 9 })
+    expect(t!.textColor).toBe('#111111')
+    expect(t!.fontSize).toBe(9)
+  })
+
+  it('draws a structured token the way the docs say it does', () => {
+    // The snippet on tokens(), rendered — a label is a value the
+    // caller draws, so this pins that it actually reaches the SVG.
+    const pic = picture({ shapes: petriShapes })
+    for (const t of tokens(ORIGIN, 1, { size: 12, labels: ['2'] })) {
+      pic.fill(circle(t.center, t.radius), { style: { fill: t.color } })
+      if (t.text) {
+        pic.text(t.center, t.text, {
+          fontSize: t.fontSize,
+          textAnchor: 'middle',
+          dominantBaseline: 'middle',
+          style: { stroke: t.textColor },
+        })
+      }
+    }
+    const svg = pic.toSVG({ width: 60, height: 60 })
+    expect(svg).toContain('font-size="5"')
+    expect(svg).toContain('#ffffff')
+    expect(svg).toContain('>2<')
   })
 
   it('draws as ordinary fills over a place', () => {
@@ -230,6 +294,7 @@ describe('arc styles', () => {
   it('points pre into the transition and post away from it', () => {
     expect(petriArcs.pre.arrowStart).toBe('to')
     expect(petriArcs.pre.arrowEnd).toBe('none')
+    expect(petriArcs.post.arrowStart).toBe('none')
     expect(petriArcs.post.arrowEnd).toBe('to')
     expect(petriArcs.preAndPost.arrowStart).toBe('to')
     expect(petriArcs.preAndPost.arrowEnd).toBe('to')
@@ -240,6 +305,19 @@ describe('arc styles', () => {
     expect(petriArcs.post.shortenEnd).toBe(1)
     expect(petriArcs.preAndPost.shortenStart).toBe(1)
     expect(petriArcs.preAndPost.shortenEnd).toBe(1)
+  })
+
+  it('names both ends, so spreading one replaces an existing tip', () => {
+    // Every style states both ends rather than leaning on the
+    // defaults, so no stray head survives the spread.
+    for (const arc of Object.values(petriArcs)) {
+      expect(arc).toHaveProperty('arrowStart')
+      expect(arc).toHaveProperty('arrowEnd')
+    }
+    const existing = { arrowStart: 'stealth' as const, arrowEnd: 'stealth' as const }
+    const merged = { ...existing, ...petriArcs.post }
+    expect(merged.arrowStart).toBe('none')
+    expect(merged.arrowEnd).toBe('to')
   })
 
   it('hands straight to edge()', () => {

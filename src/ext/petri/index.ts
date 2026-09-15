@@ -4,10 +4,11 @@
  * TikZ ships it as styles over `circle` and `rectangle` plus a token
  * mechanism, and the split here follows the one-paint rule: a place and
  * a transition are ordinary shapes, but **tokens are not part of the
- * place**. A place is a stroked, usually pale circle and its tokens are
- * solid dots — two paints, which one shape's `toSVGPath()` cannot
- * carry. TikZ has the same separation for the same reason: `tokens=n`
- * expands to child *nodes*, not to marks on the place.
+ * place**. A place is a stroked circle — `draw` and no fill in TikZ,
+ * though callers usually give it a pale one — and its tokens are solid
+ * dots, a second paint that one shape's `toSVGPath()` cannot carry.
+ * TikZ has the same separation for the same reason: `tokens=n` expands
+ * to child *nodes*, not to marks on the place.
  *
  * So a marked place is two calls, and {@link tokens} hands you the
  * dots:
@@ -22,8 +23,10 @@
  *
  * Token positions are TikZ's own hard-coded table for one through nine
  * tokens — the arrangements it lays out with `\tikz@def@grow@tokens`,
- * flipped for a y-down canvas. Past nine TikZ has no answer at all (it
- * expands an undefined macro); a ring is used instead.
+ * flipped for a y-down canvas. Past nine TikZ has no arrangement and
+ * fails quietly rather than loudly: the lookup for the tenth token
+ * expands to `\relax`, leaving the shift at the origin, so every token
+ * lands on the place's centre. A ring is used instead.
  */
 import { Point, point, polar } from '../../core/Point'
 import type { PointLike } from '../../core/types'
@@ -55,11 +58,26 @@ export const TRANSITION_MIN_SIZE = 4 * MM
 /** TikZ's `token` is `minimum size=1ex`. */
 export const TOKEN_SIZE = EX
 
+/**
+ * TikZ's `token distance` as a multiple of the token size. TikZ writes
+ * the two as independent lengths — `minimum size=1ex` on the token,
+ * `token distance=1.5ex` — but states both in the same `ex`, so the
+ * ratio is what the pair actually means. Holding it as a ratio is what
+ * keeps a scaled-up token clear of its neighbours.
+ */
+export const TOKEN_DISTANCE_RATIO = 1.5
+
 /** TikZ's `token distance`, initially `1.5ex`. */
-export const TOKEN_DISTANCE_DEFAULT = 1.5 * EX
+export const TOKEN_DISTANCE_DEFAULT = TOKEN_DISTANCE_RATIO * TOKEN_SIZE
 
 /** TikZ's token is filled black and never stroked. */
 export const TOKEN_COLOR_DEFAULT = '#000000'
+
+/** TikZ's token sets `text=white`, for a label to read on the dot. */
+export const TOKEN_TEXT_COLOR_DEFAULT = '#ffffff'
+
+/** TikZ's token sets `font=\tiny` — 5pt at the default 10pt base. */
+export const TOKEN_FONT_SIZE = 5
 
 /** Both `place` and `transition` set `inner sep=0pt`. */
 export const PETRI_INNER_SEP = 0
@@ -211,12 +229,16 @@ export type PetriBuilder = typeof petri
  * TikZ's arc styles for the flow relation. `pre` points *into* the
  * transition, `post` away from it, and both shorten by 1pt so the tip
  * clears the node it touches.
+ *
+ * Each names both ends rather than leaning on jikz's defaults, so
+ * spreading one over options that already carry a tip replaces it
+ * instead of leaving a stray head behind.
  */
 export const petriArcs = {
   /** TikZ's `pre`: `<-`, `shorten <=1pt`. */
   pre: { arrowStart: 'to', arrowEnd: 'none', shortenStart: 1 },
   /** TikZ's `post`: `->`, `shorten >=1pt`. */
-  post: { arrowEnd: 'to', shortenEnd: 1 },
+  post: { arrowStart: 'none', arrowEnd: 'to', shortenEnd: 1 },
   /** TikZ's `pre and post`: `<->`, shortened at both ends. */
   preAndPost: { arrowStart: 'to', arrowEnd: 'to', shortenStart: 1, shortenEnd: 1 },
 } as const satisfies Record<string, EdgeOptions>
@@ -228,11 +250,20 @@ export interface Token {
   readonly color: string
   /** TikZ's `structured tokens` label, if one was given. */
   readonly text?: string
+  /** Label fill — TikZ's `text=white`. Present only with `text`. */
+  readonly textColor?: string
+  /** Label size — TikZ's `\tiny`. Present only with `text`. */
+  readonly fontSize?: number
 }
 
 /** Options for {@link tokens} and {@link tokenPositions}. */
 export interface TokenOptions {
-  /** TikZ's `token distance`. Default {@link TOKEN_DISTANCE_DEFAULT}. */
+  /**
+   * TikZ's `token distance` — {@link TOKEN_DISTANCE_RATIO} times
+   * `size` unless given, so raising `size` alone spreads the tokens to
+   * match instead of piling them into each other. At the default size
+   * that is {@link TOKEN_DISTANCE_DEFAULT}, TikZ's own `1.5ex`.
+   */
   distance?: number
   /** Token diameter — TikZ's `minimum size=1ex`. Default {@link TOKEN_SIZE}. */
   size?: number
@@ -242,11 +273,18 @@ export interface TokenOptions {
   colors?: readonly string[]
   /** Per-token labels — TikZ's `structured tokens`. */
   labels?: readonly string[]
+  /** Label fill — TikZ's `text=white`. Default {@link TOKEN_TEXT_COLOR_DEFAULT}. */
+  textColor?: string
+  /** Label size — TikZ's `\tiny`. Default {@link TOKEN_FONT_SIZE}. */
+  fontSize?: number
 }
 
 /**
  * Where a place's tokens sit — TikZ's arrangements for one through
  * nine, and a ring beyond that, since TikZ has none.
+ *
+ * Spacing scales with `size` unless `distance` says otherwise, so the
+ * dots keep the same gap between them whatever they are sized at.
  */
 export function tokenPositions(
   center: PointLike,
@@ -256,7 +294,8 @@ export function tokenPositions(
   const n = Math.max(0, Math.trunc(count))
   if (n === 0) return []
 
-  const distance = options.distance ?? TOKEN_DISTANCE_DEFAULT
+  const distance =
+    options.distance ?? TOKEN_DISTANCE_RATIO * (options.size ?? TOKEN_SIZE)
   const middle = point(center.x, center.y)
 
   const layout = TOKEN_LAYOUTS[n]
@@ -283,7 +322,23 @@ export function tokenPositions(
  *
  * `colors` gives TikZ's `colored tokens` and `labels` its `structured
  * tokens`; both are read per index, so a short list leaves the rest on
- * the default.
+ * the default. A label is a value like the rest of the token — the
+ * caller draws it, carrying TikZ's white `\tiny` text with it:
+ *
+ * ```ts
+ * for (const t of tokens(at, 3, { labels: ['a', 'b', 'c'] })) {
+ *   pic.fill(circle(t.center, t.radius), { style: { fill: t.color } })
+ *   if (t.text) pic.text(t.center, t.text, {
+ *     fontSize: t.fontSize,
+ *     textAnchor: 'middle',
+ *     dominantBaseline: 'middle',
+ *     style: { stroke: t.textColor },   // jikz colours text from `stroke`
+ *   })
+ * }
+ * ```
+ *
+ * Nothing grows the dot to fit that text the way a TikZ node would, so
+ * size the tokens up for a label wider than one.
  */
 export function tokens(
   center: PointLike,
@@ -296,6 +351,12 @@ export function tokens(
     center: at,
     radius,
     color: options.colors?.[i] ?? fallback,
-    ...(options.labels?.[i] !== undefined ? { text: options.labels[i]! } : {}),
+    ...(options.labels?.[i] !== undefined
+      ? {
+          text: options.labels[i]!,
+          textColor: options.textColor ?? TOKEN_TEXT_COLOR_DEFAULT,
+          fontSize: options.fontSize ?? TOKEN_FONT_SIZE,
+        }
+      : {}),
   }))
 }
