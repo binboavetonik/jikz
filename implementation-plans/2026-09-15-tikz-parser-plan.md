@@ -246,11 +246,39 @@ below), which is what `circuit.resistor({ at, rotate })` plus `wire()`
 want. Two costs. The `to[…]` bipole idiom is a *parallel path
 grammar* — components live on segments rather than at coordinates,
 with poles (`*-`, `o-`), current arrows (`i=`) and three label
-positions. And coverage is the real wall: `ext/circuits` carries seven
-shapes (resistor, capacitor, inductor, diode, switch, ground, op amp)
-against circuitikz's hundreds. M0's one circuitikz sample needs `R`,
-`L`, `V`, `open` and `short` — and jikz has no voltage source and no
-gap. **Grow `ext/circuits` first; the grammar is the easy half.**
+positions. Coverage is the second cost, though **less of one than
+first recorded here**: this document originally said `ext/circuits`
+carried seven shapes and no voltage source, which was wrong — a grep
+that only matched single-line `defineShape` entries had truncated the
+multi-line ones. It carried nine, sources included, and now carries
+sixteen (2026-09-15: battery, bulb, three meters, ac/dc supplies).
+M0's one circuitikz sample needs `R`, `L`, `V`, `open` and `short`, of
+which only `open` needed deciding, and it needed no symbol either
+(below). So the bipole grammar, not the symbol set, is the work.
+
+**`open` resolves to a pen move, not a component.** Settled by reading
+`pgfcircbipoles.tex`: `open` declares an *empty* drawing body, and the
+comment on its size keys says why it has a size at all — "necessary
+for curly voltages". It draws nothing, and exists to reserve a box for
+a voltage annotation to hang off.
+
+So when the bipole grammar lands, `to[open]` lowers to an `IrSegment`
+with `op: 'moveTo'` — the run continues at the far coordinate with no
+ink between. Already representable; the IR carries both ops today, so
+this costs no new IR and no new shape. `short` is likewise a plain
+`lineTo`, not a component. `ext/circuits` gained `openTerminal()` for
+circuitikz's `o` pole, which is what actually gets drawn at an open
+pair.
+
+**And what `open` really points at is annotations.** `v=`, `i=`,
+`l=`, `f=` — voltage, current, label, flow. jikz has no concept of
+any of them, and "voltage" alone appears 119 times in
+`pgfcircbipoles.tex`. That is the item that unblocks circuitikz
+porting, far more than symbol coverage did. It wants its own design
+pass; the pieces exist (`bracePath` for curly voltages, arrow tips,
+`markPath`, edge `labelPos`/`labelOffset`), and what is missing is
+something shaped like `voltage(from, to, { label, polarity })` that
+offsets perpendicular to the segment and picks a side.
 
 **pgfplots — largest, defer.** `ext/dataviz` already has the concepts
 (`chart()`, `axes()`, `legend()`, Heckbert ticks), so a 2D
