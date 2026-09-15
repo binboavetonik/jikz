@@ -109,6 +109,42 @@ describe('Picture', () => {
         .node('A', { at: point(0, 0), shape: SHAPES['circle'], width: 30, height: 30 })
         .node('B', { at: point(100, 0), shape: SHAPES['circle'], width: 30, height: 30 })
 
+    it('colours an edge label from textStyle, not from the path fill', () => {
+      // On an edge `fill` already paints the path — a filled lens under
+      // a bend — so the label answers to textStyle, exactly as a node's
+      // own text does. Without one it follows the pen.
+      const styled = mk()
+        .edge('A', 'B', { label: 'hi' }, { style: { stroke: '#00ff00', fill: '#ff0000' }, textStyle: { fill: '#0000ff' } })
+        .toSVG({ width: 140, height: 60 })
+      const text = styled.slice(styled.indexOf('<text'))
+      expect(text).toContain('#0000ff')
+      expect(text).not.toContain('#ff0000')
+
+      const penned = mk()
+        .edge('A', 'B', { label: 'hi' }, { style: { stroke: '#00ff00', fill: '#ff0000' } })
+        .toSVG({ width: 140, height: 60 })
+      const pennedText = penned.slice(penned.indexOf('<text'))
+      expect(pennedText).toContain('#00ff00')
+      expect(pennedText).not.toContain('#ff0000')
+    })
+
+    it('takes the rest of textStyle on an edge label too', () => {
+      const svg = mk()
+        .edge('A', 'B', { label: 'hi' }, { textStyle: { fontSize: 22, fontWeight: 'bold', fontFamily: 'serif' } })
+        .toSVG({ width: 140, height: 60 })
+      const text = svg.slice(svg.indexOf('<text'))
+      expect(text).toContain('font-size="22"')
+      expect(text).toContain('font-weight="bold"')
+      expect(text).toContain('font-family="serif"')
+    })
+
+    it('emits no font-weight on an edge label unless one is asked for', () => {
+      // `normal` is the SVG default; spelling it out would add a
+      // redundant attribute to every edge label in every drawing.
+      const svg = mk().edge('A', 'B', { label: 'hi' }).toSVG({ width: 140, height: 60 })
+      expect(svg.slice(svg.indexOf('<text'))).not.toContain('font-weight')
+    })
+
     it('edge("A", "B") boundary-resolves through both nodes (auto)', () => {
       const pic = mk().edge('A', 'B')
       const edge = pic.items.find((i) => i.kind === 'edge')!

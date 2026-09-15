@@ -31,6 +31,17 @@
 
 ### Fixed
 
+- **Edge labels ignored `textStyle`.** A node's own text has always
+  taken its colour, size, family and weight from `textStyle`; an edge's
+  label read none of them and was pinned to the pen at 12pt sans. It
+  now honours the same four keys, so an edge label styles like any
+  other node text. `style.fill` is deliberately *not* the knob here —
+  on an edge that already paints the path, a filled lens under a bend —
+  which is what makes this different from bare text, where nothing else
+  consumed it. With no `textStyle`, labels follow the pen exactly as
+  before, and `font-weight` is emitted only when asked for, so no
+  existing drawing changes.
+
 - **Bare text ignored an explicit `fill`.** `pic.text(p, s, { style:
   { fill } })` type-checked and rendered black: the renderer painted
   glyphs from `stroke` alone, because the merged style carries

@@ -70,8 +70,9 @@ separate engine. Consequences:
 - Styling options are identical at both levels: `style` is a
   `StyleSpec` everywhere. (`textStyle` is not one — it is a node's
   four-field text override, `{ fill, fontSize, fontFamily,
-  fontWeight }`. Bare text takes its colour from its own `style`:
-  `fill` when you name one, the pen's `stroke` when you do not.)
+  fontWeight }`, and an edge's label reads the same four. Bare text
+  takes its colour from its own `style` instead: `fill` when you name
+  one, the pen's `stroke` when you do not.)
 - Anything renderable (`Renderable`) works at both levels.
 - You can build a picture's geometry, then hand individual pieces to
   a renderer for special treatment.

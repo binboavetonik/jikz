@@ -849,15 +849,22 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
       if (this.isLaTeX(edge.label)) {
         this.renderLaTeX(edge.label, labelPoint, g)
       } else {
-        g.text(edge.label)
-          .center(labelPoint.x, labelPoint.y)
-          .font({
-            'font-family': 'sans-serif',
-            'font-size': 12,
-            'text-anchor': 'middle',
-            'dominant-baseline': 'middle',
-            fill: style.stroke ?? '#000',
-          })
+        // An edge's label is its own text, so it answers to `textStyle`
+        // exactly as a node's does — and not to `style.fill`, which on
+        // an edge already paints the path (a filled lens under a bend).
+        // Behind it, the label follows the pen.
+        const textOpts = options?.textStyle ?? {}
+        const font: Record<string, unknown> = {
+          'font-family': textOpts.fontFamily ?? 'sans-serif',
+          'font-size': textOpts.fontSize ?? 12,
+          'text-anchor': 'middle',
+          'dominant-baseline': 'middle',
+          fill: textOpts.fill ?? style.stroke ?? '#000',
+        }
+        // Only when asked: `normal` is the SVG default, and emitting it
+        // would add a redundant attribute to every edge label ever drawn.
+        if (textOpts.fontWeight !== undefined) font['font-weight'] = textOpts.fontWeight
+        g.text(edge.label).center(labelPoint.x, labelPoint.y).font(font)
       }
     }
 
