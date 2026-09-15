@@ -9,22 +9,77 @@ import { describe, it, expect } from 'vitest'
 import { convert, precheck } from '../src/index'
 
 describe('the hopeless-file pre-check', () => {
-  const cases: readonly { readonly name: string; readonly tex: string; readonly marker: string }[] = [
-    { name: 'tikz-3dplot', marker: 'tikz-3dplot', tex: String.raw`\tdplotsetmaincoords{60}{110}` },
-    { name: '3D coordinate systems', marker: '3D coordinate system', tex: String.raw`\filldraw (xyz spherical cs: radius=1, angle=30);` },
-    { name: 'pgfplots', marker: 'pgfplots', tex: String.raw`\begin{axis}[axis lines=center]` },
-    { name: 'circuitikz', marker: 'circuitikz', tex: String.raw`\begin{circuitikz}[american voltages]` },
-    { name: 'page-relative overlays', marker: 'remember picture / overlay', tex: String.raw`\tikz[remember picture] \node (a) {};` },
+  const cases: readonly {
+    readonly name: string
+    readonly tex: string
+    readonly marker: string
+    readonly category: 'cannot' | 'not-yet'
+  }[] = [
+    {
+      name: 'surface plots',
+      marker: 'surface plot',
+      category: 'cannot',
+      tex: String.raw`\tdplotsphericalsurfaceplot[parametricfill]{60}{32}`,
+    },
+    {
+      name: 'page-relative overlays',
+      marker: 'remember picture / overlay',
+      category: 'cannot',
+      tex: String.raw`\tikz[remember picture] \node (a) {};`,
+    },
+    {
+      name: '3D projection',
+      marker: '3D projection',
+      category: 'not-yet',
+      tex: String.raw`\tdplotsetmaincoords{60}{110}`,
+    },
+    {
+      name: '3D coordinate systems',
+      marker: '3D projection',
+      category: 'not-yet',
+      tex: String.raw`\filldraw (xyz spherical cs: radius=1, angle=30);`,
+    },
+    {
+      name: 'pgfplots',
+      marker: 'pgfplots',
+      category: 'not-yet',
+      tex: String.raw`\begin{axis}[axis lines=center]`,
+    },
+    {
+      name: 'circuitikz',
+      marker: 'circuitikz',
+      category: 'not-yet',
+      tex: String.raw`\begin{circuitikz}[american voltages]`,
+    },
   ]
 
-  for (const { name, tex, marker } of cases) {
-    it(`refuses ${name} by name`, () => {
+  for (const { name, tex, marker, category } of cases) {
+    it(`refuses ${name} as ${category}, by name`, () => {
       const refusal = precheck(tex)
       expect(refusal?.marker).toBe(marker)
+      expect(refusal?.category).toBe(category)
       expect(refusal?.reason.length ?? 0).toBeGreaterThan(20)
       expect(refusal?.line).toBe(1)
     })
   }
+
+  it('reports a surface plot as `cannot`, not as the 3D projection it also matches', () => {
+    // Marker order carries this: a spherical surface plot matches the
+    // projection pattern too, and must report the harder truth rather
+    // than promising a projection stage would rescue it.
+    const refusal = precheck(String.raw`\tdplotsetmaincoords{60}{110}
+\tdplotsphericalsurfaceplot{60}{32}{1}{black}{\tdplotphi}`)
+    expect(refusal?.marker).toBe('surface plot')
+    expect(refusal?.category).toBe('cannot')
+  })
+
+  it('points a `not-yet` refusal at where the work would live', () => {
+    // A refusal that reads as "never" about work that is merely
+    // unbuilt is the failure this category split exists to prevent.
+    expect(precheck(String.raw`\begin{circuitikz}`)?.reason).toContain('ext/circuits')
+    expect(precheck(String.raw`\begin{axis}`)?.reason).toContain('ext/dataviz')
+    expect(precheck(String.raw`\tdplotsetmaincoords{0}{0}`)?.reason).toContain('projection')
+  })
 
   it('overrides decision 2 — a refused file emits nothing at all', () => {
     // The point of the whole pre-check: half a 3D scene rendered

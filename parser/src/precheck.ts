@@ -1,47 +1,82 @@
 /**
  * The hopeless-file pre-check — plan §5.1, decision 4.
  *
- * Some files describe work jikz cannot draw at all: 3D scenes,
- * pgfplots axes, circuitikz components, page-relative overlays. For
- * those, decision 2's per-statement commenting is actively harmful —
- * it would convert the 2D half of a 3D scene into a confident-looking
- * wrong picture, the worst output this tool can produce. So the whole
- * file is refused, by name, before a tokenizer ever runs.
+ * Some files describe work the converter will not attempt. For those,
+ * decision 2's per-statement commenting is actively harmful: it would
+ * convert the 2D half of a 3D scene into a confident-looking wrong
+ * picture, the worst output this tool can produce. So the whole file
+ * is refused, by name, before a tokenizer ever runs.
  *
- * M0 hit four of these five markers in twenty sampled files.
+ * **Two categories, one behaviour.** Both refuse the file and emit
+ * nothing; they differ in what they promise:
+ *
+ * - `cannot` — jikz has no model for this, and a parser cannot supply
+ *   one. Depth-sorted surface meshes; page-relative positioning.
+ * - `not-yet` — jikz can already draw it; the parser cannot yet read
+ *   it. 3D *projection*, pgfplots axes, circuitikz bipoles. Each has
+ *   a home in the library and a line in the roadmap.
+ *
+ * The distinction is not cosmetic. Three of the five markers here were
+ * originally filed as "cannot", which told readers "never" about work
+ * that is merely unbuilt — and would have quietly justified never
+ * building it.
  */
+
+export type RefusalCategory = 'cannot' | 'not-yet'
 
 export interface PrecheckRefusal {
   readonly marker: string
+  readonly category: RefusalCategory
   readonly reason: string
   readonly line: number
 }
 
-const MARKERS: readonly { readonly pattern: RegExp; readonly marker: string; readonly reason: string }[] = [
+interface Marker {
+  readonly pattern: RegExp
+  readonly marker: string
+  readonly category: RefusalCategory
+  readonly reason: string
+}
+
+/**
+ * Order is significant: the first match wins, so every `cannot` sits
+ * ahead of every `not-yet`. A spherical surface plot also matches the
+ * 3D-projection pattern, and it must report the harder truth.
+ */
+const MARKERS: readonly Marker[] = [
   {
-    pattern: /\\tdplot|tdplot_main_coords|\\tdplotsetmaincoords/,
-    marker: 'tikz-3dplot',
-    reason: 'jikz draws in 2D; tikz-3dplot scenes have no 2D equivalent',
-  },
-  {
-    pattern: /\b(?:xyz|xyz spherical|canvas|xy) cs:/,
-    marker: '3D coordinate system',
-    reason: 'jikz draws in 2D; 3D coordinate systems have no 2D equivalent',
-  },
-  {
-    pattern: /\\begin\{axis\}|\\addplot|\\pgfplotsset/,
-    marker: 'pgfplots',
-    reason: 'pgfplots is a separate package; port the data to ext/dataviz instead',
-  },
-  {
-    pattern: /\\begin\{circuitikz\}/,
-    marker: 'circuitikz',
-    reason: "circuitikz's to[R, l=…] component syntax is a separate language; ext/circuits is the jikz analogue",
+    pattern: /\\tdplotsphericalsurfaceplot|\\addplot3|shader\s*=|\[\s*surf\b/,
+    marker: 'surface plot',
+    category: 'cannot',
+    reason:
+      'a parametric surface mesh needs per-face fill and depth ordering, which jikz has no model for',
   },
   {
     pattern: /remember picture|\boverlay\b/,
     marker: 'remember picture / overlay',
+    category: 'cannot',
     reason: 'page-relative positioning has no meaning in a standalone SVG',
+  },
+  {
+    pattern: /\\tdplot|tdplot_main_coords|\b(?:xyz|xyz spherical|canvas|xy) cs:/,
+    marker: '3D projection',
+    category: 'not-yet',
+    reason:
+      'TikZ 3D is a projection, not a renderer — jikz can draw the projected result once ext/projection lands; the parser has no projection stage yet',
+  },
+  {
+    pattern: /\\begin\{axis\}|\\addplot|\\pgfplotsset/,
+    marker: 'pgfplots',
+    category: 'not-yet',
+    reason:
+      'pgfplots axes map onto ext/dataviz (chart/axes/legend); the parser has no axis grammar yet',
+  },
+  {
+    pattern: /\\begin\{circuitikz\}/,
+    marker: 'circuitikz',
+    category: 'not-yet',
+    reason:
+      "circuitikz's to[…] bipole syntax maps onto ext/circuits; the parser has no bipole grammar yet, and ext/circuits carries seven components to circuitikz's hundreds",
   },
 ]
 
@@ -51,12 +86,11 @@ const MARKERS: readonly { readonly pattern: RegExp; readonly marker: string; rea
  */
 export function precheck(source: string): PrecheckRefusal | undefined {
   const lines = source.split('\n')
-  for (const { pattern, marker, reason } of MARKERS) {
+  for (const { pattern, marker, category, reason } of MARKERS) {
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]!
       // A commented-out marker is not a marker.
-      if (stripComment(line).match(pattern)) {
-        return { marker, reason, line: i + 1 }
+      if (stripComment(lines[i]!).match(pattern)) {
+        return { marker, category, reason, line: i + 1 }
       }
     }
   }

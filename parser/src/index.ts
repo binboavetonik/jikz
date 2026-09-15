@@ -15,11 +15,12 @@ import { parse } from './parse'
 import { lower } from './lower'
 import { emit, type EmitOptions } from './emit'
 import { interpret } from './interpret'
+import type { PrecheckRefusal } from './precheck'
 import type { ConvertOptions, Diagnostic, IrItem } from './types'
 
 export { precheck, parse, lower, emit, interpret }
 export * from './types'
-export type { PrecheckRefusal } from './precheck'
+export type { PrecheckRefusal, RefusalCategory } from './precheck'
 export { tokenize } from './tokenize'
 
 export interface ConvertResult {
@@ -30,7 +31,7 @@ export interface ConvertResult {
   /** Per-statement gaps — decision 2. */
   readonly diagnostics: readonly Diagnostic[]
   /** Set when the whole file was refused — decision 4. */
-  readonly refused?: { readonly marker: string; readonly reason: string; readonly line: number }
+  readonly refused?: PrecheckRefusal
 }
 
 export function convert(source: string, options: ConvertOptions & EmitOptions = {}): ConvertResult {
