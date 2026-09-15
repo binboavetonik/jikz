@@ -86,7 +86,73 @@
   docstring, tutorial 2 and the README table read the mapping
   backwards.
 
+- **Geometry predicates built on products of coordinates misjudged
+  ordinary pixel-scale drawings.** Coordinates are SVG pixels, so values
+  in the thousands are the normal case, but cross products, collinearity
+  determinants and discriminants grow quadratically or worse with that
+  magnitude while `EPSILON` stayed at 1e-10. Measured against the old
+  code: `Line.isParallelTo` and `isPerpendicularTo` each returned false
+  for 228 of 720 genuinely parallel or perpendicular pairs at direction
+  length 2000; `intersectLineCircle` missed 735 of 1080 tangents and
+  reported *no intersection at all* for a third of them, at R = 50 as
+  much as at R = 1000; `circleThrough` and `Triangle.circumcenter`
+  accepted collinear input and returned circumcentres upwards of 1e17 px
+  from it.
+  Each is now fixed at its own site rather than by widening one shared
+  constant — `intersectLineCircle` compares the perpendicular distance
+  from the centre against the radius, two lengths in the same units that
+  classify at any scale, and a new `circumcenterOf()` works in
+  coordinates relative to A and judges collinearity against
+  `|AB| · |AC|`. The projection route is also more accurate on ordinary
+  secants: worst on-circle residual 3.07e-12 against 8.87e-12 over 200k
+  cases. Guarded by `test/geometry/NumericRobustness.test.ts`.
+
+- **`Triangle.angleA`/`angleB`/`angleC` returned `NaN` for degenerate
+  triangles.** `dot / (|ba| · |ca|)` lands just past 1 for collinear
+  vertices — 464 of 1800 across scales 1 to 2000 — and `Math.acos` of
+  that is `NaN`, which then spread to `angles` and made `isRight`
+  quietly false. The quotient is now clamped into the acos domain.
+
+- **`intersectCircleCircle` could return `NaN` coordinates.** Just
+  inside the tangency band the half-chord's radicand goes negative; it
+  is now clamped, and the tangent band widened so that near-tangent
+  cases take the direct construction instead. That band is what makes
+  them accurate, not just classified: worst tangent-point error
+  4.69e-13 against 1.53e-5 with the band removed, since the half-chord
+  cancels catastrophically there and `sqrt` turns relative error into
+  its square root. The `d == 0` guard stays approximate on purpose —
+  `d` is a divisor, and an exact guard puts circles that are coincident
+  to within floating-point noise thousands of pixels apart.
+
 ### Changed
+
+- **`PIXEL_EPSILON` joins `EPSILON`, and five defaults move to it.**
+  One tolerance cannot serve both a length and a cross product. `EPSILON`
+  (1e-10) keeps its meaning for quantities the same order as the geometry
+  — lengths, distances, radii, angles, and normalized conic equations,
+  which measurement showed were never at risk. The new `PIXEL_EPSILON`
+  (1e-6) covers screen-space predicates over *products* of coordinates.
+  It is the same split d3 makes between `d3-path` and `d3-shape`, and
+  still far tighter than anything visible: at direction length 2000 it
+  only conflates lines within 1e-11 degrees of parallel.
+  `Line.isParallelTo`, `Line.isPerpendicularTo`, `intersectLineCircle`,
+  `intersectSegmentCircle` and `intersectCircleCircle` now default to it.
+  Callers passing an explicit `epsilon` are unaffected.
+
+- **Rendered coordinates are rounded to six decimal places.**
+  `Math.sin`/`cos`/`pow`/`acos` are not required by ECMAScript to be
+  correctly rounded, so emitting all 17 significant digits made output
+  depend on the JS engine — the example snapshots once passed only on
+  the machine that generated them and failed everywhere else on the
+  first CI run. That was papered over in the test suite; it now happens
+  in the renderer, so anyone diffing or caching generated SVG gets the
+  same guarantee. Rounding covers numbers inside string attributes too,
+  since that is where most of them are: `d` data carried 15018 of the
+  16080 over-long decimals across the 100 examples. Text content is left
+  alone — a label reading `pi = 3.14159265358979` means it. Trailing
+  zeros are dropped, so example output falls from 750401 to 621471
+  bytes, 17.2% smaller, while no rendered value moves: across the 40367
+  numbers in the example snapshots the largest change is 2.6e-14.
 
 - **`chart()`'s legend is auto-placed and framed.** `legend: true` was
   documented as "a framed legend" but never set `frame`, and always
