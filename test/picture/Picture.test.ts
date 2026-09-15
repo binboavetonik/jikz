@@ -149,6 +149,35 @@ describe('Picture', () => {
       expect(svg).toContain('y="30"')
     })
 
+    it('text() paints glyphs with an explicit fill, and the pen without one', () => {
+      // SVG paints text with `fill`, so an explicit one is the direct
+      // way to ask for a colour. With none, text follows the pen —
+      // TikZ's single colour for a statement — rather than picking up
+      // DEFAULT_STYLE's `fill: 'none'` and vanishing.
+      const filled = picture({ shapes: SHAPES })
+        .text(point(50, 30), 'hello', { style: { fill: '#ff0000' } })
+        .toSVG({ width: 100, height: 60 })
+      expect(filled).toContain('fill="#ff0000"')
+
+      const penned = picture({ shapes: SHAPES })
+        .text(point(50, 30), 'hello', { style: { stroke: '#00ff00' } })
+        .toSVG({ width: 100, height: 60 })
+      expect(penned).toContain('fill="#00ff00"')
+
+      const bare = picture({ shapes: SHAPES })
+        .text(point(50, 30), 'hello')
+        .toSVG({ width: 100, height: 60 })
+      expect(bare).toContain('fill="#000000"')
+      expect(bare).not.toContain('fill="none"')
+    })
+
+    it('text() takes the last fill when the style is a list', () => {
+      const svg = picture({ shapes: SHAPES })
+        .text(point(50, 30), 'hello', { style: [{ fill: '#ff0000' }, { fill: '#0000ff' }] })
+        .toSVG({ width: 100, height: 60 })
+      expect(svg).toContain('fill="#0000ff"')
+    })
+
     it('records bare renderables in insertion order', () => {
       const pic = picture({ shapes: SHAPES })
         .draw(circle(point(0, 0), 10))

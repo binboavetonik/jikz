@@ -264,6 +264,18 @@ export type StyleRecipe =
   | ReadonlyArray<Partial<RenderStyle> | string>
 
 /**
+ * Normalize a {@link StyleSpec} to a flat list, for chained merging.
+ *
+ * Unlike {@link mergeStyles} this adds no {@link DEFAULT_STYLE} floor,
+ * so an absent key stays `undefined` — which is what lets a caller ask
+ * "did the caller set this?" rather than "what is it now?".
+ */
+export function styleList(style: StyleSpec | undefined): Partial<RenderStyle>[] {
+  if (!style) return []
+  return Array.isArray(style) ? [...style] : [style as Partial<RenderStyle>]
+}
+
+/**
  * Merge multiple styles together
  */
 export function mergeStyles(

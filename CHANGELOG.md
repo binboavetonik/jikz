@@ -31,6 +31,19 @@
 
 ### Fixed
 
+- **Bare text ignored an explicit `fill`.** `pic.text(p, s, { style:
+  { fill } })` type-checked and rendered black: the renderer painted
+  glyphs from `stroke` alone, because the merged style carries
+  `DEFAULT_STYLE`'s `fill: 'none'` and reading that would have made
+  every unstyled label invisible. It now asks what the *caller* wrote
+  — a new `ownStyle()` beside `getStyle()`, with no defaults
+  underneath — so an explicit `fill` paints and everything else still
+  follows the pen. A scope's `fill` is unaffected and still never
+  reaches text; that rule lives a layer up in `Picture.ts` and is
+  where it belongs. `examples/layout-clusters.ts` and
+  `examples/scope-groups.ts` were both asking for coloured labels and
+  silently getting black ones.
+
 - **`star`, `pentagon`, `hexagon`, `regularPolygon` and
   `isoscelesTriangle` resolved to different things in TypeScript and at
   runtime.** `geometry/index.ts` exported the vertex-layer Polygon and

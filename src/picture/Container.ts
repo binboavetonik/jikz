@@ -14,7 +14,7 @@ import { Edge, type EdgeOptions } from '../node/Edge'
 import { Pen, type PenOptions } from './Pen'
 import { pointMarkerRadius } from '../render/Renderer'
 import type { Renderable, RenderOptions, TextOptions } from '../render/Renderer'
-import { mergeStyles } from '../render/StyleMapper'
+import { mergeStyles, styleList } from '../render/StyleMapper'
 import type { ClipSpec, RenderStyle, StyleSpec } from '../render/StyleMapper'
 import { resolveShading, type ShadingOptions } from '../render/Shadings'
 import { shapeLabelPoint, type DrawLabel } from '../text/shapeLabels'
@@ -82,12 +82,6 @@ export const PATH_MODE_STYLE: Record<PathMode, Partial<RenderStyle>> = {
   draw: { stroke: '#000000', fill: 'none' },
   fill: { stroke: 'none', fill: '#000000' },
   filldraw: { stroke: '#000000', fill: '#000000' },
-}
-
-/** Normalize a {@link StyleSpec} to a flat list, for chained merging. */
-function styleList(style: StyleSpec | undefined): Partial<RenderStyle>[] {
-  if (!style) return []
-  return Array.isArray(style) ? [...style] : [style as Partial<RenderStyle>]
 }
 
 /**

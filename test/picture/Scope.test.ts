@@ -126,6 +126,19 @@ describe('Scope', () => {
       const text = svg.slice(svg.indexOf('<text'))
       expect(text).not.toContain('#00f')
     })
+
+    it('still takes a fill the caller asked for, inside that same scope', () => {
+      // The rule above is about INHERITED fill. An explicit one on the
+      // call is the caller naming the text's colour, and survives.
+      const svg = picture({ shapes: SHAPES })
+        .scope({ style: { fill: '#00f' } }, (s) =>
+          s.text(point(20, 20), 'hi', { style: { fill: '#0f0' } })
+        )
+        .toSVG({ width: 60, height: 40 })
+      const text = svg.slice(svg.indexOf('<text'))
+      expect(text).toContain('#0f0')
+      expect(text).not.toContain('#00f')
+    })
   })
 
   describe('transform', () => {

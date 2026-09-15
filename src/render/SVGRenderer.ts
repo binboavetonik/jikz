@@ -38,6 +38,7 @@ import {
   RenderStyle,
   DEFAULT_STYLE,
   mergeStyles,
+  styleList,
   styleToSVGAttributes,
   SVGAttributes,
   ClipSpec,
@@ -487,6 +488,16 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
     return mergeStyles(this.defaultStyle, options?.style)
   }
 
+  /**
+   * What the CALLER wrote, with no defaults underneath — the question
+   * {@link getStyle} cannot answer, since it merges {@link DEFAULT_STYLE}
+   * in and an unset key comes back with the default's value rather than
+   * `undefined`. Use it where "asked for" and "currently is" differ.
+   */
+  private ownStyle(options?: RenderOptions): Partial<RenderStyle> {
+    return Object.assign({}, ...styleList(options?.style))
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Primitive Rendering
   // ─────────────────────────────────────────────────────────────────────────────
@@ -872,7 +883,11 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
         'font-family': options?.fontFamily ?? 'sans-serif',
         'font-size': options?.fontSize ?? 14,
         'font-weight': options?.fontWeight ?? 'normal',
-        fill: style.stroke ?? '#000',
+        // Glyphs are painted with `fill`, but only an EXPLICIT one: the
+        // merged style carries DEFAULT_STYLE's `fill: 'none'`, which
+        // would render every unstyled label invisible. Absent that, text
+        // follows the pen, as it does in TikZ.
+        fill: this.ownStyle(options).fill ?? style.stroke ?? '#000',
       })
       .attr({
         'text-anchor': options?.textAnchor ?? 'start',
