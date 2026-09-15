@@ -196,23 +196,67 @@ source line, not a guess:
 - `pgfonlayer`, `\pgfdeclare*`, raw `\pgf…` primitives.
 - Anything TeX-structural: `\begin{document}`, preamble, `\input`.
 
-### 5.1 The hopeless-file pre-check
+### 5.1 The whole-file pre-check
 
-Before parsing, scan for markers of work jikz cannot draw at all and
-refuse the **file**, naming the reason:
+Before parsing, scan for markers of work the converter will not
+attempt and refuse the **file**, naming the reason. This runs *before*
+decision 2 and overrides it: a partial conversion here is actively
+misleading rather than merely incomplete. M0 hit four of these markers
+in twenty files.
 
-| marker | why |
-|---|---|
-| `tdplot`, `\tdplotsetmaincoords` | tikz-3dplot — jikz is 2D |
-| `xyz cs:`, `xyz spherical cs:`, `canvas is … plane` | 3D coordinate systems |
-| `\begin{axis}`, `\addplot`, `pgfplotsset` | pgfplots, a different package |
-| `\begin{circuitikz}` | circuitikz's `to[R, l=…]` component syntax |
-| `remember picture`, `overlay` | page-relative positioning, meaningless in a standalone SVG |
+**Two categories, one behaviour.** Both refuse and emit nothing; they
+differ in what they promise.
 
-This runs *before* decision 2, and overrides it. A file that trips a
-marker produces one clear message and no output, because a partial
-conversion here is actively misleading rather than merely incomplete.
-M0 hit four of these five markers in twenty files.
+| marker | category | why |
+|---|---|---|
+| `\tdplotsphericalsurfaceplot`, `\addplot3`, `shader=`, `[surf` | **cannot** | a parametric mesh needs per-face fill and depth ordering; jikz has no model for it |
+| `remember picture`, `overlay` | **cannot** | page-relative positioning has no meaning in a standalone SVG |
+| `\tdplot…`, `xyz cs:`, `xyz spherical cs:` | **not-yet** | 3D *projection* — see below |
+| `\begin{axis}`, `\addplot`, `\pgfplotsset` | **not-yet** | pgfplots axes map onto `ext/dataviz` |
+| `\begin{circuitikz}` | **not-yet** | circuitikz bipoles map onto `ext/circuits` |
+
+Order is significant — first match wins, so every `cannot` sits ahead
+of every `not-yet`. A spherical surface plot also matches the
+projection pattern and must report the harder truth.
+
+**Why the split exists.** Three of these five were originally filed as
+"cannot", which told the reader *never* about work that is merely
+unbuilt — and would have quietly justified never building it. A
+refusal that names where the work would live is a roadmap entry; one
+that doesn't is a dead end.
+
+#### The three "not-yet"s, and what each would cost
+
+**3D projection — small, and worth doing for jikz's own sake.** TikZ's
+3D is a *projection, not a renderer*: no z-buffer, no hidden-surface
+removal, you order the drawing yourself. `\tdplotsetmaincoords{60}{110}`
+is a rotation matrix and `xyz cs:` is a linear combination of three
+unit vectors, so the whole thing is `project(x, y, z) → Point` — a
+couple hundred lines that disturb nothing, because you project first
+and then draw with the existing 2D anchors and edges. Evidence that
+this is the common case: of M0's four 3D refusals, `114158` uses
+`xyz spherical cs:` with `\foreach` and `\filldraw` and **nothing
+else** — a projection stage converts it completely. Added to
+`2026-09-13-extension-roadmap.md` as `ext/projection`.
+
+**circuitikz — gated on components, not on grammar.** The mapping is
+mechanical: `to[R, l=$R_s$]` gives position (segment midpoint), angle
+(the segment), shape (`R` → resistor) and a label (`l=` above, `l_=`
+below), which is what `circuit.resistor({ at, rotate })` plus `wire()`
+want. Two costs. The `to[…]` bipole idiom is a *parallel path
+grammar* — components live on segments rather than at coordinates,
+with poles (`*-`, `o-`), current arrows (`i=`) and three label
+positions. And coverage is the real wall: `ext/circuits` carries seven
+shapes (resistor, capacitor, inductor, diode, switch, ground, op amp)
+against circuitikz's hundreds. M0's one circuitikz sample needs `R`,
+`L`, `V`, `open` and `short` — and jikz has no voltage source and no
+gap. **Grow `ext/circuits` first; the grammar is the easy half.**
+
+**pgfplots — largest, defer.** `ext/dataviz` already has the concepts
+(`chart()`, `axes()`, `legend()`, Heckbert ticks), so a 2D
+`\begin{axis}` + `\addplot coordinates{…}` subset is plausible. The
+difficulty is not drawing: pgfplots' option surface is enormous, and
+`\addplot table` reads external files a converter will not have.
 
 ## 6. Codegen shape
 
