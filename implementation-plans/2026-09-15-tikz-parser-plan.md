@@ -465,7 +465,8 @@ Two packages were dropped in `../tikz-editor` and `../svg2tikz.js`.
 `svg2tikz.js` goes the other way (SVG → TikZ) and has nothing for us.
 `tikz-editor` (MIT) has two packages that do.
 
-**`@tikz-editor/lezer-tikz` should replace M1–M4.** A 986-line Lezer
+**`@tikz-editor/lezer-tikz` should replace most of M1–M4** — not all
+of it; see the pgfmath correction below. A 986-line Lezer
 grammar, standalone — its only dependencies are `@lezer/common` and
 `@lezer/lr`, no editor, no CodeMirror. It covers well past our scoped
 subset: `\foreach`, macro definitions *with arity and default args*
@@ -492,14 +493,63 @@ What a swap costs, against 509 lines in `parser/src` today:
 
 | file | fate |
 |---|---|
-| `tokenize.ts` (90), `parse.ts` (94) | deleted — the grammar replaces both |
+| `tokenize.ts` (90) | deleted — the grammar replaces it |
+| `parse.ts` (94) | mostly deleted; **`pictureBody()` stays** (see below) |
 | `types.ts` (55) | the AST half goes; the IR half stays |
 | `lower.ts` (39) | rewritten to walk a Lezer cursor |
 | `emit.ts`, `precheck.ts`, `interpret.ts`, `index.ts` | unchanged |
 
 So the part that is genuinely ours — the jikz mapping and the codegen
-— survives, and the tokenizer/grammar project this plan called "the
-hard part" stops being ours to write.
+— survives, and the tokenizer plus the path grammar this plan called
+"the hard part" stops being ours to write.
+
+### Quality assessment (2026-09-16) — two deficiencies, one that matters
+
+Measured rather than eyeballed. Parse-error coverage alone says
+nothing: a grammar can absorb a file into `UnknownStatement` and
+report no errors. So the metric is **unexplained characters** — the
+span of `Unknown*`/`Stray*`/error nodes, not descending into them.
+
+**Handed a tikzpicture body, it understands everything.** 0.0%
+unexplained across the corpus, including the tree diagram that reads
+as a 98.6% failure on the whole file and the spherical-coordinate one
+(0.3%).
+
+**Deficiency 1 — no pgfmath expression parsing, and it is on our
+critical path.** The author declares `pgfmath_expression: parser:
+"none"`, and a probe confirms it. `\pgfmathsetmacro{\r}{2*sin(30)+1}`
+recognises the *statement* but shreds the expression into loose
+`Number` nodes, and `sin(30)` is misparsed as a **`Coordinate`**
+because `(30)` looks like one. Inside a path, `({2*\x},{sin(\x r)})`
+arrives as a single opaque `Coordinate` with no interior structure.
+
+That is exactly what M0 measured at **7/20** of the corpus and what §4
+promoted into v1. **So the expression evaluator stays ours to write.**
+It is still the weekend-sized job §4 scoped, and it is now cleanly
+separable: a small expression parser over the text spans the grammar
+hands us, rather than a stage wired into a grammar we do not own.
+
+**Deficiency 2 — no LaTeX-document recovery.** Given a whole `.tex`,
+it can collapse the file into one `UnknownStatement`: it does not
+resynchronise at `\begin{tikzpicture}` after swallowing a preamble.
+`merge-sort-recursion-tree` goes 98.6% → 0.0% when handed the body
+alone. Real, but it is a TikZ grammar and not a LaTeX one, and
+`pictureBody()` in our `parse.ts` already does the extraction — which
+is why that function survives the swap.
+
+Also `pic_operation` is `partial` and `tree_auto_naming` is `none`.
+Both are post-v1 here.
+
+**Correcting a number from the first pass.** "225 stable / 83 partial
+/ 53 none" was across all four layers — parser, semantic, svg, edit.
+At the **parser layer alone**, which is all we would take, it is **82
+stable, 1 partial, 4 none of 91**. The gaps concentrate in the layers
+we are not adopting.
+
+**On the author, as a quality signal.** Shipping a capability matrix
+that declares your own parser's four gaps — and marking
+`pgfmath_expression` as `none` rather than quietly `partial` — is a
+better signal than any test count.
 
 **`@tikz-editor/core` settles the back-end question retroactively.**
 112k lines exporting `renderTikzToSvg()`, with a self-assessed
@@ -519,10 +569,47 @@ grammar. ~40% of wild TikZ is out for reasons unrelated to parsing —
 3D, pgfplots, LaTeX inside nodes. A better front end makes the
 tractable part much cheaper; it does not raise the ceiling.
 
-**Open before adopting**: whether the package is published to npm or
-needs vendoring (there is no `dist` in the drop, though the generated
-parser is checked in and runs from source), and whether to depend on
-it or vendor the grammar with attribution. MIT either way.
+**Provenance, checked.** Upstream is `DominikPeters/tikz-editor` —
+MIT, 460 stars, `fork: false`, homepage `tikz.dev/editor`, 721 commits
+between 2026-02-10 and 2026-07-01 authored entirely by one person, and
+exactly one copyright line in the whole tree. The grammar itself grows
+289 → 996 lines across 44 commits, each tied to a named feature
+(`support intersections`, `parsing math in labels`, `implement pics`) —
+the shape of something written rather than dropped in.
+
+The npm package `@magescher/tikz-editor-core` is **a fork's
+republication**: GitHub reports `magescher/tikz-editor` as
+`fork: true, parent: DominikPeters/tikz-editor`, one version ever
+(0.5.2, 2026-07-06), zero stars, no commits of its own, and already
+behind upstream. The MIT notice is intact, so nothing improper
+happened — but the dependency's health would rest with someone who has
+no stake in it. **Take it from upstream, not from that scope.**
+
+Upstream publishes nothing to npm, so the options are: ask the author
+to publish `lezer-tikz` (best — it is standalone: `@lezer/common` and
+`@lezer/lr`, no editor, no CodeMirror), vendor the grammar plus the
+generated tables into `parser/vendor/` with the notice and a pinned
+commit, or depend on a git URL and build it.
+
+**The runtime dependency does not vanish with vendoring.** The
+generated parser is tables; `@lezer/lr` interprets them and
+`@lezer/common` supplies the tree API. That is **152 KB of shipped
+code** across a two-package tree (`lr` → `common`, nothing else), both
+MIT, from the CodeMirror author. It lands on `@ozan.e/jikz-tikz`, not
+on `@ozan.e/jikz` — `files: ["dist", "src"]` already excludes
+`parser/`, and the emitted TypeScript imports jikz and nothing else,
+so no lezer reaches a consumer's bundle. Vendored tables are coupled
+to the `lezer-generator` version that produced them, so pin
+`@lezer/lr` and record the upstream commit beside the tables.
+
+**M1–M4 are revised by the spike above.** The tokenizer and the path
+grammar are no longer ours to write; what remains of them is wiring
+`lower()` to a Lezer cursor. The key registry (M4) still has to be
+built — the grammar gives `OptionPart`/`Identifier` spans, not jikz
+options — and the **pgfmath expression parser stays ours** whatever
+happens, since the grammar declares that gap itself. The milestones
+below are kept as written for the record; read them with that
+substitution.
 
 - **M1 — one end-to-end slice, plus the pre-check.**
   `\draw (0,0) -- (1,1);` through tokenizer → AST → IR → both back
