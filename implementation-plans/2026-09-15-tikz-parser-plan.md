@@ -459,6 +459,71 @@ map, get told about the rest."** That should be the first line of the
 README, so the boundary is set before the first bug report rather than
 after.
 
+### Spike: `@tikz-editor/lezer-tikz` (2026-09-16) — adopt it
+
+Two packages were dropped in `../tikz-editor` and `../svg2tikz.js`.
+`svg2tikz.js` goes the other way (SVG → TikZ) and has nothing for us.
+`tikz-editor` (MIT) has two packages that do.
+
+**`@tikz-editor/lezer-tikz` should replace M1–M4.** A 986-line Lezer
+grammar, standalone — its only dependencies are `@lezer/common` and
+`@lezer/lr`, no editor, no CodeMirror. It covers well past our scoped
+subset: `\foreach`, macro definitions *with arity and default args*
+(§5's hard refusal), `\pgfmath`, `\definecolor`/`\colorlet` (§4's
+promoted xcolor work), `\tikzset`/`\tikzstyle`, `child`/`pic`/`let`/
+`edge from parent`, decorations, `plot`, and mixed `$math$` in node
+text. It has `UnknownStatement`/`UnknownPart`/`StrayToken` as grammar
+productions — the same degrade-don't-throw principle §5.1 arrived at
+independently.
+
+**Measured against the M0 corpus**: all 20 files parse, with error
+coverage between **0.0% and 2.3% of characters** — including the ones
+the pre-check refuses, since 3D and pgfplots are still syntactically
+TikZ. The residue is mostly `\documentclass` and preamble, which the
+grammar absorbs as unknown rather than failing on.
+
+**The tree maps onto our IR almost mechanically.** A `PathStatement`
+is a flat list of `PathItem`s — `Coordinate`, `PathOperator`,
+`Coordinate`, `NodeItem` — which is exactly the pen-chain shape
+`lower()` already walks. `to[controls=…]` arrives as a `ToOperation`
+with its `OptionList`, which is also the circuitikz bipole idiom.
+
+What a swap costs, against 509 lines in `parser/src` today:
+
+| file | fate |
+|---|---|
+| `tokenize.ts` (90), `parse.ts` (94) | deleted — the grammar replaces both |
+| `types.ts` (55) | the AST half goes; the IR half stays |
+| `lower.ts` (39) | rewritten to walk a Lezer cursor |
+| `emit.ts`, `precheck.ts`, `interpret.ts`, `index.ts` | unchanged |
+
+So the part that is genuinely ours — the jikz mapping and the codegen
+— survives, and the tokenizer/grammar project this plan called "the
+hard part" stops being ours to write.
+
+**`@tikz-editor/core` settles the back-end question retroactively.**
+112k lines exporting `renderTikzToSvg()`, with a self-assessed
+capability matrix of 365 features: 225 stable, 83 partial, 53 none. It
+ships a MathJax node-text engine, having hit the same mixed text/math
+problem jikz has. That makes our **interpreter** largely redundant as
+a product — keep it only as the oracle, which the codegen still needs
+something to diff against.
+
+It also validates §2's choice retroactively: had we gone
+interpreter-first — "paste your TikZ, get SVG", the original framing in
+`2026-09-11-tikz-parity-evaluation.md` §5 — we would now be building a
+worse version of something that already exists under MIT.
+
+**What does not change: the M0 ceiling.** The limit was never the
+grammar. ~40% of wild TikZ is out for reasons unrelated to parsing —
+3D, pgfplots, LaTeX inside nodes. A better front end makes the
+tractable part much cheaper; it does not raise the ceiling.
+
+**Open before adopting**: whether the package is published to npm or
+needs vendoring (there is no `dist` in the drop, though the generated
+parser is checked in and runs from source), and whether to depend on
+it or vendor the grammar with attribution. MIT either way.
+
 - **M1 — one end-to-end slice, plus the pre-check.**
   `\draw (0,0) -- (1,1);` through tokenizer → AST → IR → both back
   ends, with the oracle test in place. **The §5.1 hopeless-file
