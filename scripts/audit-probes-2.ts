@@ -2,9 +2,9 @@
  * Audit probes 2 — decorations, edge routing math, plot mapping.
  */
 import {
-  point, line, path, picture, polar, arc, circle,
-  snakePath, zigzagPath, coilPath, bracePath, bracketPath,
-  plot, plotSin, plotPolar, plotParametric,
+  point, line, path, picture, circle,
+  snakePath, zigzagPath, coilPath, bracePath,
+  plot, plotPolar, plotParametric,
   intersectSegmentSegment, intersectSegmentCircle, arcThrough,
   lineFromAngle, Transform, origin,
 } from '../src/index'
@@ -27,7 +27,7 @@ for (const [name, p] of [
   const s = p.segments[0]!
   const first = s.points[0]!
   check(`${name} starts at base start`, first.equals(point(20, 40), 0.5), true)
-  const e = p.endPoint
+  const e = p.endPoint!
   check(`${name} ends near base end (x)`, Math.abs(e.x - 320) < 18, true)
 }
 
@@ -55,7 +55,8 @@ const s2 = intersectSegmentCircle(line(point(5, 0), point(6, 0)), circle(origin,
 check('segment missing circle: no hit', s2.length, 0)
 
 // arcThrough: semicircle through (0,0),(0,10),(10,0)? pick 3 pts on circle r=5 c=(5,0)
-const at = arcThrough(point(0, 0), point(5, 5), point(10, 0))
+// Collinear inputs would give null; these three are not.
+const at = arcThrough(point(0, 0), point(5, 5), point(10, 0))!
 check('arcThrough center x', at.center.x, 5, 1e-6)
 check('arcThrough radius', at.radius, 5, 1e-6)
 

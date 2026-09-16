@@ -25,7 +25,7 @@
   "sideEffects": false,
   "scripts": {
     "dev": "vitepress dev docs",
-    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json && tsc -p tsconfig.scripts.json",
     "build": "npm run typecheck && vite build && node scripts/postbuild-dts.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -51,6 +51,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
+    "@types/jsdom": "^30.0.0",
     "@types/node": "^26.5.1",
     "esbuild": "^0.28.2",
     "eslint": "^10.10.0",

@@ -4,9 +4,9 @@
  */
 import {
   point, polar, circle, ellipse, line, triangle, arc,
-  intersectLineCircle, intersectCircleCircle, intersectLineLine,
-  circleThrough, rectFit, path, smoothPath, subPath, offsetPath,
-  snakePath, zigzagPath, arcFromBulge,
+  intersectLineCircle, intersectCircleCircle,
+  circleThrough, rectFit, path, subPath, offsetPath,
+  arcFromBulge,
 } from '../src/index'
 
 const results: string[] = []
