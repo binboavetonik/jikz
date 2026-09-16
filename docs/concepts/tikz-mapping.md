@@ -184,10 +184,21 @@ Results are plain `Point`s — draw them, label them, compute with them.
 ## Math in labels (`$...$`)
 
 Identical spelling: a label that is **wholly** math — `'$\\alpha$'`,
-`'$x^2$'` — renders through KaTeX (an optional peer dependency, which
-you inject: `new SVGRenderer(undefined, undefined, { mathRenderer:
-katexAdapter(katex) })`). Without it, jikz falls back to plain italic
-text and the diagram still works.
+`'$x^2$'` — renders through KaTeX. It is an optional peer dependency
+and `toSVG()` is synchronous, so jikz cannot import it for you; hand
+it to the picture:
+
+```ts
+import katex from 'katex'
+import { picture, katexAdapter } from '@ozan.e/jikz'
+
+const pic = picture({ shapes, mathRenderer: katexAdapter(katex) })
+```
+
+`toSVG()` and `mount()` take a `mathRenderer` too, for a one-off
+override, and `setDefaultMathRenderer()` sets one for pictures a
+harness does not build itself. Without any of them, jikz falls back
+to plain text and the diagram still works.
 
 **Known limitation: a label may not mix text and math.** `'CuSO$_{4}$'`
 renders its `$` as literal characters, because detection matches any

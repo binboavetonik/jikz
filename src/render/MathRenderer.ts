@@ -115,12 +115,55 @@ export function extractLaTeX(text: string): { tex: string; displayMode: boolean 
   return { tex: text, displayMode: false }
 }
 
+let defaultMathRenderer: MathRenderer | undefined
+
 /**
- * Resolve the effective math renderer: the injected one wins; otherwise
- * fall back to an ambient global `katex` (deprecated — warn once).
+ * Set the math renderer used by pictures that do not name one of their
+ * own. Call it once, as early as you like:
+ *
+ * ```ts
+ * import katex from 'katex'
+ * import { setDefaultMathRenderer, katexAdapter } from '@ozan.e/jikz'
+ *
+ * setDefaultMathRenderer(katexAdapter(katex))
+ * ```
+ *
+ * **Prefer `picture({ mathRenderer })`** where you own the code that
+ * builds the picture — explicit beats ambient, and two pictures can
+ * then differ. This exists for the case that option cannot reach: a
+ * harness rendering pictures it does not own. jikz's own cookbook
+ * builder is exactly that, and so is any SSR host rendering
+ * third-party examples.
+ *
+ * KaTeX is an optional peer, and `toSVG()` is synchronous, so jikz
+ * cannot import it for you: a static import would make it mandatory
+ * for everyone, and a dynamic one is async. Hence injection.
+ *
+ * Pass `undefined` to clear it — useful between tests.
+ */
+export function setDefaultMathRenderer(renderer: MathRenderer | undefined): void {
+  defaultMathRenderer = renderer
+}
+
+/** The renderer {@link setDefaultMathRenderer} installed, if any. */
+export function getDefaultMathRenderer(): MathRenderer | undefined {
+  return defaultMathRenderer
+}
+
+/**
+ * Resolve the effective math renderer, most specific first:
+ *
+ * 1. the one injected into this renderer (per-call or per-picture),
+ * 2. the module default from {@link setDefaultMathRenderer},
+ * 3. an ambient global `katex` — deprecated, warns once.
+ *
+ * Step 2 is what step 3's deprecation was missing: the replacement it
+ * points at was only reachable through `new SVGRenderer(...)`, which
+ * the picture layer never exposed.
  */
 export function resolveMathRenderer(injected?: MathRenderer): MathRenderer | undefined {
   if (injected) return injected
+  if (defaultMathRenderer) return defaultMathRenderer
 
   const globalKaTeX = (globalThis as { katex?: KaTeXLike }).katex
   if (globalKaTeX) {

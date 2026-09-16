@@ -1,5 +1,37 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **A picture can be given a math renderer.** `$...$` labels needed
+  KaTeX injected through `new SVGRenderer(…, { mathRenderer })`, which
+  the picture layer never exposed — so `toSVG()` and `mount()` had no
+  way to reach it and every static render showed its dollar signs.
+  Three ways in now, most specific first:
+
+  ```ts
+  picture({ shapes, mathRenderer: katexAdapter(katex) })  // per picture
+  pic.toSVG({ width, height, mathRenderer })              // per render
+  setDefaultMathRenderer(katexAdapter(katex))             // per process
+  ```
+
+  Prefer the first. The last exists for a harness that renders
+  pictures it does not build — and it is the explicit replacement for
+  reading `globalThis.katex`, which stays deprecated and now resolves
+  last.
+
+  KaTeX cannot be imported for you: it is an optional peer, a static
+  import would make it mandatory for everyone, and a dynamic one is
+  async while `toSVG()` is not.
+
+  Note that KaTeX is **not** the answer for static `.svg` files viewed
+  through an `<img>` tag, which is how the cookbook shows thumbnails.
+  Its output needs `katex.css` and web fonts, and an `<img>`-loaded
+  SVG loads neither — the visual HTML and the MathML copy that CSS
+  normally hides then render on top of each other. Injection is for
+  the live DOM.
+
 ## 0.8.0 — 2026-09-15
 
 0.8.0 adds `ext/petri`, jikz's port of TikZ's `petri` library, and

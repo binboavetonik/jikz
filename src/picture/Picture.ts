@@ -7,6 +7,7 @@ import type { Edge } from '../node/Edge'
 import type { Renderable, RenderOptions, TextOptions } from '../render/Renderer'
 import type { RenderStyle } from '../render/StyleMapper'
 import { SVGRenderer } from '../render/SVGRenderer'
+import type { MathRenderer } from '../render/MathRenderer'
 import type { ViewBoxSpec } from '../render/SVGBuilder'
 import type {
   PanZoomController,
@@ -54,6 +55,11 @@ export type {
  * a hand-computed size or a centering {@link Transform}.
  */
 export interface PictureViewBox {
+  /**
+   * Math renderer for this render only, overriding the picture's own
+   * and the module default. Rarely needed — set it on the picture.
+   */
+  mathRenderer?: MathRenderer
   /** Explicit viewport size; ignored when `fit` is set. */
   width?: number
   height?: number
@@ -111,6 +117,23 @@ export interface PictureOptions<S extends ShapeSet = {}> {
    * per-name `shapeOptions` type comes from the set itself.
    */
   shapes?: S
+
+  /**
+   * Renders `$...$` labels. KaTeX is an optional peer and `toSVG()` is
+   * synchronous, so jikz cannot import it for you — hand it over:
+   *
+   * ```ts
+   * import katex from 'katex'
+   * import { picture, katexAdapter } from '@ozan.e/jikz'
+   *
+   * const pic = picture({ shapes, mathRenderer: katexAdapter(katex) })
+   * ```
+   *
+   * Without one, math labels fall back to plain text. For a harness
+   * that renders pictures it does not build, see
+   * {@link setDefaultMathRenderer}.
+   */
+  mathRenderer?: MathRenderer
 
   /**
    * Canvas-level transform applied to the entire scene at render time
@@ -189,6 +212,11 @@ export class Picture<S extends ShapeSet = {}>
     { at: Point; transform: Transform | undefined }
   >()
   private readonly options: PictureOptions<S>
+
+  /** This picture's math renderer, if it was given one. */
+  private get mathRenderer(): MathRenderer | undefined {
+    return this.options.mathRenderer
+  }
 
   constructor(options: PictureOptions<S> = {}) {
     super()
@@ -337,6 +365,7 @@ export class Picture<S extends ShapeSet = {}>
   toSVG(viewBox?: PictureViewBox): string {
     const renderer = new SVGRenderer(undefined, undefined, {
       transform: this.canvasTransform(),
+      mathRenderer: viewBox?.mathRenderer ?? this.mathRenderer,
     })
     this.renderWith(renderer)
     return renderer.toSVG(this.resolveViewBox(viewBox) as { width: number; height: number })
@@ -358,6 +387,7 @@ export class Picture<S extends ShapeSet = {}>
     const renderer = new SVGRenderer(undefined, undefined, {
       transform: this.canvasTransform(),
       viewportGroup: !!panZoom,
+      mathRenderer: viewBox?.mathRenderer ?? this.mathRenderer,
     })
     this.renderWith(renderer)
     const spec = this.resolveViewBox(viewBox)

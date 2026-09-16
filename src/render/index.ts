@@ -143,7 +143,12 @@ export type { KaTeXOptions } from './SVGRenderer'
 // Renderer collaborators (def bookkeeping, layers, math)
 export { DefsManager } from './DefsManager'
 export { LayerStack } from './LayerStack'
-export { katexAdapter, resolveMathRenderer } from './MathRenderer'
+export {
+  katexAdapter,
+  resolveMathRenderer,
+  setDefaultMathRenderer,
+  getDefaultMathRenderer,
+} from './MathRenderer'
 export type { MathRenderer, MathRendererOptions, KaTeXLike } from './MathRenderer'
 
 // Arrow tip registry

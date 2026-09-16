@@ -538,6 +538,8 @@ export {
   LayerStack,
   katexAdapter,
   resolveMathRenderer,
+  setDefaultMathRenderer,
+  getDefaultMathRenderer,
   // Arrow tip + pattern registries
   registerArrowTip,
   getArrowTip,
