@@ -29,7 +29,6 @@ import { estimateLabelSize } from '../src/text/placeText'
 /** Examples whose findings are intentional, and why. */
 const ALLOWED: Record<string, string> = {
   'text-on-path': 'the whole point is glyphs riding the path',
-  'katex-math': 'KaTeX formulas are foreignObject, not measurable here',
   'node-auto-size': 'demonstrates text filling its node exactly',
 }
 
@@ -108,9 +107,24 @@ const mapBox = (m: M, b: Box): Box => {
 }
 
 /** Boxes of the text runs in one rendered `<svg>`, with their content. */
+/**
+ * Elements in THIS picture's own coordinate system.
+ *
+ * A nested `<svg>` establishes a new viewport, so its children's
+ * coordinates mean nothing out here — a MathJax formula carries a
+ * viewBox like `0 -830.4 4752 912.4`, and reading those as picture
+ * pixels reports a 2468px overflow for a label that is 75px wide.
+ * Same reason `foreignObject` is opaque to this checker.
+ */
+function own(svg: Element, selector: string): Element[] {
+  return Array.from(svg.querySelectorAll(selector)).filter(
+    (el) => el.closest('svg') === svg
+  )
+}
+
 function textBoxes(svg: Element): { box: Box; text: string }[] {
   const out: { box: Box; text: string }[] = []
-  for (const el of Array.from(svg.querySelectorAll('text'))) {
+  for (const el of own(svg, 'text')) {
     const m = ancestorTransform(el, svg)
     if (!m) continue
     const x = Number(el.getAttribute('x') ?? 0)
@@ -135,7 +149,7 @@ function textBoxes(svg: Element): { box: Box; text: string }[] {
  */
 function markerBoxes(svg: Element): Box[] {
   const out: Box[] = []
-  for (const el of Array.from(svg.querySelectorAll('circle'))) {
+  for (const el of own(svg, 'circle')) {
     const r = Number(el.getAttribute('r') ?? 0)
     if (r === 0 || r > 14) continue
     const m = ancestorTransform(el, svg)
@@ -158,7 +172,7 @@ function paintedBounds(svg: Element): Box | undefined {
       ? { x0: Math.min(b.x0, x), y0: Math.min(b.y0, y), x1: Math.max(b.x1, x), y1: Math.max(b.y1, y) }
       : { x0: x, y0: y, x1: x, y1: y }
   }
-  for (const el of Array.from(svg.querySelectorAll('line,rect,circle,ellipse'))) {
+  for (const el of own(svg, 'line,rect,circle,ellipse')) {
     if (el.closest('defs')) continue
     const t = ancestorTransform(el, svg)
     if (!t) continue
@@ -190,7 +204,7 @@ function paintedBounds(svg: Element): Box | undefined {
   // Paths: only the ON-PATH nodes (`M`/`L` and the endpoint of a curve
   // or arc). Bezier control points and arc radii are not positions, and
   // counting them as ones reports curves as escaping when they do not.
-  for (const el of Array.from(svg.querySelectorAll('path'))) {
+  for (const el of own(svg, 'path')) {
     if (el.closest('defs')) continue
     const t = ancestorTransform(el, svg)
     if (!t) continue
@@ -214,7 +228,12 @@ for (const { demo, container } of renderExamples(process.argv.slice(2))) {
   const reason = ALLOWED[demo.id]
   const problems: string[] = []
 
-  for (const svg of Array.from(container.querySelectorAll('svg'))) {
+  // Top-level pictures only: a nested <svg> is a formula, not a
+  // picture, and its interior is another coordinate system.
+  const pictures = Array.from(container.querySelectorAll('svg')).filter(
+    (el) => el.parentElement?.closest('svg') == null
+  )
+  for (const svg of pictures) {
     const texts = textBoxes(svg)
     const markers = markerBoxes(svg)
 

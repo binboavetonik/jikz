@@ -54,6 +54,38 @@
   no privileged access, which is the only thing that makes "write your
   own" true rather than decorative.
 
+### Changed
+
+- **The cookbook renders real math.** Every `$...$` label in a gallery
+  thumbnail used to show its dollar signs — the headless tools inject
+  no math renderer, and `Picture.toSVG()` had no way to take one.
+  `scripts/render-examples.ts` now installs MathJax's SVG output for
+  the whole build.
+
+  MathJax rather than KaTeX because these tools write standalone
+  `.svg` files that the cookbook shows through an `<img>` tag, which
+  loads no stylesheet and no web fonts. KaTeX needs both: injecting it
+  here renders the visual markup and the MathML copy on top of each
+  other, which was measured in a browser rather than guessed. MathJax
+  SVG output is glyph paths, and the same browser check confirms it
+  survives the `<img>` boundary intact.
+
+  `fontCache: 'none'` is load-bearing — the default caches glyphs in
+  `<defs>` and references them with `<use>`, whose ids collide once
+  several formulas share a picture.
+
+  Costs 54 KB across 100 committed thumbnails (+9%) and a dev-only
+  `mathjax-full`; `npm audit --omit=dev` stays at zero.
+
+- **`check:examples` stops at a nested viewport.** A nested `<svg>`
+  establishes its own coordinate system, so reading its children's
+  coordinates as picture pixels reported a 2468px overflow for a
+  75px-wide formula — 14 false findings the moment real math appeared.
+  It now measures only elements in the picture's own system, which is
+  the rule it already applied to `foreignObject`. The `katex-math`
+  allowance went with it: that example no longer produces a
+  foreignObject, and an unused allowance hides the next regression.
+
 ## 0.8.0 — 2026-09-15
 
 0.8.0 adds `ext/petri`, jikz's port of TikZ's `petri` library, and

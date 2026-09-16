@@ -9,6 +9,8 @@
  */
 import { JSDOM } from 'jsdom'
 import { demos, type Demo } from '../examples/manifest'
+import { setDefaultMathRenderer } from '../src/index'
+import { nodeMathJax } from './mathjax-node'
 
 export interface RenderedExample {
   demo: Demo
@@ -29,6 +31,12 @@ export function renderExamples(ids: readonly string[] = []): RenderedExample[] {
   // The library checks for a DOM via the globals — install jsdom's.
   globalThis.document = dom.window.document as unknown as Document
   globalThis.window = dom.window as unknown as Window & typeof globalThis
+
+  // Examples build their own pictures, so `picture({ mathRenderer })`
+  // cannot reach them from out here — this is exactly the case the
+  // process-wide default exists for. MathJax rather than KaTeX because
+  // the output of these tools is standalone `.svg`; see mathjax-node.ts.
+  setDefaultMathRenderer(nodeMathJax())
 
   const wanted = ids.length ? new Set(ids) : undefined
   const out: RenderedExample[] = []
