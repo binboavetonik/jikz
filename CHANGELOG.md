@@ -25,12 +25,34 @@
   import would make it mandatory for everyone, and a dynamic one is
   async while `toSVG()` is not.
 
-  Note that KaTeX is **not** the answer for static `.svg` files viewed
-  through an `<img>` tag, which is how the cookbook shows thumbnails.
-  Its output needs `katex.css` and web fonts, and an `<img>`-loaded
-  SVG loads neither — the visual HTML and the MathML copy that CSS
-  normally hides then render on top of each other. Injection is for
-  the live DOM.
+- **`MathRenderer` can say how it wants to be embedded, and
+  `mathjaxAdapter` uses it.** The interface was documented as "anything
+  that can turn a TeX string into an HTML fragment", and that HTML went
+  into a `foreignObject` — which needs a live document's CSS and web
+  fonts. So *every* provider inherited KaTeX's limitation, and no
+  amount of injection could produce a self-contained SVG.
+
+  An adapter now declares `output: 'html' | 'svg'`. HTML keeps the
+  `foreignObject` path unchanged; SVG is inlined directly, which is
+  what MathJax's SVG output produces — glyph paths needing no
+  stylesheet and no fonts, so the math survives in a standalone file,
+  an `<img>` tag, Inkscape or a PDF converter. KaTeX cannot do this at
+  all; HTML+CSS and MathML are its only outputs.
+
+  | | output | renders in |
+  |---|---|---|
+  | `katexAdapter` | HTML in a `foreignObject` | a live document only |
+  | `mathjaxAdapter` | inlined SVG paths | anywhere an SVG renders |
+
+  Two rules keep the seam open. `output` is **optional** and defaults
+  to `'html'`, so every adapter written before it — including
+  hand-written ones — works untouched. And an unrecognised value is
+  treated as `'html'` rather than throwing, so a newer adapter
+  degrades on an older jikz instead of breaking it.
+
+  Both shipped adapters are written against the public interface with
+  no privileged access, which is the only thing that makes "write your
+  own" true rather than decorative.
 
 ## 0.8.0 — 2026-09-15
 

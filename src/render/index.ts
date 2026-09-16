@@ -145,11 +145,18 @@ export { DefsManager } from './DefsManager'
 export { LayerStack } from './LayerStack'
 export {
   katexAdapter,
+  mathjaxAdapter,
   resolveMathRenderer,
   setDefaultMathRenderer,
   getDefaultMathRenderer,
 } from './MathRenderer'
-export type { MathRenderer, MathRendererOptions, KaTeXLike } from './MathRenderer'
+export type {
+  MathRenderer,
+  MathRendererOptions,
+  MathOutput,
+  KaTeXLike,
+  MathJaxLike,
+} from './MathRenderer'
 
 // Arrow tip registry
 export {

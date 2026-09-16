@@ -200,6 +200,43 @@ override, and `setDefaultMathRenderer()` sets one for pictures a
 harness does not build itself. Without any of them, jikz falls back
 to plain text and the diagram still works.
 
+### Which renderer, and why it matters
+
+| | output | renders in |
+|---|---|---|
+| `katexAdapter(katex)` | HTML, in a `foreignObject` | a live document only |
+| `mathjaxAdapter(MathJax)` | SVG glyph paths, inlined | anywhere an SVG renders |
+
+A `foreignObject` needs the page's CSS and web fonts, so KaTeX math
+survives in the browser and **not** in a standalone `.svg` opened
+through an `<img>` tag — there it loses its stylesheet, and the MathML
+copy that CSS normally hides renders on top of the visual one. Use
+KaTeX for live pages, where it is the lighter and faster choice, and
+MathJax's SVG output for files you export. They coexist: the renderer
+is per picture.
+
+### Writing your own
+
+`MathRenderer` is structural — a plain object, no registration, no
+base class, and nothing jikz's own adapters get that you do not:
+
+```ts
+const mine: MathRenderer = {
+  output: 'svg',                       // 'html' (default) or 'svg'
+  renderToString: (tex, o) => myEngine(tex, o?.displayMode),
+  measure: (tex, o) => undefined,      // optional; estimates are used
+}
+```
+
+`output` says how the markup is carried into the SVG. There are two
+values because SVG offers exactly two ways to hold foreign content,
+and an `output` jikz does not recognise is treated as `'html'` rather
+than throwing — so an adapter can ship ahead of a jikz release.
+
+One boundary worth knowing: `renderToString` is **synchronous**,
+because `toSVG()` is. An async engine — a server, a WASM module with
+async init — has to be pre-rendered into a lookup the adapter reads.
+
 **Known limitation: a label may not mix text and math.** `'CuSO$_{4}$'`
 renders its `$` as literal characters, because detection matches any
 string containing `$…$` while extraction only unwraps a string that is

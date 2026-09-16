@@ -961,6 +961,31 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
         })
         const w = Math.ceil(measured?.width ?? 200)
         const h = Math.ceil(measured?.height ?? 50)
+
+        // SVG carries foreign content two ways and only two: native
+        // elements, or a foreignObject for HTML. The adapter says which
+        // it produced.
+        //
+        // Note the test: `=== 'svg'`, not a switch with a default that
+        // throws. An adapter declaring an output this version has never
+        // heard of is treated as HTML — it degrades rather than
+        // breaking, so a newer adapter can ship ahead of a jikz release
+        // instead of waiting on one.
+        if (mathRenderer.output === 'svg') {
+          // Nested <svg> rather than a <g>: it clips nothing (overflow
+          // visible), positions with x/y like the foreignObject does,
+          // and lets the adapter's own viewBox scale into the box.
+          const nested = container.el('svg', {
+            x: position.x - w / 2,
+            y: position.y - h / 2,
+            width: w,
+            height: h,
+            overflow: 'visible',
+          })
+          nested.raw(html)
+          return this.applyOptions(nested, options)
+        }
+
         const fo = container.foreignObject(w, h)
         fo.attr({
           x: position.x - w / 2, // Center horizontally

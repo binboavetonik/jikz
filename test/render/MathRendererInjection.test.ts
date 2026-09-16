@@ -15,6 +15,7 @@ import { basicShapes } from '../../src/geometry/shapes'
 import {
   setDefaultMathRenderer,
   getDefaultMathRenderer,
+  mathjaxAdapter,
   type MathRenderer,
 } from '../../src/render/MathRenderer'
 
@@ -74,5 +75,87 @@ describe('math renderer injection', () => {
     const el = document.createElement('div')
     pic.mount(el, { width: 80, height: 40 })
     expect(el.innerHTML).toContain('data-by="picture"')
+  })
+})
+
+describe('output kind', () => {
+  const svgOut: MathRenderer = {
+    output: 'svg',
+    renderToString: (tex) => `<svg viewBox="0 0 10 10"><path d="M0 0" data-tex="${tex}"/></svg>`,
+  }
+
+  it('wraps html output in a foreignObject, as before', () => {
+    const svg = draw(picture({ shapes: basicShapes, mathRenderer: tagged('html') }))
+    expect(svg).toContain('foreignObject')
+  })
+
+  it('inlines svg output instead, with no foreignObject at all', () => {
+    // The whole point: a foreignObject needs a live document's CSS and
+    // fonts. Inlined SVG needs nothing, so it survives an <img> tag.
+    const svg = draw(picture({ shapes: basicShapes, mathRenderer: svgOut }))
+    expect(svg).not.toContain('foreignObject')
+    expect(svg).toContain('data-tex="x^2"')
+  })
+
+  it('positions inlined svg the same way it positions a foreignObject', () => {
+    const svg = draw(picture({ shapes: basicShapes, mathRenderer: svgOut }))
+    // Centred on the text point (40,20) with the default 200×50 box.
+    expect(svg).toMatch(/<svg[^>]*x="-60"[^>]*y="-5"/)
+    expect(svg).toContain('overflow="visible"')
+  })
+
+  it('treats an unrecognised output kind as html rather than throwing', () => {
+    // A newer adapter must be able to ship ahead of a jikz release.
+    // The roadmap calls out the opposite pattern — a closed union
+    // ending in `throw new Error('Unknown …')` — as a seam that is not
+    // really a seam.
+    const future = {
+      output: 'webgpu-canvas' as unknown as 'svg',
+      renderToString: () => '<span>later</span>',
+    }
+    const svg = draw(picture({ shapes: basicShapes, mathRenderer: future }))
+    expect(svg).toContain('foreignObject')
+    expect(svg).toContain('later')
+  })
+
+  it('defaults to html when an adapter names no output at all', () => {
+    // Every adapter written before `output` existed, including the
+    // fake in RendererCollaborators.test.ts.
+    const legacy: MathRenderer = { renderToString: (tex) => `<b>${tex}</b>` }
+    expect(draw(picture({ shapes: basicShapes, mathRenderer: legacy }))).toContain('foreignObject')
+  })
+})
+
+describe('third-party adapters', () => {
+  it('needs nothing from jikz but the interface', () => {
+    // Written the way a user would write one: a plain object, no
+    // import from jikz internals, no registration step.
+    const mine: MathRenderer = {
+      output: 'svg',
+      renderToString: (tex, o) =>
+        `<svg><text data-display="${o?.displayMode ?? false}">${tex}</text></svg>`,
+    }
+    const svg = draw(picture({ shapes: basicShapes, mathRenderer: mine }))
+    expect(svg).toContain('data-display="false"')
+  })
+
+  it('wraps a MathJax-shaped object, element or string', () => {
+    const asElement = mathjaxAdapter({ tex2svg: () => ({ outerHTML: '<svg id="el"/>' }) })
+    const asString = mathjaxAdapter({ tex2svg: () => '<svg id="str"/>' })
+    expect(asElement.output).toBe('svg')
+    expect(asElement.renderToString('x')).toBe('<svg id="el"/>')
+    expect(asString.renderToString('x')).toBe('<svg id="str"/>')
+  })
+
+  it('passes displayMode through to MathJax as `display`', () => {
+    let seen: unknown
+    const adapter = mathjaxAdapter({
+      tex2svg: (_tex, o) => {
+        seen = o?.display
+        return '<svg/>'
+      },
+    })
+    adapter.renderToString('x', { displayMode: true })
+    expect(seen).toBe(true)
   })
 })

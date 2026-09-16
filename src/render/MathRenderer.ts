@@ -28,10 +28,41 @@ export interface MathRendererOptions {
 }
 
 /**
- * Anything that can turn a TeX string into an HTML fragment.
+ * How a renderer's markup gets carried into the SVG tree.
+ *
+ * SVG offers exactly two ways to hold foreign content, which is why
+ * this has two values rather than an arbitrary set: a `foreignObject`
+ * for HTML, or native SVG elements inlined directly.
+ *
+ * - `'html'` (the default) goes in a `foreignObject`. Right for KaTeX,
+ *   whose output is HTML and CSS — but a `foreignObject` needs that
+ *   CSS and its web fonts, so it renders only in a live document, not
+ *   in a standalone `.svg` opened through an `<img>` tag.
+ * - `'svg'` is inlined as-is. Right for MathJax's SVG output, which is
+ *   glyph *paths*: no stylesheet, no fonts, nothing external, so it
+ *   renders anywhere an SVG renders.
+ */
+export type MathOutput = 'html' | 'svg'
+
+/**
+ * Anything that can turn a TeX string into markup.
+ *
+ * Structural, with every member beyond `renderToString` optional, so
+ * your own adapter is a plain object — see {@link katexAdapter} and
+ * {@link mathjaxAdapter} for the two shipped ones, which get no
+ * privileged access and are written against this same interface.
  */
 export interface MathRenderer {
   renderToString(tex: string, options?: MathRendererOptions): string
+  /**
+   * What {@link renderToString} produces. Defaults to `'html'`, so an
+   * adapter written before this existed keeps working unchanged.
+   *
+   * A value this version of jikz does not recognise is treated as
+   * `'html'` rather than throwing, so a newer adapter degrades on an
+   * older jikz instead of breaking it.
+   */
+  readonly output?: MathOutput
   /**
    * Measured size of the rendered formula in px. Optional and
    * browser-only (renders offscreen); return undefined when
@@ -80,6 +111,44 @@ export function katexAdapter(katex: KaTeXLike): MathRenderer {
       } finally {
         probe.remove()
       }
+    },
+  }
+}
+
+/**
+ * Structural type for a MathJax instance with SVG output — the browser
+ * bundle's `MathJax.tex2svg`, or `mathjax-full`'s document API wrapped
+ * to match.
+ */
+export interface MathJaxLike {
+  tex2svg(tex: string, options?: { display?: boolean }): { outerHTML?: string } | string
+}
+
+/**
+ * Wrap MathJax's **SVG output** as a {@link MathRenderer}.
+ *
+ * The reason to reach for this over {@link katexAdapter}: MathJax's
+ * SVG output is glyph paths, so it needs no stylesheet and no web
+ * fonts and survives anywhere an SVG goes — a standalone `.svg`, an
+ * `<img>` tag, Inkscape, a PDF converter. KaTeX cannot do this at all;
+ * its outputs are HTML+CSS and MathML, and both need a live document.
+ *
+ * ```ts
+ * import { mathjaxAdapter } from '@ozan.e/jikz'
+ * picture({ shapes, mathRenderer: mathjaxAdapter(MathJax) })
+ * ```
+ *
+ * For the live DOM, KaTeX is still the lighter, faster choice. Pick
+ * per picture; the two coexist in one process.
+ */
+export function mathjaxAdapter(mathjax: MathJaxLike): MathRenderer {
+  return {
+    output: 'svg',
+    renderToString: (tex, options) => {
+      const out = mathjax.tex2svg(tex, { display: options?.displayMode ?? false })
+      // The browser bundle hands back an element; a wrapped
+      // mathjax-full hands back serialized markup already.
+      return typeof out === 'string' ? out : (out.outerHTML ?? '')
     },
   }
 }
