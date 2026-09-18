@@ -258,10 +258,9 @@ export class Arc {
     const points: Point[] = [this.start, this.end]
 
     // Check cardinal directions
-    if (this.containsAngle(0)) points.push(this.circle.east)
-    if (this.containsAngle(90)) points.push(this.circle.north)
-    if (this.containsAngle(180)) points.push(this.circle.west)
-    if (this.containsAngle(270)) points.push(this.circle.south)
+    for (const angle of [0, 90, 180, 270]) {
+      if (this.containsAngle(angle)) points.push(this.circle.pointAt(angle))
+    }
 
     const xs = points.map((p) => p.x)
     const ys = points.map((p) => p.y)

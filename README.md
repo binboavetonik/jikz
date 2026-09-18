@@ -183,9 +183,10 @@ describe the default screen frame, and what every geometry object holds.
 - **Compass anchor names always mean what you see**: `north` is the
   visual top of a shape, `north east` the visual top-right corner —
   same as TikZ's page output.
-- ⚠️ **Numeric anchors differ from TikZ**: in TikZ `(A.90)` is the top
-  of the node; in jikz `A.90` is the bottom (90° = south) and `A.270`
-  is the top. Named anchors match TikZ; bare numbers match the screen.
+- **Numeric anchors follow the frame**: in the screen frame `A.90` is
+  the bottom (90° = south) and `A.270` the top; in a `frame: 'math'`
+  picture `A.90` is the top, as in TikZ. Named anchors mean the same
+  in both.
 - Edge `out`/`in`/`bendAngle` use the same angle convention. Positive
   bend is to the **left** of travel (`bend left`); labels sit on the
   left by default (TikZ `auto=left`).
@@ -500,10 +501,12 @@ lives in `examples/` (one self-contained module per card, registered in
 
 ## Status
 
-Pre-1.0 (`0.x`): the API is settling but not frozen. Notable recent
-breaking change — **anchor angles adopted the screen convention**
-(named anchors unchanged in meaning; numeric anchors flipped 90°↔270°
-relative to the old math convention). See *Conventions* above.
+0.9 is the release candidate for 1.0: the vocabulary is settled (one
+option bag, one `Label`, one `TextStyle`, `every`, style names, the
+math frame), nothing in it is deprecated, and the public surface is
+recorded in `api-report/jikz.api.md` and diffed in CI. From 1.0 the
+package follows semver with the deprecation window written down in
+CONTRIBUTING: deprecated in a minor, removed in the next major.
 
 ## License
 

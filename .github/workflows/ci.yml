@@ -28,10 +28,15 @@ jobs:
       - run: npm run build
       # unit, snapshot, example-gallery and tree-shaking suites
       - run: npm test
+      # the committed API report must match the source (api-report/)
+      - run: npm run api:check
       # publint + arethetypeswrong against the packed tarball
       - run: npm run check:pkg
       - run: npm run smoke:dist
       - run: npm run docs:build
+      # informational: coverage summary in the job log, never a gate
+      - run: npm run test:coverage
+        continue-on-error: true
 
   engines-floor:
     name: Node 18 — build + dist smoke test

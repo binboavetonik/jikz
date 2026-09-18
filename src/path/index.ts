@@ -48,8 +48,6 @@ export {
   squareDecoration,
   decoration,
   // Dash patterns
-  DASH_PATTERNS,
-  dashPatternToSVG,
   // Path operations
   offsetPath,
   doublePath,
@@ -68,7 +66,6 @@ export type {
   DecorationType,
   DecorationPosition,
   DecorationOptions,
-  DashPattern,
 } from './PathOperations'
 
 // Path decorations (snake, zigzag, coil, etc.)

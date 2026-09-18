@@ -122,7 +122,11 @@
     "docs:build": "vitepress build docs",
     "prepublishOnly": "npm run lint && npm run test && npm run build && npm run check:pkg",
     "check:pkg": "publint && attw --pack .",
-    "smoke:dist": "node scripts/smoke-dist.mjs"
+    "smoke:dist": "node scripts/smoke-dist.mjs",
+    "test:coverage": "vitest run --coverage",
+    "api:report": "vite-node scripts/api-report.ts",
+    "api:check": "vite-node scripts/api-report.ts --check",
+    "api:update": "vite-node scripts/api-report.ts --update"
   },
   "peerDependencies": {
     "katex": ">=0.16.0"
@@ -136,6 +140,7 @@
     "@arethetypeswrong/cli": "^0.18.5",
     "@types/jsdom": "^30.0.0",
     "@types/node": "^26.5.1",
+    "@vitest/coverage-v8": "^2.1.9",
     "esbuild": "^0.28.2",
     "eslint": "^10.10.0",
     "jsdom": "^30.0.1",

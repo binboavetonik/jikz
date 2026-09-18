@@ -112,12 +112,6 @@ function colorKey(color: string): string {
 }
 
 /**
- * Options for the KaTeX-based math pipeline.
- * @deprecated Use {@link MathRendererOptions} (identical shape).
- */
-export type KaTeXOptions = MathRendererOptions
-
-/**
  * Construction options for {@link SVGRenderer}.
  */
 export interface SVGRendererOptions {
@@ -1084,7 +1078,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
   /**
    * Render LaTeX label at a position
    */
-  renderMath(tex: string, position: Point, options?: KaTeXOptions & TextOptions): SVGElement {
+  renderMath(tex: string, position: Point, options?: MathRendererOptions & TextOptions): SVGElement {
     const displayMode = options?.displayMode ?? false
     const wrapped = displayMode ? `$$${tex}$$` : `$${tex}$`
     return this.renderLaTeX(wrapped, position, undefined, options)

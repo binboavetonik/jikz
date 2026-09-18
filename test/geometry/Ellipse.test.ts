@@ -69,17 +69,17 @@ describe('Ellipse', () => {
     it('returns correct cardinal points', () => {
       const e = ellipse({ x: 100, y: 100 }, 50, 30)
 
-      expect(e.east.x).toBeCloseTo(150)
-      expect(e.east.y).toBeCloseTo(100)
+      expect(e.pointAt(0).x).toBeCloseTo(150)
+      expect(e.pointAt(0).y).toBeCloseTo(100)
 
-      expect(e.west.x).toBeCloseTo(50)
-      expect(e.west.y).toBeCloseTo(100)
+      expect(e.pointAt(180).x).toBeCloseTo(50)
+      expect(e.pointAt(180).y).toBeCloseTo(100)
 
-      expect(e.north.x).toBeCloseTo(100)
-      expect(e.north.y).toBeCloseTo(130)
+      expect(e.pointAt(90).x).toBeCloseTo(100)
+      expect(e.pointAt(90).y).toBeCloseTo(130)
 
-      expect(e.south.x).toBeCloseTo(100)
-      expect(e.south.y).toBeCloseTo(70)
+      expect(e.pointAt(270).x).toBeCloseTo(100)
+      expect(e.pointAt(270).y).toBeCloseTo(70)
     })
 
     it('returns points on rotated ellipse', () => {

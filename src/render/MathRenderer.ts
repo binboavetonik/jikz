@@ -16,7 +16,6 @@
  * was uninjectable and untestable. The global is still honored as a
  * deprecated fallback (with a one-time warning) for one release.
  */
-import { warn } from '../core/errors'
 export interface MathRendererOptions {
   /** Display mode (centered, larger) */
   displayMode?: boolean
@@ -154,8 +153,6 @@ export function mathjaxAdapter(mathjax: MathJaxLike): MathRenderer {
   }
 }
 
-let warnedAboutGlobal = false
-
 /**
  * Check if text contains LaTeX (inline math `$...$`, display math
  * `$$...$$`, or LaTeX commands like `\frac`).
@@ -224,29 +221,11 @@ export function getDefaultMathRenderer(): MathRenderer | undefined {
  * Resolve the effective math renderer, most specific first:
  *
  * 1. the one injected into this renderer (per-call or per-picture),
- * 2. the module default from {@link setDefaultMathRenderer},
- * 3. an ambient global `katex` — deprecated, warns once.
+ * 2. the module default from {@link setDefaultMathRenderer}.
  *
- * Step 2 is what step 3's deprecation was missing: the replacement it
- * points at was only reachable through `new SVGRenderer(...)`, which
- * the picture layer never exposed.
+ * A global `katex` is never read (it was, with a deprecation warning,
+ * before 1.0): inject the renderer you want.
  */
 export function resolveMathRenderer(injected?: MathRenderer): MathRenderer | undefined {
-  if (injected) return injected
-  if (defaultMathRenderer) return defaultMathRenderer
-
-  const globalKaTeX = (globalThis as { katex?: KaTeXLike }).katex
-  if (globalKaTeX) {
-    if (!warnedAboutGlobal) {
-      warnedAboutGlobal = true
-      warn(
-        'jikz: reading KaTeX from the global scope is deprecated and will be ' +
-        'removed in a future release. Inject it explicitly instead: ' +
-        "new SVGRenderer(undefined, undefined, { mathRenderer: katexAdapter(katex) })"
-      )
-    }
-    return katexAdapter(globalKaTeX)
-  }
-
-  return undefined
+  return injected ?? defaultMathRenderer
 }

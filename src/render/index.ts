@@ -146,7 +146,6 @@ export type {
   PanZoomController,
 } from './PanZoom'
 
-export type { KaTeXOptions } from './SVGRenderer'
 
 // Renderer collaborators (def bookkeeping, layers, math)
 export { DefsManager } from './DefsManager'

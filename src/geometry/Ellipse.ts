@@ -139,31 +139,6 @@ export class Ellipse implements Shape {
     return points
   }
 
-  /**
-   * Cardinal points (on unrotated ellipse, then rotated).
-   *
-   * @deprecated Legacy math-convention accessors: `north` is at 90°,
-   * which is the VISUAL BOTTOM in this library's y-down screen space —
-   * the opposite of {@link Ellipse.anchor}('north'). Prefer
-   * `anchor('north')` / `anchor('south')` / …, which follow the
-   * library-wide screen convention and agree with every other shape.
-   */
-  get north(): Point {
-    return this.pointAt(90)
-  }
-  /** @deprecated See {@link Ellipse.north} — prefer `anchor('south')`. */
-  get south(): Point {
-    return this.pointAt(270)
-  }
-  /** @deprecated See {@link Ellipse.north} — prefer `anchor('east')`. */
-  get east(): Point {
-    return this.pointAt(0)
-  }
-  /** @deprecated See {@link Ellipse.north} — prefer `anchor('west')`. */
-  get west(): Point {
-    return this.pointAt(180)
-  }
-
   // ─────────────────────────────────────────────────────────────────────────────
   // Shape interface
   // ─────────────────────────────────────────────────────────────────────────────

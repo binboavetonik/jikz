@@ -62,6 +62,33 @@ own examples, tests and docs, and the table below is what it does.
   `wire` and forty other short names no longer sit in the root
   namespace.
 
+### Removed — nothing deprecated ships at 1.0 (Phase 3)
+
+- The legacy math-convention accessors on `Circle` and `Ellipse`
+  (`.north`, `.south`, `.east`, `.west`, `.northeast`, …) — use
+  `anchor('north')` (screen convention, like every other shape) or
+  `pointAt(angle)`.
+- `DASH_PATTERNS`, `dashPatternToSVG` and the `DashPattern` type — the
+  `dash` style field with TikZ's names is the replacement.
+- The `KaTeXOptions` alias — it was `MathRendererOptions`.
+- Reading KaTeX from `globalThis.katex` — inject a math renderer
+  (`picture({ mathRenderer })` or `setDefaultMathRenderer`).
+
+### Added — the 1.0 gates (Phase 3)
+
+- **A committed API report.** `api-report/jikz.api.md` lists every
+  export of the root and of each subpath with its declaration;
+  `npm run api:check` regenerates it and fails when it differs, and CI
+  runs that, so an accidental export, removal or signature change fails
+  the build the way a snapshot does for output. `npm run api:update`
+  accepts a change on purpose.
+- **A deprecation window**, written down in CONTRIBUTING: deprecated
+  in a minor with a `@deprecated` tag naming the replacement, removed
+  in the next major, never in a minor or a patch.
+- `npm run test:coverage` (v8), run informationally in CI.
+- A test that every `@ozan.e/jikz/<subpath>` the docs mention is an
+  `exports` entry.
+
 ### Added — TikZ semantics (Phase 2)
 
 - **The math frame.** `picture({ frame: 'math', unit: cm(1) })`

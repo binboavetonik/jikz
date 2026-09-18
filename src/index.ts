@@ -386,8 +386,6 @@ export {
   squareDecoration,
   decoration,
   // Dash patterns
-  DASH_PATTERNS,
-  dashPatternToSVG,
   // Path operations
   offsetPath,
   doublePath,
@@ -436,7 +434,6 @@ export type {
   DecorationType,
   DecorationPosition,
   DecorationOptions,
-  DashPattern,
   PathDecorationOptions,
   CoilOptions,
   BumpsOptions,
@@ -582,7 +579,6 @@ export type {
   StyleRecipe,
   StyleLookup,
   DashPatternName,
-  KaTeXOptions,
   SVGRendererOptions,
   MathRenderer,
   MathOutput,

@@ -7,8 +7,6 @@ import {
   circleDecoration,
   squareDecoration,
   decoration,
-  DASH_PATTERNS,
-  dashPatternToSVG,
   offsetPath,
   doublePath,
   subdividePath,
@@ -145,22 +143,6 @@ describe('PathOperations', () => {
         const d = decoration('square', basePath)
         expect(d.isClosed).toBe(true)
       })
-    })
-  })
-
-  describe('dash patterns', () => {
-    it('DASH_PATTERNS contains common patterns', () => {
-      expect(DASH_PATTERNS.solid.pattern).toEqual([])
-      expect(DASH_PATTERNS.dashed.pattern).toEqual([8, 4])
-      expect(DASH_PATTERNS.dotted.pattern).toEqual([2, 4])
-      expect(DASH_PATTERNS.dashDot.pattern).toEqual([8, 4, 2, 4])
-    })
-
-    it('dashPatternToSVG converts to SVG format', () => {
-      expect(dashPatternToSVG(DASH_PATTERNS.solid)).toBe('')
-      expect(dashPatternToSVG(DASH_PATTERNS.dashed)).toBe('8 4')
-      expect(dashPatternToSVG(DASH_PATTERNS.dotted)).toBe('2 4')
-      expect(dashPatternToSVG(DASH_PATTERNS.dashDot)).toBe('8 4 2 4')
     })
   })
 

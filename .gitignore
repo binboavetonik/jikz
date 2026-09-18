@@ -15,3 +15,6 @@ etc/
 
 # Review artifacts from `npm run preview:examples`
 .preview/
+
+# vitest --coverage output
+coverage/

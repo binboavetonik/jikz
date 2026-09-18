@@ -141,6 +141,24 @@ the README on the package page and resolves relative links against the
 package `homepage`, which turns `docs/…` and `examples/` into dead
 links there.
 
+## Deprecation and versioning
+
+jikz follows semver from 1.0. Public API is what the root entry and
+the six subpaths export, as recorded in `api-report/jikz.api.md`
+(`npm run api:check` diffs it in CI; `npm run api:update` accepts a
+change on purpose). The rules:
+
+- A symbol or behaviour is **deprecated in a minor** release: it keeps
+  working, carries a `@deprecated` tag naming the replacement, and the
+  changelog entry says so.
+- It is **removed in the next major**, never in a minor or a patch.
+- Nothing ships deprecated at a major: 1.0 has no `@deprecated` tags,
+  and neither will 2.0.
+- A change to rendered output (an attribute, an id, coordinate
+  rounding) that a snapshot would catch is a behaviour change: it is
+  called out under *Changed* with an "Upgrading" note, even when no
+  signature moved.
+
 ## Changelog
 
 `CHANGELOG.md` has an *Unreleased* section with *Added*, *Changed* and

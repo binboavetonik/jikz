@@ -254,47 +254,6 @@ export function decoration(
 // Path Operations
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Dash pattern specification
- */
-export interface DashPattern {
-  /**
-   * Array of dash and gap lengths. Readonly so the `as const` entries of
-   * `DASH_PATTERNS` (and any frozen user table) are accepted as-is.
-   */
-  pattern: readonly number[]
-
-  /**
-   * Offset to start the pattern
-   */
-  offset?: number
-}
-
-/**
- * Common dash patterns
- *
- * @deprecated Legacy decoration-era values that do NOT match TikZ.
- * Use the `dash` style field with TikZ's names (`'dashed'`,
- * `'densely dotted'`, …) — resolved TikZ-exact and width-aware via
- * `dashArrayFor` in the render layer.
- */
-export const DASH_PATTERNS = {
-  solid: { pattern: [] },
-  dashed: { pattern: [8, 4] },
-  dotted: { pattern: [2, 4] },
-  dashDot: { pattern: [8, 4, 2, 4] },
-  dashDotDot: { pattern: [8, 4, 2, 4, 2, 4] },
-  looseDashed: { pattern: [12, 8] },
-  denseDashed: { pattern: [4, 2] },
-} as const
-
-/**
- * Convert dash pattern to SVG stroke-dasharray
- */
-export function dashPatternToSVG(pattern: DashPattern): string {
-  if (pattern.pattern.length === 0) return ''
-  return pattern.pattern.join(' ')
-}
 
 /**
  * Create an offset path (parallel to the original)

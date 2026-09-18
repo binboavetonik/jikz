@@ -147,18 +147,19 @@ describe('MathRenderer injection', () => {
     expect(katexLike.renderToString).toHaveBeenCalledWith('y', { displayMode: true })
   })
 
-  it('falls back to a global katex with a one-time deprecation warning', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  it('never reads a global katex — inject a renderer instead', () => {
     ;(globalThis as { katex?: unknown }).katex = {
       renderToString: () => '<i>g</i>',
     }
-
-    const renderer = new SVGRenderer()
-    renderer.renderText('$g$', point(10, 10))
-    const svg = renderer.toSVG({ width: 20, height: 20 })
-    expect(svg).toContain('<i>g</i>')
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('deprecated'))
-    warn.mockRestore()
+    try {
+      const renderer = new SVGRenderer()
+      renderer.renderText('$g$', point(10, 10))
+      const svg = renderer.toSVG({ width: 20, height: 20 })
+      expect(svg).not.toContain('<i>g</i>')
+      expect(svg).toContain('font-style="italic"')
+    } finally {
+      delete (globalThis as { katex?: unknown }).katex
+    }
   })
 
   it('renders italic fallback text when no math renderer is available', () => {

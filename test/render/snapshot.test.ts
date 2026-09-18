@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { SVGRenderer } from '../../src/render/SVGRenderer'
+import { katexAdapter, setDefaultMathRenderer } from '../../src/render/MathRenderer'
 import { fillPatterns } from '../../src/render/patterns'
 import { picture } from '../../src/picture/Picture'
 import { point } from '../../src/core/Point'
@@ -251,16 +252,22 @@ describe('snapshot: all node shapes', () => {
 
 describe('snapshot: KaTeX math', () => {
   it('embeds KaTeX HTML in a foreignObject (stubbed katex, no DOM)', () => {
-    ;(globalThis as Record<string, unknown>).katex = {
-      renderToString: (tex: string, opts?: { displayMode?: boolean }) =>
-        `<span class="katex-stub" data-display="${opts?.displayMode ?? false}">${tex}</span>`,
+    setDefaultMathRenderer(
+      katexAdapter({
+        renderToString: (tex: string, opts?: { displayMode?: boolean }) =>
+          `<span class="katex-stub" data-display="${opts?.displayMode ?? false}">${tex}</span>`,
+      })
+    )
+    try {
+      const svg = render({ width: 120, height: 60 }, (r) => {
+        r.renderText('$x^2$', point(60, 30))
+      })
+      expect(svg).toContain('foreignObject')
+      expect(svg).toContain('katex-stub')
+      expect(svg).toMatchSnapshot()
+    } finally {
+      setDefaultMathRenderer(undefined)
     }
-    const svg = render({ width: 120, height: 60 }, (r) => {
-      r.renderText('$x^2$', point(60, 30))
-    })
-    expect(svg).toContain('foreignObject')
-    expect(svg).toContain('katex-stub')
-    expect(svg).toMatchSnapshot()
   })
 
   it('falls back to plain text when katex is absent', () => {

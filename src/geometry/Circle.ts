@@ -75,47 +75,6 @@ export class Circle implements Shape {
     return this.center.angleTo(p)
   }
 
-  /**
-   * Cardinal points.
-   *
-   * @deprecated Legacy math-convention accessors: `north` is at 90°,
-   * which is the VISUAL BOTTOM in this library's y-down screen space —
-   * the opposite of {@link Circle.anchor}('north'). Prefer
-   * `anchor('north')` / `anchor('south')` / …, which follow the
-   * library-wide screen convention and agree with every other shape.
-   */
-  get north(): Point {
-    return this.pointAt(90)
-  }
-  /** @deprecated See {@link Circle.north} — prefer `anchor('south')`. */
-  get south(): Point {
-    return this.pointAt(270)
-  }
-  /** @deprecated See {@link Circle.north} — prefer `anchor('east')`. */
-  get east(): Point {
-    return this.pointAt(0)
-  }
-  /** @deprecated See {@link Circle.north} — prefer `anchor('west')`. */
-  get west(): Point {
-    return this.pointAt(180)
-  }
-  /** @deprecated See {@link Circle.north} — prefer `anchor('north east')`. */
-  get northeast(): Point {
-    return this.pointAt(45)
-  }
-  /** @deprecated See {@link Circle.north} — prefer `anchor('north west')`. */
-  get northwest(): Point {
-    return this.pointAt(135)
-  }
-  /** @deprecated See {@link Circle.north} — prefer `anchor('south east')`. */
-  get southeast(): Point {
-    return this.pointAt(315)
-  }
-  /** @deprecated See {@link Circle.north} — prefer `anchor('south west')`. */
-  get southwest(): Point {
-    return this.pointAt(225)
-  }
-
   // ─────────────────────────────────────────────────────────────────────────────
   // Geometric Operations
   // ─────────────────────────────────────────────────────────────────────────────
@@ -149,7 +108,7 @@ export class Circle implements Shape {
     const dist = this.center.distanceTo(p)
     if (dist === 0) {
       // Point is at center, return east point
-      return this.east
+      return this.pointAt(0)
     }
     return this.center.towardByDistance(p, this.radius)
   }

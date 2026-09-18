@@ -104,16 +104,16 @@ describe('Circle', () => {
     })
 
     it('cardinal points are correct', () => {
-      expect(c.north.y).toBeCloseTo(10)
-      expect(c.south.y).toBeCloseTo(-10)
-      expect(c.east.x).toBeCloseTo(10)
-      expect(c.west.x).toBeCloseTo(-10)
+      expect(c.pointAt(90).y).toBeCloseTo(10)
+      expect(c.pointAt(270).y).toBeCloseTo(-10)
+      expect(c.pointAt(0).x).toBeCloseTo(10)
+      expect(c.pointAt(180).x).toBeCloseTo(-10)
     })
 
     it('diagonal points are correct', () => {
       const diag = 10 * Math.cos(Math.PI / 4)
-      expect(c.northeast.x).toBeCloseTo(diag)
-      expect(c.northeast.y).toBeCloseTo(diag)
+      expect(c.pointAt(45).x).toBeCloseTo(diag)
+      expect(c.pointAt(45).y).toBeCloseTo(diag)
     })
   })
 
