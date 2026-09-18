@@ -62,6 +62,37 @@ own examples, tests and docs, and the table below is what it does.
   `wire` and forty other short names no longer sit in the root
   namespace.
 
+### Added — four more TikZ libraries (Phase 4)
+
+- **`@ozan.e/jikz/angles`** — TikZ's `angles`: `angle(A, B, C, {
+  radius, eccentricity, label })` and `rightAngle()` are one
+  `Paintable` value each: handed to `draw`, `fill` or `filldraw`, the
+  wedge takes the fill, the arc the stroke and the label sits at
+  `eccentricity × radius` on the bisector, exactly as the pic does.
+  Swept counter-clockwise on the page from `B→A` to `B→C`; maps into a
+  math-frame picture. This settles the pics question from the review:
+  a pic is a value you hand to a verb, and split paint is the
+  `Paintable` seam — no new mechanism.
+- **`@ozan.e/jikz/automata`** — TikZ's `automata`: `automata.state()`
+  (2.5em circle), `accepting: true` (a `DoubleCircle`), `output`
+  (circle split), and `initialArrow(pic, name, { where, text,
+  distance })` / `acceptingArrow()` for the arrows the library draws
+  after the node, "start" at the tail and 3ex outside.
+- **`@ozan.e/jikz/er`** — TikZ's `er`: `entity`, `relationship`,
+  `attribute` at the library's minimums and `keyAttribute` in italics
+  (`TextStyle.fontStyle` is new).
+- **`@ozan.e/jikz/turtle`** — TikZ's `turtle` and
+  `lindenmayersystems`: a `turtle()` with `forward`/`back`/`left`/
+  `right`/`home` plus pen and stack, and `lsystem(system, { iterations,
+  step })` with the classic systems in `LSYSTEMS`. Both return a
+  `Path`.
+- `FrameMappable`: an extension object with `mapFrame(frame)` is
+  mapped into a math-frame picture like the built-in geometry.
+- The ext builders pass the picture's placement keys through, so
+  `er.relationship({ rightOf: 'student' })` reads as `right=of`.
+- Gallery: `angle-marking`, `dfa-acceptor` and `koch-snowflake` now use
+  the libraries; `er-diagram` and `lsystem-plant` are new.
+
 ### Removed — nothing deprecated ships at 1.0 (Phase 3)
 
 - The legacy math-convention accessors on `Circle` and `Ellipse`

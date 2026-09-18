@@ -31,6 +31,19 @@ import type { Renderable } from '../render/Renderer'
 
 export type FrameName = 'screen' | 'math'
 
+/**
+ * A renderable that knows how to rewrite itself from a frame's
+ * coordinates to screen space — what an extension implements so its
+ * objects work in a `frame: 'math'` picture.
+ */
+export interface FrameMappable {
+  mapFrame(frame: Frame): Renderable
+}
+
+export function isFrameMappable(obj: unknown): obj is FrameMappable {
+  return typeof obj === 'object' && obj !== null && typeof (obj as FrameMappable).mapFrame === 'function'
+}
+
 export interface FrameOptions {
   /**
    * `'screen'` (default): px, y down, clockwise angles — SVG's frame.
@@ -138,6 +151,7 @@ export class Frame {
    */
   renderable(obj: Renderable): Renderable {
     if (this.identity) return obj
+    if (isFrameMappable(obj)) return obj.mapFrame(this)
     if (obj instanceof Point) return this.point(obj)
     if (obj instanceof Line) return new Line(this.point(obj.start), this.point(obj.end))
     if (obj instanceof Circle) return new Circle(this.point(obj.center), this.length(obj.radius))

@@ -108,6 +108,10 @@ export default defineConfig({
           { text: 'ext/dataviz', link: '/reference/ext-dataviz' },
           { text: 'ext/gates', link: '/reference/ext-gates' },
           { text: 'ext/petri', link: '/reference/ext-petri' },
+          { text: 'ext/angles', link: '/reference/ext-angles' },
+          { text: 'ext/automata', link: '/reference/ext-automata' },
+          { text: 'ext/er', link: '/reference/ext-er' },
+          { text: 'ext/turtle', link: '/reference/ext-turtle' },
         ],
       },
       {

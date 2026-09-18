@@ -272,6 +272,17 @@ entirely math. Port `\node {time $t$}` as two labels, or as plain text
 without the delimiters, until this is fixed. Pinned by
 `test/render/RendererCollaborators.test.ts`.
 
+## Angles, automata, ER, turtle
+
+| TikZ | jikz |
+|---|---|
+| `\pic [draw, fill, "$\alpha$"] {angle = A--O--B}` | `pic.filldraw(angle(A, O, B, { label: '$\\alpha$' }))` (`@ozan.e/jikz/angles`) |
+| `\pic {right angle = A--O--B}` | `rightAngle(A, O, B)` |
+| `\node[state, initial, accepting] (q) {q}` | `pic.node('q', automata.state({ text: 'q', accepting: true })); initialArrow(pic, 'q')` (`/automata`) |
+| `\node[entity] {E}`, `[relationship]`, `[key attribute]` | `er.entity()`, `er.relationship()`, `er.keyAttribute()` (`/er`) |
+| `\draw [turtle={forward, left, forward}]` | `pic.draw(turtle().forward(d).left().forward(d).path())` (`/turtle`) |
+| `l-system={rule set={F -> F+F--F+F}, axiom=F, order=4, angle=60}` | `lsystem({ axiom: 'F', rules: { F: 'F+F--F+F' }, angle: 60 }, { iterations: 4, step }).path` |
+
 ## Circuits (`circuitikz` / `circuits.ee`)
 
 `circuitShapes` is the `\usetikzlibrary{circuits.ee}` analogue.

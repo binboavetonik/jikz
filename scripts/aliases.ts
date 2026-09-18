@@ -11,6 +11,10 @@ export const SUBPATHS: Record<string, string> = {
   gates: 'src/ext/gates/index.ts',
   dataviz: 'src/ext/dataviz/index.ts',
   petri: 'src/ext/petri/index.ts',
+  angles: 'src/ext/angles/index.ts',
+  automata: 'src/ext/automata/index.ts',
+  er: 'src/ext/er/index.ts',
+  turtle: 'src/ext/turtle/index.ts',
   layout: 'src/layout/index.ts',
   styles: 'src/render/presets.ts',
 }

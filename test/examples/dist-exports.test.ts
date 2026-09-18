@@ -46,6 +46,10 @@ const BUNDLE_OF: Record<string, string> = {
   'jikz/gates': 'dist/ext/gates/index.js',
   'jikz/dataviz': 'dist/ext/dataviz/index.js',
   'jikz/petri': 'dist/ext/petri/index.js',
+  'jikz/angles': 'dist/ext/angles/index.js',
+  'jikz/automata': 'dist/ext/automata/index.js',
+  'jikz/er': 'dist/ext/er/index.js',
+  'jikz/turtle': 'dist/ext/turtle/index.js',
   'jikz/layout': 'dist/layout/index.js',
   'jikz/styles': 'dist/render/presets.js',
 }

@@ -535,8 +535,8 @@ export {
   Scope,
   TransformedAnchorable,
 } from './picture'
-export { Pen, Frame, rel, isRelative } from './picture'
-export type { FrameOptions, FrameName, RelativePoint } from './picture'
+export { Pen, Frame, rel, isRelative, isFrameMappable } from './picture'
+export type { FrameOptions, FrameName, RelativePoint, FrameMappable } from './picture'
 export type { PenOptions, PenHost, PenPoint, ToOptions, PenArcOptions, PenGridOptions, PenCircleOptions } from './picture'
 export type { NodeOptionsFor, AddableItems, AddOptions, EveryOptions, PictureEdgeOptions, PlacementOptions, AliasOptions } from './picture'
 export type {

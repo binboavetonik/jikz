@@ -680,6 +680,7 @@ function toTextOptions(
   if (style.fontSize !== undefined) out.fontSize = style.fontSize
   if (style.fontFamily !== undefined) out.fontFamily = style.fontFamily
   if (style.fontWeight !== undefined) out.fontWeight = style.fontWeight
+  if (style.fontStyle !== undefined) out.fontStyle = style.fontStyle
   if (style.fill !== undefined) out.style = { fill: style.fill }
   return out
 }

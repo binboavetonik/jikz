@@ -830,6 +830,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
         'font-size': textOpts.fontSize ?? 14,
         'font-weight': textOpts.fontWeight ?? 'normal',
         fill: textOpts.fill ?? style.stroke ?? '#000',
+        ...(textOpts.fontStyle ? { 'font-style': textOpts.fontStyle } : {}),
       }
 
       const textTarget =
@@ -911,6 +912,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
       // Only when asked: `normal` is the SVG default, and emitting it
       // would add a redundant attribute to every edge label ever drawn.
       if (textOpts.fontWeight !== undefined) font['font-weight'] = textOpts.fontWeight
+      if (textOpts.fontStyle !== undefined) font['font-style'] = textOpts.fontStyle
       const el = g.text(label.text).center(at.x, at.y).font(font)
       if (label.sloped) {
         el.attr({ transform: `rotate(${readableAngle(edge.tangentAt(label.pos ?? 0.5))} ${at.x} ${at.y})` })
@@ -940,6 +942,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
         'font-family': options?.fontFamily ?? 'sans-serif',
         'font-size': options?.fontSize ?? 14,
         'font-weight': options?.fontWeight ?? 'normal',
+        ...(options?.fontStyle ? { 'font-style': options.fontStyle } : {}),
         // Glyphs are painted with `fill`, but only an EXPLICIT one: the
         // merged style carries DEFAULT_STYLE's `fill: 'none'`, which
         // would render every unstyled label invisible. Absent that, text

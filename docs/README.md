@@ -73,6 +73,10 @@ generated API (`npm run docs:api` → `docs/api/`):
 - [ext/dataviz](reference/ext-dataviz.md) — axes, series, legends, `chart()`
 - [ext/gates](reference/ext-gates.md) — logic gates and their typed ports
 - [ext/petri](reference/ext-petri.md) — Petri net places, transitions and tokens
+- [ext/angles](reference/ext-angles.md) — angle and right-angle marks
+- [ext/automata](reference/ext-automata.md) — states, accepting states, initial arrows
+- [ext/er](reference/ext-er.md) — entities, relationships, attributes
+- [ext/turtle](reference/ext-turtle.md) — turtle graphics and L-systems
 
 ## Cookbook
 

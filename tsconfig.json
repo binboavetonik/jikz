@@ -32,6 +32,18 @@
       ],
       "jikz/styles": [
         "./src/render/presets.ts"
+      ],
+      "jikz/angles": [
+        "./src/ext/angles/index.ts"
+      ],
+      "jikz/automata": [
+        "./src/ext/automata/index.ts"
+      ],
+      "jikz/er": [
+        "./src/ext/er/index.ts"
+      ],
+      "jikz/turtle": [
+        "./src/ext/turtle/index.ts"
       ]
     },
     "types": [

@@ -35,11 +35,10 @@ npm install @ozan.e/jikz
 npm install katex
 ```
 
-Everything is reachable from the root import. The extension modules,
-the layout builders and the style presets also have their own
-subpaths — `@ozan.e/jikz/circuits`, `/gates`, `/dataviz`, `/petri`,
-`/layout`, `/styles` — for when you want a narrower import surface.
-Both resolve to the same modules.
+The core vocabulary is the root import. The extension modules, the
+layout builders and the style presets have their own subpaths —
+`@ozan.e/jikz/circuits`, `/gates`, `/dataviz`, `/petri`, `/angles`,
+`/automata`, `/er`, `/turtle`, `/layout`, `/styles`.
 
 ## Documentation
 

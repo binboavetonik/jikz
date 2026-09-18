@@ -442,8 +442,14 @@ const meta: DemoMeta[] = [
   {
     id: "dfa-acceptor",
     category: "cs-automata",
-    title: "DFA acceptor",
-    description: "The automata-textbook DFA for strings ending in \"01\": double-circle acceptor (node + concentric ring), symbol-labeled bend transitions, self-loops, and a start arrow from a bare point — all three endpoint kinds in one card.",
+    title: "DFA acceptor (automata)",
+    description: "The automata-textbook DFA for strings ending in \"01\", with TikZ's automata library verbatim: automata.state() at the 2.5em minimum, accepting: true for the double circle, initialArrow() for the start arrow from 3ex outside with \"start\" at its tail — plus bend transitions and self-loops with symbol labels.",
+  },
+  {
+    id: "er-diagram",
+    category: "cs-automata",
+    title: "Entity–relationship diagram (er)",
+    description: "TikZ's er library: er.entity() rectangles at 4×2 baselineskips, a diamond er.relationship(), ellipse attributes and the italic er.keyAttribute() — every node placed with rightOf/above/aboveRight relative to the last, no coordinates past the seed.",
   },
   {
     id: "binary-search-tree",
@@ -484,8 +490,8 @@ const meta: DemoMeta[] = [
   {
     id: "angle-marking",
     category: "geometry-math",
-    title: "Angle marking (angles & quotes)",
-    description: "The TikZ angles library idiom: rays from one vertex via polar() — one pen statement with mid-path moves, \\draw (O) -- (A) (O) -- (B) (O) -- (C) — and each angle arc a pen statement whose KaTeX label rides the arc itself via pos/offset (TikZ's node[midway]) — everything derived from the ray angles, no hand-placed label points.",
+    title: "Angle marking (angles)",
+    description: "TikZ's angles library: \\pic [draw, fill, \"$\\alpha$\"] {angle = A--O--B} is angle(A, O, B, { label }) handed to filldraw — the wedge takes the fill, the arc the stroke, the label sits at angle eccentricity × radius on the bisector. rightAngle() is the square marker. Everything derived from the rays; no hand-placed points.",
   },
   {
     id: "unit-circle-derivative",
@@ -532,8 +538,14 @@ const meta: DemoMeta[] = [
   {
     id: "koch-snowflake",
     category: "geometry-math",
-    title: "Koch snowflake",
-    description: "The texample fractal classic, at recursion depth 4. The whole construction is point arithmetic: toward() splits each segment in thirds, polar() at (direction − 60°) places the equilateral bump. One pen statement paints the 768-segment outline as a single filldraw path.",
+    title: "Koch snowflake (lindenmayer systems)",
+    description: "The texample fractal classic, as TikZ's lindenmayersystems library writes it: axiom F--F--F, rule F → F+F--F+F, angle 60, order 4. lsystem() expands the string and walks it with a turtle into one Path; a single filldraw paints the 768-segment outline.",
+  },
+  {
+    id: "lsystem-plant",
+    category: "geometry-math",
+    title: "L-system plant and a turtle spiral (turtle)",
+    description: "Two path generators from TikZ's turtle and lindenmayersystems libraries: the bracketed plant (X → F+[[X]-X]-F[-FX]+X, F → FF, 25°) after five rewrites, where [ and ] push and pop the turtle to branch, and a hand-driven turtle — forward, right, a little farther each step — spiralling out.",
   },
   {
     id: "euler-line",

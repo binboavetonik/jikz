@@ -25,6 +25,18 @@
       ],
       "styles": [
         "./dist/render/presets.d.ts"
+      ],
+      "angles": [
+        "./dist/ext/angles/index.d.ts"
+      ],
+      "automata": [
+        "./dist/ext/automata/index.d.ts"
+      ],
+      "er": [
+        "./dist/ext/er/index.d.ts"
+      ],
+      "turtle": [
+        "./dist/ext/turtle/index.d.ts"
       ]
     }
   },
@@ -97,6 +109,46 @@
       "require": {
         "types": "./dist/render/presets.d.cts",
         "default": "./dist/render/presets.cjs"
+      }
+    },
+    "./angles": {
+      "import": {
+        "types": "./dist/ext/angles/index.d.ts",
+        "default": "./dist/ext/angles/index.js"
+      },
+      "require": {
+        "types": "./dist/ext/angles/index.d.cts",
+        "default": "./dist/ext/angles/index.cjs"
+      }
+    },
+    "./automata": {
+      "import": {
+        "types": "./dist/ext/automata/index.d.ts",
+        "default": "./dist/ext/automata/index.js"
+      },
+      "require": {
+        "types": "./dist/ext/automata/index.d.cts",
+        "default": "./dist/ext/automata/index.cjs"
+      }
+    },
+    "./er": {
+      "import": {
+        "types": "./dist/ext/er/index.d.ts",
+        "default": "./dist/ext/er/index.js"
+      },
+      "require": {
+        "types": "./dist/ext/er/index.d.cts",
+        "default": "./dist/ext/er/index.cjs"
+      }
+    },
+    "./turtle": {
+      "import": {
+        "types": "./dist/ext/turtle/index.d.ts",
+        "default": "./dist/ext/turtle/index.js"
+      },
+      "require": {
+        "types": "./dist/ext/turtle/index.d.cts",
+        "default": "./dist/ext/turtle/index.cjs"
       }
     },
     "./package.json": "./package.json"

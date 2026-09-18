@@ -42,7 +42,7 @@ Legend: ✅ supported · 🟡 partial (note says what is missing) ·
 | `rectangle`, `circle`, `ellipse`, `arc[start angle, end angle, radius]`, `grid`, `parabola`, `sin`, `cos` | `pen.rectangle()`, `.circle()`, `.ellipse()`, `.arc({ start, end, radius })`, `.grid()`, `.parabola()`, `.sin()`, `.cos()` | ✅ |
 | `plot` | `plot()`, `plotParametric()`, `plotPolar()`, `plotFromPoints()` with `marks` | ✅ as shapes |
 | `svg "…"` | `pathFromSVG(d)` | ✅ |
-| `pic`, `let`, `foreach` | functions returning items; JS loops; `let` is a variable | ✅ by construction |
+| `pic`, `let`, `foreach` | a pic is a value you hand to a verb (`angle(A, B, C)`); JS loops; `let` is a variable | ✅ by construction |
 | `edge` from a path | `pic.edge(a, b, …)` as its own statement | ✅ |
 
 ## Nodes
@@ -130,7 +130,8 @@ Legend: ✅ supported · 🟡 partial (note says what is missing) ·
 | `decorations.pathreplacing` braces | `bracePath()`, `bracketPath()` | ✅ |
 | `decorations.markings` | `markPath(path, marks)` | ✅ |
 | `decorations.text` | `textAlongPath()` | ✅ |
-| `decorations.fractals`, `.footprints`, `.shapes` | — | ❌ ext roadmap |
+| `decorations.fractals` | `lsystem(LSYSTEMS.kochCurve, …)` and friends draw the same curves as paths | 🟡 as generators, not decorations |
+| `decorations.footprints`, `.shapes` | — | ❌ ext roadmap |
 
 ## Libraries with a jikz module
 
@@ -141,7 +142,11 @@ Legend: ✅ supported · 🟡 partial (note says what is missing) ·
 | `petri` | `@ozan.e/jikz/petri` | ✅ |
 | `datavisualization` | `@ozan.e/jikz/dataviz` — `chart()`, `axes()`, `legend()`, nice ticks | ✅ |
 | `intersections`, `calc`, `through`, `positioning`, `fit`, `patterns`, `shadings`, `shadows`, `arrows` (legacy set), `svg.path`, `plotmarks` | core | ✅ |
-| `angles`, `automata`, `er`, `lindenmayersystems`, `turtle`, `spy`, `fadings`, `mindmap`, `calendar`, `folding` | — | ❌ see the extension roadmap |
+| `angles` | `@ozan.e/jikz/angles` — `angle()`, `rightAngle()` as one paintable value | ✅ |
+| `automata` | `@ozan.e/jikz/automata` — `state`, `accepting`, `state with output`, `initialArrow()` | ✅ |
+| `er` | `@ozan.e/jikz/er` — `entity`, `relationship`, `attribute`, `key attribute` | ✅ |
+| `turtle`, `lindenmayersystems` | `@ozan.e/jikz/turtle` — `turtle()`, `lsystem()`, the classic systems | ✅ |
+| `spy`, `fadings`, `mindmap`, `calendar`, `folding` | — | ❌ see the extension roadmap |
 
 ## Text and math
 

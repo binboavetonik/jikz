@@ -202,6 +202,9 @@ export interface TextOptions extends RenderOptions {
 
   /** Rotate the text about its position, degrees clockwise (TikZ `sloped`, `rotate`). */
   rotate?: number
+
+  /** Font style (`italic`). */
+  fontStyle?: 'normal' | 'italic'
 }
 
 /**

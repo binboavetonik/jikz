@@ -20,6 +20,8 @@ export interface TextStyle {
   fontSize?: number
   fontFamily?: string
   fontWeight?: 'normal' | 'bold' | number
+  /** TikZ `font=\itshape`. */
+  fontStyle?: 'normal' | 'italic'
 }
 
 /**
