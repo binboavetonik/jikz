@@ -1,4 +1,7 @@
 // Path builder
+export { shapesAlongPath, footprints, FOOT_ARTWORK } from './PathShapes'
+export type { ShapesAlongPathOptions, FootprintsOptions, FootKind } from './PathShapes'
+
 export {
   Path,
   path,

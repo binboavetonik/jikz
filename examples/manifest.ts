@@ -446,6 +446,30 @@ const meta: DemoMeta[] = [
     description: "The automata-textbook DFA for strings ending in \"01\", with TikZ's automata library verbatim: automata.state() at the 2.5em minimum, accepting: true for the double circle, initialArrow() for the start arrow from 3ex outside with \"start\" at its tail — plus bend transitions and self-loops with symbol labels.",
   },
   {
+    id: "spy-magnifier",
+    category: "diagram-layout",
+    title: "Magnifying glass (spy)",
+    description: "TikZ's spy library: everything drawn before spy() is replayed into a lens — clipped to a circle, scaled ×4 about the point being watched — with the two outlines and the connecting line of `spy using outlines, connect spies`. The mechanism is the picture's own item list, replayed into a transformed scope.",
+  },
+  {
+    id: "projection-cube",
+    category: "geometry-math",
+    title: "3D projection — a cube under tdplot main coords",
+    description: "tikz-3dplot's \\tdplotsetmaincoords{70}{110} as a projection stage: tdplot(70, 110, unit).point(x, y, z) gives the 2D point and the picture draws that. Axes with arrows, dashed back edges, a shaded top face and the front edges — ordered by hand, as TikZ's 3D always is.",
+  },
+  {
+    id: "mindmap",
+    category: "diagram-layout",
+    title: "Mind map (mindmap)",
+    description: "TikZ's mindmap library, the manual's Computational Complexity map: concept circles sized by level, children fanned at the level's sibling angle, and every connection a circle connection bar filled with a gradient from the parent's concept color to the child's. One mindmap() call from a nested spec.",
+  },
+  {
+    id: "fadings-footprints",
+    category: "paths-decorations",
+    title: "Fadings, footprints, shapes along a path",
+    description: "Three TikZ libraries: `path fading=west` and `fade out` as opacity masks on fills (the fadings library), footprints alternating sides of a curve and toed out (decorations.footprints), and a diamond repeated every 14 px along a wave (decorations.shapes).",
+  },
+  {
     id: "er-diagram",
     category: "cs-automata",
     title: "Entity–relationship diagram (er)",

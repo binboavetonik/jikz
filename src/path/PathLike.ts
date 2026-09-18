@@ -1,16 +1,23 @@
-/**
- * {@link Path} acceptance widening for guide-taking APIs (markPath,
- * textAlongPath): anything with an SVG outline — Arc, Circle, shapes —
- * converts exactly through the `pathFromSVG` parser. Kept in its own
- * module so Path.ts and svgPath.ts stay acyclic.
- */
 import { Path } from './Path'
+import { Point } from '../core/Point'
 import { pathFromSVG } from './svgPath'
 
-/** A path, or anything with an SVG outline (`toSVGPath()`). */
-export type PathLike = Path | { toSVGPath(): string }
+/**
+ * A guide for the path decorations (`markPath`, `textAlongPath`,
+ * `shapesAlongPath`, `footprints`): a {@link Path}, anything with an
+ * SVG outline, or a line (two points).
+ */
+export type PathLike =
+  | Path
+  | { toSVGPath(): string }
+  | { start: { x: number; y: number }; end: { x: number; y: number } }
 
-/** Normalize a {@link PathLike} to a Path (identities pass through). */
+/** The guide as a {@link Path}. */
 export function toPath(guide: PathLike): Path {
-  return guide instanceof Path ? guide : pathFromSVG(guide.toSVGPath())
+  if (guide instanceof Path) return guide
+  if ('toSVGPath' in guide) return pathFromSVG(guide.toSVGPath())
+  return new Path([
+    { type: 'M', points: [new Point(guide.start.x, guide.start.y)] },
+    { type: 'L', points: [new Point(guide.end.x, guide.end.y)] },
+  ])
 }

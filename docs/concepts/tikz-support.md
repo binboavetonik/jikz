@@ -100,7 +100,8 @@ Legend: ✅ supported · 🟡 partial (note says what is missing) ·
 | `path picture` | `pathPicture: (inside) => …` on a draw verb, clipped, between fill and stroke | ✅ |
 | `use as bounding box` | `useAsBoundingBox: true` | ✅ |
 | `even odd rule` | `fillRule: 'evenodd'` | ✅ |
-| `blend mode`, fadings | — | ❌ fadings: ext roadmap |
+| `path fading`, `scope fading` | `style: { fading }`, `scope({ fading })` | ✅ |
+| `blend mode` | — | ❌ |
 | unknown key | a `JikzError` with code `unknown-name` listing what is known | ✅ |
 
 ## Scopes and transformations
@@ -110,6 +111,7 @@ Legend: ✅ supported · 🟡 partial (note says what is missing) ·
 | `\begin{scope}[style, shift, rotate, scale]` | `pic.scope({ style, every, transform, scale, opacity, clip }, s => …)` | ✅ |
 | `transform canvas` | `picture({ transform })` | ✅ |
 | `pgfonlayer`, `on background layer` | `SVGRenderer.defineLayers/onLayer` (renderer level only) | 🟡 |
+| `spy` scopes | `spy()` replays the picture's items through `ItemContainer.include()` | ✅ |
 | `local bounding box` | `pic.contentBounds()` for the whole picture | 🟡 |
 | `baseline`, `trim` | `{ fit: true, padding }` | 🟡 |
 
@@ -131,7 +133,8 @@ Legend: ✅ supported · 🟡 partial (note says what is missing) ·
 | `decorations.markings` | `markPath(path, marks)` | ✅ |
 | `decorations.text` | `textAlongPath()` | ✅ |
 | `decorations.fractals` | `lsystem(LSYSTEMS.kochCurve, …)` and friends draw the same curves as paths | 🟡 as generators, not decorations |
-| `decorations.footprints`, `.shapes` | — | ❌ ext roadmap |
+| `decorations.footprints` | `footprints(path, { footLength, stride, sep, angle, foot })` | ✅ |
+| `decorations.shapes` | `shapesAlongPath(path, { shape, sep })` | ✅ |
 
 ## Libraries with a jikz module
 
@@ -146,7 +149,11 @@ Legend: ✅ supported · 🟡 partial (note says what is missing) ·
 | `automata` | `@ozan.e/jikz/automata` — `state`, `accepting`, `state with output`, `initialArrow()` | ✅ |
 | `er` | `@ozan.e/jikz/er` — `entity`, `relationship`, `attribute`, `key attribute` | ✅ |
 | `turtle`, `lindenmayersystems` | `@ozan.e/jikz/turtle` — `turtle()`, `lsystem()`, the classic systems | ✅ |
-| `spy`, `fadings`, `mindmap`, `calendar`, `folding` | — | ❌ see the extension roadmap |
+| `spy` | `@ozan.e/jikz/spy` — `spy(pic, { on, in, magnification, size })` | ✅ |
+| `mindmap` | `@ozan.e/jikz/mindmap` — `mindmap()`, `connectionBar()`, `CONCEPT_LEVELS` | ✅ |
+| `fadings` | `fading` style key and `scope({ fading })` — `west`, `east`, `north`, `south`, `fade out`, `fade in`, `circle with fuzzy edge`, or custom stops | ✅ |
+| `3d` / tikz-3dplot main coords | `@ozan.e/jikz/projection` — `tdplot(θ, φ)`, `projection({ x, y, z })` | ✅ projection only |
+| `calendar`, `folding` | — | ❌ |
 
 ## Text and math
 
@@ -158,9 +165,9 @@ Legend: ✅ supported · 🟡 partial (note says what is missing) ·
 
 ## Not supported, and why
 
-- **3D**: `tikz-3dplot`, `xyz cs`, `\addplot3`. A projection stage
-  is on the extension roadmap; surface plots with depth ordering are
-  out for good.
+- **3D surfaces**: `\addplot3[surf]`, `\tdplotsphericalsurfaceplot`.
+  The projection stage exists (`@ozan.e/jikz/projection`); surface
+  plots with depth ordering are out for good.
 - **pgfplots**: the 2D subset maps onto `@ozan.e/jikz/dataviz`; the
   option surface itself will not be replicated.
 - **TeX macros** (`\def`, `\newcommand`, `\pgfmathsetmacro`): you have

@@ -50,6 +50,9 @@ const BUNDLE_OF: Record<string, string> = {
   'jikz/automata': 'dist/ext/automata/index.js',
   'jikz/er': 'dist/ext/er/index.js',
   'jikz/turtle': 'dist/ext/turtle/index.js',
+  'jikz/spy': 'dist/ext/spy/index.js',
+  'jikz/projection': 'dist/ext/projection/index.js',
+  'jikz/mindmap': 'dist/ext/mindmap/index.js',
   'jikz/layout': 'dist/layout/index.js',
   'jikz/styles': 'dist/render/presets.js',
 }

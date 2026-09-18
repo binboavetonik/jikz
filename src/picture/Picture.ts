@@ -812,6 +812,20 @@ function growBounds(
   } else if (item.kind === 'scope') {
     const local = item.scope.options.transform
     const next = local && transform ? transform.compose(local) : (local ?? transform)
+    const clipBounds = (item.scope.options.clip as { bounds?: readonly [number, number, number, number] } | undefined)?.bounds
+    if (clipBounds) {
+      // Nothing outside the clip paints: fit to the content ∩ clip.
+      let sx0 = Infinity, sy0 = Infinity, sx1 = -Infinity, sy1 = -Infinity
+      const collect = (b: readonly [number, number, number, number]) => {
+        sx0 = Math.min(sx0, b[0]); sy0 = Math.min(sy0, b[1]); sx1 = Math.max(sx1, b[2]); sy1 = Math.max(sy1, b[3])
+      }
+      for (const sub of item.scope.items) growBounds(sub, collect, next, onlyFlagged)
+      if (sx0 === Infinity) return
+      const c = next ? mapBox(clipBounds, next) : clipBounds
+      const ix0 = Math.max(sx0, c[0]), iy0 = Math.max(sy0, c[1]), ix1 = Math.min(sx1, c[2]), iy1 = Math.min(sy1, c[3])
+      if (ix0 <= ix1 && iy0 <= iy1) grow([ix0, iy0, ix1, iy1])
+      return
+    }
     for (const sub of item.scope.items) growBounds(sub, grow, next, onlyFlagged)
   } else {
     const center = textCenter(item)

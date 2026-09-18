@@ -62,6 +62,36 @@ own examples, tests and docs, and the table below is what it does.
   `wire` and forty other short names no longer sit in the root
   namespace.
 
+### Added — the rest of the extension backlog (Phase 4, second batch)
+
+- **Fadings**, TikZ's `fadings` library, as the `fading` style key and
+  `scope({ fading })`: `west`, `east`, `north`, `south`, `fade out`,
+  `fade in`, `circle with fuzzy edge` — pgf's own ramps — or custom
+  `{ type: 'linear' | 'radial', stops }`. An SVG `<mask>` in
+  object-bounding-box units, one def per distinct ramp.
+- **`footprints()` and `shapesAlongPath()`**, TikZ's
+  `decorations.footprints` and `decorations.shapes`, as marks riding
+  the path (`MarkedPath`) — feet `human`, `bird`, `gnome` at the
+  library's `foot length`, `stride length`, `foot sep`, `foot angle`.
+  Guides may now be lines as well as paths.
+- **`@ozan.e/jikz/spy`** — TikZ's `spy`: `spy(pic, { on, in,
+  magnification, size, shape })` replays what the picture holds into a
+  lens, clipped and scaled about the watched point, with the outlines
+  and connection of `spy using outlines, connect spies`. The seam is
+  the new `ItemContainer.include()`, which replays items as they are.
+- **`@ozan.e/jikz/projection`** — TikZ's `3d` / tikz-3dplot main
+  coordinates: `tdplot(θ, φ, unit).point(x, y, z)`, explicit unit
+  vectors with `projection({ x, y, z })`, `axes()`. A projection and
+  nothing more, as TikZ's is. This lifts the parser plan's "not-yet"
+  refusal on 3D coordinate systems to "unbuilt in the grammar".
+- **`@ozan.e/jikz/mindmap`** — TikZ's `mindmap`: `mindmap(pic, spec,
+  { at, scale, grow })` lays concepts out by level (`CONCEPT_LEVELS`
+  carries the library's sizes, distances, sibling angles, text widths
+  and fonts), fans children, and paints `connectionBar()`s — the
+  circle connection bar with its parent-to-child colour gradient.
+- Gallery: `spy-magnifier`, `projection-cube`, `mindmap`,
+  `fadings-footprints`.
+
 ### Added — four more TikZ libraries (Phase 4)
 
 - **`@ozan.e/jikz/angles`** — TikZ's `angles`: `angle(A, B, C, {

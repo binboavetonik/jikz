@@ -44,6 +44,15 @@
       ],
       "jikz/turtle": [
         "./src/ext/turtle/index.ts"
+      ],
+      "jikz/spy": [
+        "./src/ext/spy/index.ts"
+      ],
+      "jikz/projection": [
+        "./src/ext/projection/index.ts"
+      ],
+      "jikz/mindmap": [
+        "./src/ext/mindmap/index.ts"
       ]
     },
     "types": [

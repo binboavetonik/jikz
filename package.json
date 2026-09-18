@@ -37,6 +37,15 @@
       ],
       "turtle": [
         "./dist/ext/turtle/index.d.ts"
+      ],
+      "spy": [
+        "./dist/ext/spy/index.d.ts"
+      ],
+      "projection": [
+        "./dist/ext/projection/index.d.ts"
+      ],
+      "mindmap": [
+        "./dist/ext/mindmap/index.d.ts"
       ]
     }
   },
@@ -149,6 +158,36 @@
       "require": {
         "types": "./dist/ext/turtle/index.d.cts",
         "default": "./dist/ext/turtle/index.cjs"
+      }
+    },
+    "./spy": {
+      "import": {
+        "types": "./dist/ext/spy/index.d.ts",
+        "default": "./dist/ext/spy/index.js"
+      },
+      "require": {
+        "types": "./dist/ext/spy/index.d.cts",
+        "default": "./dist/ext/spy/index.cjs"
+      }
+    },
+    "./projection": {
+      "import": {
+        "types": "./dist/ext/projection/index.d.ts",
+        "default": "./dist/ext/projection/index.js"
+      },
+      "require": {
+        "types": "./dist/ext/projection/index.d.cts",
+        "default": "./dist/ext/projection/index.cjs"
+      }
+    },
+    "./mindmap": {
+      "import": {
+        "types": "./dist/ext/mindmap/index.d.ts",
+        "default": "./dist/ext/mindmap/index.js"
+      },
+      "require": {
+        "types": "./dist/ext/mindmap/index.d.cts",
+        "default": "./dist/ext/mindmap/index.cjs"
       }
     },
     "./package.json": "./package.json"

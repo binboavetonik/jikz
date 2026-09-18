@@ -2,6 +2,7 @@ import { JikzError } from '../core/errors'
 import type { FillPatternSpec, PatternKind } from './FillPattern'
 import type { GradientSpec } from './Gradient'
 import type { DropShadowSpec } from './Shadow'
+import type { FadingSpec } from './Fading'
 
 /**
  * Color specification
@@ -66,6 +67,12 @@ export interface RenderStyle {
   // Effects
   dropShadow?: DropShadowSpec | boolean
   clip?: ClipSpec
+  /**
+   * TikZ `path fading`: an opacity ramp over the painted area —
+   * `'west'`, `'fade out'`, `'circle with fuzzy edge'`, … or a
+   * `{ type: 'linear' | 'radial', stops }` of your own.
+   */
+  fading?: FadingSpec
 
   /**
    * Round every corner of the outline by this inset, px — TikZ
@@ -103,6 +110,7 @@ export interface SVGAttributes {
   opacity?: number
   filter?: string
   'clip-path'?: string
+  mask?: string
   rx?: number
   ry?: number
 }

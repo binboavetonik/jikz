@@ -112,6 +112,9 @@ export default defineConfig({
           { text: 'ext/automata', link: '/reference/ext-automata' },
           { text: 'ext/er', link: '/reference/ext-er' },
           { text: 'ext/turtle', link: '/reference/ext-turtle' },
+          { text: 'ext/spy', link: '/reference/ext-spy' },
+          { text: 'ext/projection', link: '/reference/ext-projection' },
+          { text: 'ext/mindmap', link: '/reference/ext-mindmap' },
         ],
       },
       {

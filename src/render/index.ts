@@ -15,6 +15,9 @@ export {
   isPaintable,
 } from './Renderer'
 
+export { normalizeFading, generateFadingId, fadingMaskMarkup, FADING_NAMES } from './Fading'
+export type { FadingSpec, FadingName, FadingStop, NormalizedFading } from './Fading'
+
 export type {
   Renderer,
   Renderable,

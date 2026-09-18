@@ -172,8 +172,12 @@ function paintedBounds(svg: Element): Box | undefined {
       ? { x0: Math.min(b.x0, x), y0: Math.min(b.y0, y), x1: Math.max(b.x1, x), y1: Math.max(b.y1, y) }
       : { x0: x, y0: y, x1: x, y1: y }
   }
+  // Content under a clipped group paints only inside its clip, whose
+  // outline the picture also draws — so the group's own extent is not
+  // what the viewer sees (a spy lens replays the whole picture).
+  const hidden = (el: Element) => el.closest('defs') !== null || el.closest('[clip-path]') !== null
   for (const el of own(svg, 'line,rect,circle,ellipse')) {
-    if (el.closest('defs')) continue
+    if (hidden(el)) continue
     const t = ancestorTransform(el, svg)
     if (!t) continue
     m = t
@@ -205,7 +209,7 @@ function paintedBounds(svg: Element): Box | undefined {
   // or arc). Bezier control points and arc radii are not positions, and
   // counting them as ones reports curves as escaping when they do not.
   for (const el of own(svg, 'path')) {
-    if (el.closest('defs')) continue
+    if (hidden(el)) continue
     const t = ancestorTransform(el, svg)
     if (!t) continue
     m = t

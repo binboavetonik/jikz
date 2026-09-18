@@ -90,6 +90,15 @@ on the pen position, `label({ pos, offset })` rides the last segment;
 `coordinate(name)` names the position; `push(options)` restyles
 mid-statement.
 
+## Shapes and footprints along a path (`src/path/PathShapes.ts`)
+
+`shapesAlongPath(guide, { shape, sep, scale, trim })` repeats a mark
+every `sep` px (TikZ `decorations.shapes`); `footprints(guide, {
+foot, footLength, stride, sep, angle })` alternates prints left and
+right of the path (TikZ `decorations.footprints`, feet `human`,
+`bird`, `gnome` or your own path data). Both return a `MarkedPath`.
+Guides are paths, anything with an outline, or a line.
+
 ## Routers (`src/node/routers.ts`)
 
 `edge(a, b, { route })` takes an `EdgeRouter`, `(from, to, edge) =>

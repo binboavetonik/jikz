@@ -73,6 +73,7 @@ import { DefsManager } from './DefsManager'
 import { LayerStack } from './LayerStack'
 import { getArrowTip, resolveArrowTipKind, type ArrowTipDefinition } from './ArrowTip'
 import { roundCorners } from '../path/PathOperations'
+import { normalizeFading, generateFadingId, fadingMaskMarkup, type FadingSpec } from './Fading'
 import { pathFromSVG } from '../path/svgPath'
 import {
   MathRenderer,
@@ -434,6 +435,14 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
   // Clip Paths
   // ─────────────────────────────────────────────────────────────────────────────
 
+  private ensureFading(spec: FadingSpec): string {
+    const f = normalizeFading(spec)
+    const id = generateFadingId(f)
+    return this.defsManager.ensure(id, (defs) => {
+      defs.raw(fadingMaskMarkup(id, f))
+    })
+  }
+
   private ensureClipPath(spec: ClipSpec): string {
     const id = `jikz-clip-${this.clipPathCounter++}`
     this.draw.defs().el('clipPath', { id }).el('path', { d: spec.toSVGPath() })
@@ -467,6 +476,11 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
     // Clip path
     if (style.clip) {
       attrs['clip-path'] = this.ensureClipPath(style.clip)
+    }
+
+    // Fading (TikZ path fading) — an object-bounding-box mask
+    if (style.fading) {
+      attrs.mask = this.ensureFading(style.fading)
     }
 
     return attrs
@@ -1129,6 +1143,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
     if (options.className) g.addClass(options.className)
     if (options.id) g.id(options.id)
     if (options.clip) g.attr({ 'clip-path': this.ensureClipPath(options.clip) })
+    if (options.fading) g.attr({ mask: this.ensureFading(options.fading) })
 
     this.groupStack.push(this.currentGroup)
     this.currentGroup = g

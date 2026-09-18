@@ -17,6 +17,7 @@ import { pointMarkerRadius } from '../render/Renderer'
 import type { Renderable, RenderOptions } from '../render/Renderer'
 import { mergeStyles, styleList } from '../render/StyleMapper'
 import type { ClipSpec, RenderStyle, StyleSpec } from '../render/StyleMapper'
+import type { FadingSpec } from '../render/Fading'
 import { resolveShading, type ShadingOptions } from '../render/Shadings'
 import { shapeLabelPoint } from '../text/shapeLabels'
 import {
@@ -334,8 +335,14 @@ export interface ScopeOptions {
   scale?: number
   /** Group opacity: composites the scope as a unit, not per item. */
   opacity?: number
-  /** Clip everything in the scope to this region. */
+  /**
+   * Clip everything in the scope to this region, given in the scope's
+   * own coordinates (a transformed scope's clip travels with it, as
+   * SVG applies a group's `clip-path` inside its transform).
+   */
   clip?: ClipSpec
+  /** TikZ `scope fading`: fade the whole scope as one. */
+  fading?: FadingSpec
   /** CSS class on the group. */
   className?: string
   /** Element id on the group. */
@@ -347,6 +354,7 @@ export interface GroupRenderOptions {
   transform?: Transform
   opacity?: number
   clip?: ClipSpec
+  fading?: FadingSpec
   className?: string
   id?: string
 }
@@ -951,6 +959,17 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
   }
 
   /**
+   * Replay items from another container here, as they are: nothing
+   * registers (a node keeps its name but is not added to the registry),
+   * nothing is mapped through the frame, and scope styles cascade as
+   * for any item. What `spy` uses to magnify a region.
+   */
+  include(items: readonly PictureItem[]): this {
+    this.itemList.push(...items)
+    return this
+  }
+
+  /**
    * Resolve a string spec to a point in THIS container's coordinates.
    *
    * - `"A"` → `A.center`
@@ -1076,6 +1095,7 @@ export class Scope<S extends ShapeSet = {}> extends ItemContainer<S> {
       transform: this.options.transform,
       opacity: this.options.opacity,
       clip: this.options.clip,
+      fading: this.options.fading,
       className: this.options.className,
       id: this.options.id,
     }
@@ -1085,7 +1105,7 @@ export class Scope<S extends ShapeSet = {}> extends ItemContainer<S> {
   get needsGroup(): boolean {
     const o = this.options
     return Boolean(
-      o.transform || o.opacity !== undefined || o.clip || o.className || o.id
+      o.transform || o.opacity !== undefined || o.clip || o.fading || o.className || o.id
     )
   }
 }

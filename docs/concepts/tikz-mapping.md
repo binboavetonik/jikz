@@ -283,6 +283,17 @@ without the delimiters, until this is fixed. Pinned by
 | `\draw [turtle={forward, left, forward}]` | `pic.draw(turtle().forward(d).left().forward(d).path())` (`/turtle`) |
 | `l-system={rule set={F -> F+F--F+F}, axiom=F, order=4, angle=60}` | `lsystem({ axiom: 'F', rules: { F: 'F+F--F+F' }, angle: 60 }, { iterations: 4, step }).path` |
 
+## Spy, projection, mindmap, fadings, more decorations
+
+| TikZ | jikz |
+|---|---|
+| `\spy [circle, size=2cm, magnification=3] on (p) in node at (q)` | `spy(pic, { on: p, in: q, size, magnification })` (`/spy`) |
+| `\tdplotsetmaincoords{70}{110}` then `(x,y,z)` | `tdplot(70, 110, unit).point(x, y, z)` (`/projection`) |
+| `\node[concept] {…} child { node {…} }` under `mindmap` | `mindmap(pic, { text, color, children }, { at, scale })` (`/mindmap`) |
+| `path fading=west`, `scope fading=fade out` | `style: { fading: 'west' }`, `scope({ fading: 'fade out' })` |
+| `decoration={footprints}` | `footprints(path, { stride, sep, angle })` |
+| `decoration={shapes, shape=circle, shape sep=…}` | `shapesAlongPath(path, { shape, sep })` |
+
 ## Circuits (`circuitikz` / `circuits.ee`)
 
 `circuitShapes` is the `\usetikzlibrary{circuits.ee}` analogue.

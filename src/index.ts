@@ -413,6 +413,10 @@ export {
   // Markings along a path (TikZ decorations.markings)
   MarkedPath,
   markPath,
+  // Shapes and footprints along a path (decorations.shapes / .footprints)
+  shapesAlongPath,
+  footprints,
+  FOOT_ARTWORK,
   // Text along a path (TikZ decorations.text)
   TextPath,
   textAlongPath,
@@ -444,6 +448,9 @@ export type {
   PathLike,
   MarkingSpec,
   MarkSpec,
+  ShapesAlongPathOptions,
+  FootprintsOptions,
+  FootKind,
   CustomMarkArtwork,
   ResolvedPathMark,
   TextPathOptions,
@@ -519,6 +526,9 @@ export {
   radialShading,
   ballShading,
   resolveShading,
+  // Fadings (TikZ path fading)
+  normalizeFading,
+  FADING_NAMES,
 } from './render'
 
 // Picture — TikZ-style scope with a named-node registry and path-mode
@@ -599,6 +609,10 @@ export type {
   // Shadings
   ShadingName,
   ShadingOptions,
+  // Fadings
+  FadingSpec,
+  FadingName,
+  FadingStop,
   // Shadows
   DropShadowSpec,
   // Clipping and double lines

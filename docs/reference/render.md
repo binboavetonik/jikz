@@ -29,6 +29,7 @@ Every `style` option across the library resolves to this shape
 | `dropShadow` | `DropShadowSpec \| boolean` | SVG filter primitive |
 | `clip` | any shape, path or node (`toSVGPath()`) | TikZ `\clip` |
 | `roundedCorners` | `number` | TikZ `rounded corners=<inset>`, on any path |
+| `fading` | `FadingSpec` | TikZ `path fading`: a named ramp or `{ type, stops }`, as an SVG mask |
 | `doubleLine` | `DoubleLineSpec \| boolean` | TikZ `double` |
 | `opacity` | `number` | whole-element |
 

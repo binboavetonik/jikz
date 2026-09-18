@@ -77,6 +77,9 @@ generated API (`npm run docs:api` → `docs/api/`):
 - [ext/automata](reference/ext-automata.md) — states, accepting states, initial arrows
 - [ext/er](reference/ext-er.md) — entities, relationships, attributes
 - [ext/turtle](reference/ext-turtle.md) — turtle graphics and L-systems
+- [ext/spy](reference/ext-spy.md) — magnifying-glass insets
+- [ext/projection](reference/ext-projection.md) — 3D → 2D projection (tdplot main coords)
+- [ext/mindmap](reference/ext-mindmap.md) — concept maps with connection bars
 
 ## Cookbook
 

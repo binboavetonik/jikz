@@ -38,7 +38,8 @@ npm install katex
 The core vocabulary is the root import. The extension modules, the
 layout builders and the style presets have their own subpaths —
 `@ozan.e/jikz/circuits`, `/gates`, `/dataviz`, `/petri`, `/angles`,
-`/automata`, `/er`, `/turtle`, `/layout`, `/styles`.
+`/automata`, `/er`, `/turtle`, `/spy`, `/projection`, `/mindmap`,
+`/layout`, `/styles`.
 
 ## Documentation
 

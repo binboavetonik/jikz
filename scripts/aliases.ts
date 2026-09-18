@@ -15,6 +15,9 @@ export const SUBPATHS: Record<string, string> = {
   automata: 'src/ext/automata/index.ts',
   er: 'src/ext/er/index.ts',
   turtle: 'src/ext/turtle/index.ts',
+  spy: 'src/ext/spy/index.ts',
+  projection: 'src/ext/projection/index.ts',
+  mindmap: 'src/ext/mindmap/index.ts',
   layout: 'src/layout/index.ts',
   styles: 'src/render/presets.ts',
 }
