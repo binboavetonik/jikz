@@ -1,4 +1,6 @@
-import { allShapes, gateShapes, gates, junctionDot, picture, point, wire } from 'jikz'
+import { allShapes, picture, point } from 'jikz'
+import { gateShapes, gates } from 'jikz/gates'
+import { junctionDot, wire } from 'jikz/circuits'
 
 export default function render(container: HTMLElement) {
   const pic = picture({ shapes: { ...allShapes, ...gateShapes } })

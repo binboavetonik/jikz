@@ -18,10 +18,10 @@ export default function render(container: HTMLElement) {
   const sqB = squareOn(C, B, 1)  // leg b
   const sqC = squareOn(A, B, -1) // hypotenuse
 
-  pic.filldraw(polygon(sqA), { style: { stroke: '#2563eb', fill: '#2563eb', 'fill-opacity': 0.15, strokeWidth: 1.5 } })
-  pic.filldraw(polygon(sqB), { style: { stroke: '#16a34a', fill: '#16a34a', 'fill-opacity': 0.15, strokeWidth: 1.5 } })
-  pic.filldraw(polygon(sqC), { style: { stroke: '#dc2626', fill: '#dc2626', 'fill-opacity': 0.12, strokeWidth: 1.5 } })
-  pic.filldraw(triangle(A, B, C), { style: { stroke: '#111827', fill: '#fbbf24', 'fill-opacity': 0.5, strokeWidth: 2 } })
+  pic.filldraw(polygon(sqA), { style: { stroke: '#2563eb', fill: '#2563eb', fillOpacity: 0.15, strokeWidth: 1.5 } })
+  pic.filldraw(polygon(sqB), { style: { stroke: '#16a34a', fill: '#16a34a', fillOpacity: 0.15, strokeWidth: 1.5 } })
+  pic.filldraw(polygon(sqC), { style: { stroke: '#dc2626', fill: '#dc2626', fillOpacity: 0.12, strokeWidth: 1.5 } })
+  pic.filldraw(triangle(A, B, C), { style: { stroke: '#111827', fill: '#fbbf24', fillOpacity: 0.5, strokeWidth: 2 } })
 
   // Right-angle marker at C — one corner pen statement (TikZ |-)
   pic.pen({ style: { stroke: '#111827' } }).moveTo(198, 230).vhTo(210, 218)

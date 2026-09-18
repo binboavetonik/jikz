@@ -1,3 +1,4 @@
+import { JikzError } from '../core/errors'
 import { Point, point } from '../core/Point'
 import type { PointLike } from '../core/types'
 import { Node, type NodeOptions } from '../node/Node'
@@ -222,7 +223,7 @@ class ChainBuilderImpl implements ChainBuilder {
   branch(fromNodeName: string, direction?: ChainDirection): ChainBuilder {
     const branchFrom = this._nodesByName.get(fromNodeName)
     if (!branchFrom) {
-      throw new Error(`Node with name "${fromNodeName}" not found in chain`)
+      throw new JikzError('unknown-name', `Node with name "${fromNodeName}" not found in chain`)
     }
 
     this._lastNode = branchFrom

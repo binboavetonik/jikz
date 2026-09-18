@@ -35,7 +35,7 @@ describe('SMIL animation emission', () => {
 
   it('emits into the group wrapping a node (shape + label pulse together)', () => {
     const svg = picture({ shapes: SHAPES })
-      .node('A', { at: point(0, 0), ...rectNodeOptions(), text: 'A' }, { animate: PULSE })
+      .node('A', { at: point(0, 0), ...rectNodeOptions(), text: 'A', animate: PULSE })
       .toSVG({ width: 40, height: 40 })
     expect(svg).toMatch(/<g><path [^>]*\/><text [^>]*>A<\/text><animate [^>]*\/><\/g>/)
   })

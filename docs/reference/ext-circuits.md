@@ -6,7 +6,8 @@ in the package as a shape set you hand to `picture`; nothing registers. Full API
 ## Setup
 
 ```ts
-import { circuitShapes, picture } from '@ozan.e/jikz'
+import { picture } from '@ozan.e/jikz'
+import { circuitShapes } from '@ozan.e/jikz/circuits'
 
 const pic = picture({ shapes: circuitShapes })  // like \usetikzlibrary{circuits.ee}
 ```
@@ -46,7 +47,7 @@ wire(pic, ['R1.out', 'D1.in'])   // typo'd port → AnchorError listing valid na
 pic.node('R1', circuit.resistor({ at: p, variant: 'iec' }))
 
 // Typed instances — ports as Points:
-import { resistor, opAmp } from '@ozan.e/jikz'
+import { resistor, opAmp } from '@ozan.e/jikz/circuits'
 const r1 = resistor({ center: p })
 pic.node('R1', { shape: r1 })
 wire(pic, [r1.out, u1.minus])    // port typos are compile errors
@@ -58,7 +59,7 @@ Both styles produce the same objects and mix freely — see
 ## Wiring
 
 ```ts
-import { wire, junctionDot } from '@ozan.e/jikz'
+import { wire, junctionDot } from '@ozan.e/jikz/circuits'
 
 wire(pic, ['V1.in', point(60, 60), 'R1.in'])  // chained endpoints, arrows off
 pic.fill(junctionDot(point(220, 60)))         // connection dot

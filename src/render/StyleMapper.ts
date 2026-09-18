@@ -1,3 +1,4 @@
+import { JikzError } from '../core/errors'
 import type { FillPatternSpec, PatternKind } from './FillPattern'
 import type { GradientSpec } from './Gradient'
 import type { DropShadowSpec } from './Shadow'
@@ -9,24 +10,12 @@ import type { DropShadowSpec } from './Shadow'
 export type Color = string
 
 /**
- * Clip path specification
+ * A clip region: any shape, path or node — anything that can describe
+ * its outline as SVG path data. TikZ `\clip (0,0) circle (1);` is
+ * `clip: circle(p, r)`.
  */
 export interface ClipSpec {
-  shape: 'rect' | 'circle' | 'ellipse' | 'path'
-  // For rect
-  x?: number
-  y?: number
-  width?: number
-  height?: number
-  // For circle
-  cx?: number
-  cy?: number
-  r?: number
-  // For ellipse (uses cx, cy)
-  rx?: number
-  ry?: number
-  // For path
-  d?: string
+  toSVGPath(): string
 }
 
 /**
@@ -55,8 +44,6 @@ export interface RenderStyle {
   stroke?: Color
   strokeWidth?: number
   strokeOpacity?: number
-  /** CSS-alias of {@link strokeOpacity}; camelCase wins when both are set. */
-  'stroke-opacity'?: number
   strokeDasharray?: string | number[]
   strokeDashoffset?: number
   strokeLinecap?: LineCap
@@ -71,8 +58,6 @@ export interface RenderStyle {
   // Fill
   fill?: Color
   fillOpacity?: number
-  /** CSS-alias of {@link fillOpacity}; camelCase wins when both are set. */
-  'fill-opacity'?: number
   fillPattern?: PatternKind | FillPatternSpec
   gradient?: GradientSpec
 
@@ -80,10 +65,13 @@ export interface RenderStyle {
   dropShadow?: DropShadowSpec | boolean
   clip?: ClipSpec
 
-  // Border radius (for rectangles)
-  borderRadius?: number
-  borderRadiusX?: number
-  borderRadiusY?: number
+  /**
+   * Round every corner of the outline by this inset, px — TikZ
+   * `rounded corners=<inset>`. Applies to any path: rectangles get
+   * `rx`/`ry`, everything else has its straight-segment corners
+   * replaced by arcs (see {@link roundCorners}).
+   */
+  roundedCorners?: number
 
   // Double line
   doubleLine?: DoubleLineSpec | boolean
@@ -184,12 +172,12 @@ export const STYLE_PRESETS = {
   'shadow-sm': { dropShadow: { offsetX: 1, offsetY: 1, blur: 2, color: 'rgba(0,0,0,0.2)' } },
   'shadow-lg': { dropShadow: { offsetX: 4, offsetY: 4, blur: 6, color: 'rgba(0,0,0,0.4)' } },
 
-  // Rounded corner presets
-  rounded: { borderRadius: 4 },
-  'rounded-sm': { borderRadius: 2 },
-  'rounded-lg': { borderRadius: 8 },
-  'rounded-xl': { borderRadius: 12 },
-  'rounded-full': { borderRadius: 9999 },
+  // Rounded corner presets (TikZ `rounded corners=<inset>`)
+  rounded: { roundedCorners: 4 },
+  'rounded-sm': { roundedCorners: 2 },
+  'rounded-lg': { roundedCorners: 8 },
+  'rounded-xl': { roundedCorners: 12 },
+  'rounded-full': { roundedCorners: 9999 },
 
   // Double line preset
   double: { doubleLine: { spacing: 3, innerColor: 'white' } },
@@ -244,77 +232,80 @@ export function dashArrayFor(name: DashPatternName, strokeWidth: number): string
 }
 
 /**
- * A style argument: either a partial style object, or an array of
- * partials merged left-to-right (later wins — TikZ's `[a, b, c]` rule).
- * Array items are typically the named preset objects (`thick`, `dashed`
- * from jikz's preset exports) optionally mixed with inline overrides.
+ * One entry of a style list: a partial style object, or the NAME of a
+ * style — a picture-local one (`picture({ styles })`), one registered
+ * with {@link registerStyle}, or a built-in preset (`'thick'`,
+ * `'dashed'`, `'red'`). Unknown names throw.
  */
-export type StyleSpec =
-  | Partial<RenderStyle>
-  | ReadonlyArray<Partial<RenderStyle>>
+export type StyleEntry = Partial<RenderStyle> | string
 
 /**
- * A style definition for {@link registerStyle} — like {@link StyleSpec},
- * but array items may also be string names (registered or built-in),
- * resolved eagerly at registration. This is TikZ's `.style={a, b, …}`
- * composition: a recipe may reference other named styles.
+ * A style argument: one {@link StyleEntry}, or an array merged
+ * left-to-right (later wins — TikZ's `[a, b, c]` rule). Array items are
+ * typically the preset objects (`thick`, `dashed` from
+ * `@ozan.e/jikz/styles`), names, and inline overrides, mixed freely:
+ *
+ * ```ts
+ * pic.draw(c, { style: ['thick', dashed, { stroke: '#2563eb' }] })
+ * ```
  */
-export type StyleRecipe =
-  | Partial<RenderStyle>
-  | ReadonlyArray<Partial<RenderStyle> | string>
+export type StyleSpec = StyleEntry | ReadonlyArray<StyleEntry>
 
 /**
- * Normalize a {@link StyleSpec} to a flat list, for chained merging.
+ * A style definition for {@link registerStyle} — the same shape as
+ * {@link StyleSpec}; names inside it resolve eagerly at registration.
+ */
+export type StyleRecipe = StyleSpec
+
+/** Resolves a style name to its style, or `undefined` when unknown. */
+export type StyleLookup = (name: string) => Partial<RenderStyle> | undefined
+
+/**
+ * Normalize a {@link StyleSpec} to a flat list of style objects, for
+ * chained merging. Names resolve through `lookup` first (a picture's
+ * own styles), then the registry and the built-in presets.
  *
  * Unlike {@link mergeStyles} this adds no {@link DEFAULT_STYLE} floor,
  * so an absent key stays `undefined` — which is what lets a caller ask
  * "did the caller set this?" rather than "what is it now?".
+ *
+ * @throws JikzError `unknown-name` for a name nothing answers to.
  */
-export function styleList(style: StyleSpec | undefined): Partial<RenderStyle>[] {
-  if (!style) return []
-  return Array.isArray(style) ? [...style] : [style as Partial<RenderStyle>]
-}
-
-/**
- * Merge multiple styles together
- */
-export function mergeStyles(
-  ...styles: (StyleSpec | undefined)[]
-): RenderStyle {
-  const result = { ...DEFAULT_STYLE }
-
-  for (const style of styles) {
-    if (!style) continue
-    if (Array.isArray(style)) {
-      for (const item of style) Object.assign(result, normalizeOpacityAliases(item))
+export function styleList(
+  style: StyleSpec | undefined,
+  lookup?: StyleLookup
+): Partial<RenderStyle>[] {
+  if (style === undefined) return []
+  const entries = Array.isArray(style) ? style : [style as StyleEntry]
+  const out: Partial<RenderStyle>[] = []
+  for (const entry of entries) {
+    if (typeof entry === 'string') {
+      const resolved = lookup?.(entry) ?? resolveStyleName(entry)
+      if (!resolved) {
+        throw new JikzError(
+          'unknown-name',
+          `jikz: unknown style "${entry}" (known: ${knownStyleNames().join(', ')}). ` +
+            `Register it with registerStyle() or pass it to picture({ styles }).`
+        )
+      }
+      out.push(resolved)
     } else {
-      // StyleSpec's ReadonlyArray member defeats else-branch narrowing
-      Object.assign(result, normalizeOpacityAliases(style as Partial<RenderStyle>))
+      out.push(entry)
     }
   }
-
-  return result
+  return out
 }
 
 /**
- * Fold the CSS-alias keys ('stroke-opacity' / 'fill-opacity') into
- * their camelCase forms BEFORE Object.assign — otherwise the
- * DEFAULT_STYLE camelCase defaults baked into the merge result would
- * shadow the alias, and it would silently never apply. Within one
- * style object, an explicit camelCase key wins over its alias.
+ * Merge styles over {@link DEFAULT_STYLE} — later wins. Names resolve
+ * through the registry and the built-in presets.
  */
-function normalizeOpacityAliases(
-  style: Partial<RenderStyle>
-): Partial<RenderStyle> {
-  const so = style['stroke-opacity']
-  const fo = style['fill-opacity']
-  if (so === undefined && fo === undefined) return style
-  const out = { ...style }
-  delete out['stroke-opacity']
-  delete out['fill-opacity']
-  if (so !== undefined && style.strokeOpacity === undefined) out.strokeOpacity = so
-  if (fo !== undefined && style.fillOpacity === undefined) out.fillOpacity = fo
-  return out
+export function mergeStyles(...styles: (StyleSpec | undefined)[]): RenderStyle {
+  const result = { ...DEFAULT_STYLE }
+  for (const style of styles) {
+    for (const item of styleList(style)) Object.assign(result, item)
+  }
+  return result
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -339,28 +330,17 @@ function resolveStyleName(name: string): Partial<RenderStyle> | undefined {
   return name in STYLE_PRESETS ? STYLE_PRESETS[name as StylePreset] : undefined
 }
 
+/** Every name a bare string style can resolve to: registered first, then built-in. */
+function knownStyleNames(): string[] {
+  return [...styleRegistry.keys(), ...Object.keys(STYLE_PRESETS)]
+}
+
 /**
- * Flatten a {@link StyleSpec}, resolving any string names (registered or
- * built-in) into their styles. Unknown names are dropped with a warning.
- * The name-aware counterpart of {@link mergeStyles}, which only folds
- * object partials.
+ * Resolve a {@link StyleRecipe} to a flat {@link RenderStyle}, names
+ * included. Same as {@link mergeStyles}; kept for the name.
  */
 export function resolveStyle(recipe: StyleRecipe): RenderStyle {
-  const parts = Array.isArray(recipe) ? recipe : [recipe]
-  const resolved: Partial<RenderStyle>[] = []
-  for (const part of parts) {
-    if (typeof part === 'string') {
-      const style = resolveStyleName(part)
-      if (!style) {
-        console.warn(`jikz: unknown style "${part}" — ignored`)
-        continue
-      }
-      resolved.push(style)
-    } else {
-      resolved.push(part)
-    }
-  }
-  return mergeStyles(...resolved)
+  return mergeStyles(recipe)
 }
 
 /**
@@ -403,8 +383,10 @@ export function registeredStyleNames(): readonly string[] {
 export function applyPreset(name: StylePreset): Partial<RenderStyle> {
   const preset = STYLE_PRESETS[name]
   if (!preset) {
-    console.warn(`jikz: unknown style preset "${String(name)}" — ignored`)
-    return {}
+    throw new JikzError(
+      'unknown-name',
+      `jikz: unknown style preset "${String(name)}" (known: ${Object.keys(STYLE_PRESETS).join(', ')}).`
+    )
   }
   return preset
 }
@@ -421,19 +403,11 @@ export function applyPresets(...names: StylePreset[]): RenderStyle {
  * Example: "thick, dashed, red"
  */
 export function parseStyleString(styleStr: string): RenderStyle {
-  const parts = styleStr.split(',').map((s) => s.trim().toLowerCase())
-  const styles: Partial<RenderStyle>[] = []
-
-  for (const part of parts) {
-    const style = resolveStyleName(part)
-    if (!style) {
-      console.warn(`jikz: unknown style preset "${part}" in "${styleStr}" — ignored`)
-      continue
-    }
-    styles.push(style)
-  }
-
-  return mergeStyles(...styles)
+  const names = styleStr
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter((s) => s.length > 0)
+  return mergeStyles(names)
 }
 
 /**
@@ -450,10 +424,8 @@ export function styleToSVGAttributes(style: Partial<RenderStyle>): SVGAttributes
     attrs['stroke-width'] = style.strokeWidth
   }
 
-  // camelCase wins; 'stroke-opacity' is the accepted CSS-alias form
-  const strokeOpacity = style.strokeOpacity ?? style['stroke-opacity']
-  if (strokeOpacity !== undefined) {
-    attrs['stroke-opacity'] = strokeOpacity
+  if (style.strokeOpacity !== undefined) {
+    attrs['stroke-opacity'] = style.strokeOpacity
   }
 
   // Named dash resolves first so an explicit strokeDasharray overrides it.
@@ -491,9 +463,8 @@ export function styleToSVGAttributes(style: Partial<RenderStyle>): SVGAttributes
     attrs.fill = style.fill
   }
 
-  const fillOpacity = style.fillOpacity ?? style['fill-opacity']
-  if (fillOpacity !== undefined) {
-    attrs['fill-opacity'] = fillOpacity
+  if (style.fillOpacity !== undefined) {
+    attrs['fill-opacity'] = style.fillOpacity
   }
 
   if (style.opacity !== undefined) {
@@ -517,8 +488,8 @@ export function styleToCSSString(style: Partial<RenderStyle>): string {
     parts.push(`stroke-width: ${style.strokeWidth}`)
   }
 
-  if (style.strokeOpacity !== undefined || style['stroke-opacity'] !== undefined) {
-    parts.push(`stroke-opacity: ${style.strokeOpacity ?? style['stroke-opacity']}`)
+  if (style.strokeOpacity !== undefined) {
+    parts.push(`stroke-opacity: ${style.strokeOpacity}`)
   }
 
   if (style.strokeDasharray !== undefined) {
@@ -540,8 +511,8 @@ export function styleToCSSString(style: Partial<RenderStyle>): string {
     parts.push(`fill: ${style.fill}`)
   }
 
-  if (style.fillOpacity !== undefined || style['fill-opacity'] !== undefined) {
-    parts.push(`fill-opacity: ${style.fillOpacity ?? style['fill-opacity']}`)
+  if (style.fillOpacity !== undefined) {
+    parts.push(`fill-opacity: ${style.fillOpacity}`)
   }
 
   if (style.opacity !== undefined) {

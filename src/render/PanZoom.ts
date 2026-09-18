@@ -20,6 +20,7 @@
  * does not implement — DOM tests can stub the rect.
  */
 
+import { JikzError } from '../core/errors'
 import { Point, point } from '../core/Point'
 
 /** Class of the viewport group the controller drives. */
@@ -438,7 +439,7 @@ export function attachPanZoom(
 ): PanZoomController {
   const viewport = svg.querySelector(`g.${PANZOOM_VIEWPORT_CLASS}`)
   if (!viewport) {
-    throw new Error(
+    throw new JikzError('unsupported', 
       `attachPanZoom: scene is not wrapped in <g class="${PANZOOM_VIEWPORT_CLASS}">. ` +
         'Render with SVGRendererOptions.viewportGroup or Picture.mount({ panZoom }).'
     )

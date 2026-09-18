@@ -1,7 +1,7 @@
 import { Point, point } from '../core/Point'
 import type { PointLike } from '../core/types'
 import { degToRad } from '../utils/math'
-import { Path, path } from './Path'
+import { Path, path, type PathSegment } from './Path'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Path Decorations
@@ -402,6 +402,124 @@ export function smoothPath(p: Path, tension: number = 0.5): Path {
   }
 
   return result
+}
+
+/**
+ * Round the corners of a path — TikZ `rounded corners=<inset>`.
+ *
+ * Every corner where two straight segments meet (including the closing
+ * corner of a closed subpath) is replaced by a circular arc tangent to
+ * both: `inset` is cut from each segment at the vertex and the arc
+ * spans the gap, so on a right angle the inset is the radius, as in
+ * TikZ. The inset is capped at half of either adjacent segment, which
+ * keeps short segments from turning inside out. Corners next to a
+ * curve or an arc, and collinear "corners", are left alone.
+ */
+export function roundCorners(p: Path, inset: number): Path {
+  if (inset <= 0 || p.isEmpty) return p
+  // Split into subpaths on M, keeping each subpath's closing flag.
+  const subpaths: { start: Point; points: Point[]; closed: boolean; straight: boolean }[] = []
+  let current: (typeof subpaths)[number] | null = null
+  for (const seg of p.segments) {
+    if (seg.type === 'M') {
+      current = { start: seg.points[0]!, points: [], closed: false, straight: true }
+      subpaths.push(current)
+    } else if (!current) {
+      continue
+    } else if (seg.type === 'L') {
+      current.points.push(seg.points[0]!)
+    } else if (seg.type === 'Z') {
+      current.closed = true
+    } else {
+      current.straight = false
+      current.points.push(...seg.points)
+    }
+  }
+  if (!subpaths.some((s) => s.straight)) return p
+
+  const out: PathSegment[] = []
+  for (const sp of subpaths) {
+    if (!sp.straight) {
+      // Reproduce untouched (we cannot re-derive curve segments from
+      // points alone, so copy the originals).
+      out.push(...segmentsOfSubpath(p, sp.start))
+      continue
+    }
+    const pts = [sp.start, ...sp.points]
+    // A closed polygon whose last point repeats the first: drop it.
+    if (sp.closed && pts.length > 1 && pts[pts.length - 1]!.equals(pts[0]!)) pts.pop()
+    const n = pts.length
+    if (n < 3 || (!sp.closed && n < 3)) {
+      out.push({ type: 'M', points: [pts[0]!] })
+      for (const q of pts.slice(1)) out.push({ type: 'L', points: [q] })
+      if (sp.closed) out.push({ type: 'Z', points: [] })
+      continue
+    }
+    const corner = (i: number) => {
+      const prev = pts[(i - 1 + n) % n]!
+      const v = pts[i]!
+      const next = pts[(i + 1) % n]!
+      const inLen = prev.distanceTo(v)
+      const outLen = v.distanceTo(next)
+      if (inLen < 1e-9 || outLen < 1e-9) return null
+      const dIn = v.sub(prev).scale(1 / inLen)
+      const dOut = next.sub(v).scale(1 / outLen)
+      const cross = dIn.x * dOut.y - dIn.y * dOut.x
+      const dot = dIn.x * dOut.x + dIn.y * dOut.y
+      if (Math.abs(cross) < 1e-9) return null // collinear or a spike
+      const t = Math.min(inset, inLen / 2, outLen / 2)
+      // Interior angle φ between the two edges; fillet radius for a
+      // tangent length t is t·tan(φ/2), with φ = π − turning angle.
+      const turn = Math.atan2(Math.abs(cross), dot)
+      const radius = Math.round(t * Math.tan((Math.PI - turn) / 2) * 1e9) / 1e9
+      return {
+        a: v.sub(dIn.scale(t)),
+        b: v.add(dOut.scale(t)),
+        radius,
+        sweep: cross > 0,
+      }
+    }
+    const first = sp.closed ? 0 : 1
+    const last = sp.closed ? n - 1 : n - 2
+    const corners = pts.map((_, i) => (i >= first && i <= last ? corner(i) : null))
+    // Start point: on an open path the first vertex; on a closed one,
+    // the end of the first corner's arc (so the path starts on an edge).
+    const c0 = corners[0]
+    out.push({ type: 'M', points: [sp.closed && c0 ? c0.b : pts[0]!] })
+    const emitCorner = (c: NonNullable<ReturnType<typeof corner>>) => {
+      out.push({ type: 'L', points: [c.a] })
+      out.push({
+        type: 'A',
+        points: [c.b],
+        rx: c.radius,
+        ry: c.radius,
+        rotation: 0,
+        largeArc: false,
+        sweep: c.sweep,
+      })
+    }
+    for (let i = 1; i < n; i++) {
+      const c = corners[i]
+      if (c) emitCorner(c)
+      else out.push({ type: 'L', points: [pts[i]!] })
+    }
+    if (sp.closed) {
+      if (c0) emitCorner(c0)
+      else out.push({ type: 'L', points: [pts[0]!] })
+      out.push({ type: 'Z', points: [] })
+    }
+  }
+  return new Path(out)
+}
+
+/** The original segments of the subpath that starts at `start` (M through the next M). */
+function segmentsOfSubpath(p: Path, start: Point): PathSegment[] {
+  const segs = p.segments
+  let i = segs.findIndex((s) => s.type === 'M' && s.points[0] === start)
+  if (i < 0) return []
+  const out: PathSegment[] = [segs[i]!]
+  for (i = i + 1; i < segs.length && segs[i]!.type !== 'M'; i++) out.push(segs[i]!)
+  return out
 }
 
 /**

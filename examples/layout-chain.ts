@@ -1,7 +1,7 @@
 import { SVGRenderer, allShapes, chain, point } from 'jikz'
 
 export default function render(container: HTMLElement) {
-  const { nodes, edges } = chain(point(60, 70), { spacing: 46 })
+  const { nodes, edges } = chain(point(60, 70), { edgeOptions: { arrowEnd: 'stealth' }, spacing: 46 })
     .node({ text: 'q0', shape: allShapes['circle'], width: 40, height: 40 })
     .node({ text: 'q1', shape: allShapes['circle'], width: 40, height: 40 })
     .going('below')

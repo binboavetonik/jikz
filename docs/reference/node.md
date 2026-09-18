@@ -15,7 +15,9 @@ text-bearing shape. Full API details: <a href="../api/index.html" target="_blank
 | `minWidth` / `minHeight` | `number` | floor for auto-sizing (TikZ `minimum width`) |
 | `innerSep` / `outerSep` | `number` | text-to-border padding / border-to-outside gap (TikZ `inner/outer sep`) |
 | `text` | `string` | node content; `$...$` goes through KaTeX |
-| `labels` | `NodeLabel[]` | TikZ `label=<angle>:<text>` — see below |
+| `labels` | `Label[]` | TikZ `label=<angle>:<text>` — see below |
+| `style` / `textStyle` / `className` / `id` / `animate` | `RenderOptions` | paint, in the same bag (through `pic.node`) |
+| `rightOf` / `leftOf` / `above` / `below` / `aboveLeft` / … + `distance` | `PlacementOptions` | TikZ `right=of A` (through `pic.node`) |
 | `labelDistance` | `number` | default gap for all labels (TikZ `label distance`) |
 | `rotate` | `number` | degrees; the anchor compass rotates with the shape |
 | `anchor` | `AnchorSpec` | place the node *by* this anchor (TikZ `at + anchor=`) |
@@ -28,7 +30,7 @@ Factories: `node(opts)`, `rectNode`, `circleNode`, `ellipseNode`,
 ```ts
 labels: [
   { text: '$\\alpha$', at: 'north' },
-  { text: 'rim', at: 'south east', options: { fontSize: 9 } },
+  { text: 'rim', at: 'south east', style: { fontSize: 9 } },
   { text: 'far', at: 'east', distance: 18 },
 ]
 ```
@@ -37,7 +39,8 @@ labels: [
   convention, 270 = north).
 - `distance`: **border-to-border gap** — outer sep included, font size
   accounted for. Default: the node's `labelDistance`.
-- `options`: `fontSize`, `fontFamily`, `style`, …
+- `style`: a `TextStyle` — `fill`, `fontSize`, `fontFamily`, `fontWeight`.
+- The same `Label` type rides edges (`pos`, `offset`) and draw verbs.
 
 ## Anchors
 

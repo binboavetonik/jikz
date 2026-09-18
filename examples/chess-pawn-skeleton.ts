@@ -15,9 +15,9 @@ export default function render(container: HTMLElement) {
   }
 
   // Pawn chains UNDER the pawns — thick translucent pen runs
-  pic.pen({ style: { stroke: '#7c3aed', strokeWidth: 5, 'stroke-opacity': 0.35 } })
+  pic.pen({ style: { stroke: '#7c3aed', strokeWidth: 5, strokeOpacity: 0.35 } })
     .moveTo(sq(1, 2)).lineTo(sq(2, 3)).lineTo(sq(3, 4)).lineTo(sq(4, 5)) // b2-c3-d4-e5
-  pic.pen({ style: { stroke: '#dc2626', strokeWidth: 5, 'stroke-opacity': 0.35 } })
+  pic.pen({ style: { stroke: '#dc2626', strokeWidth: 5, strokeOpacity: 0.35 } })
     .moveTo(sq(4, 6)).lineTo(sq(3, 5))                                    // e6-d5
 
   // French Advance pawns
@@ -35,17 +35,14 @@ export default function render(container: HTMLElement) {
   // Levers (pawn breaks) — dashed arrows with edge labels
   const lever = (from: Point, to: Point, san: string) =>
     pic.edge(point(from.x + 13, from.y + 4), point(to.x + 13, to.y - 4),
-      { arrowEnd: 'stealth', label: san, labelOffset: 9 },
-      { style: { stroke: '#dc2626', dash: 'dashed', strokeWidth: 1.5 } })
+      { arrowEnd: 'stealth', label: { text: san, offset: 9 }, style: { stroke: '#dc2626', dash: 'dashed', strokeWidth: 1.5 } })
   lever(sq(2, 7), sq(2, 5), '\u2026c5!')   // c7 -> c5 attacks the d4 link
   lever(sq(5, 7), sq(5, 6), '\u2026f6!')   // f7 -> f6 attacks the e5 head
 
   // Chain-base annotation (TikZ: attack the base of the chain)
   // Below the board, clear of the pawn it points at (the chain base is
   // on b2, and a label hung off that square covered the disc).
-  pic.text(sq(1, 1), 'chain base — attack it', {
-    at: 'south', distance: 10, textAnchor: 'start', fontSize: 10, style: { stroke: '#7c3aed' },
-  })
+  pic.text(sq(1, 1), 'chain base — attack it', { at: 'south', distance: 10, textAnchor: 'start', style: { fontSize: 10, fill: '#7c3aed' } })
 
   pic.mount(container, { fit: true, padding: 10 })
 }

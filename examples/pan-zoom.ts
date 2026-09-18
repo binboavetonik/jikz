@@ -6,6 +6,7 @@ export default function render(container: HTMLElement) {
   // <g class="jikz-viewport"> and the returned controller mutates only its
   // transform attribute — panning never re-renders the picture.
   const { nodes, edges } = tree({
+    edgeOptions: { arrowEnd: 'stealth' },
     at: point(0, 0),
     grow: 'right',
     levelDistance: 16,
@@ -36,7 +37,8 @@ export default function render(container: HTMLElement) {
       at: n.center, shape: 'rectangle',
       width: n.width, height: n.height, text: n.text,
       innerSep: 0, minWidth: 0, minHeight: 0,
-    }, { style: { stroke: '#2563eb', fill: '#dbeafe', strokeWidth: 1.5 } })
+      style: { stroke: '#2563eb', fill: '#dbeafe', strokeWidth: 1.5 }
+    })
   }
 
   const ctl = pic.mount(container, {

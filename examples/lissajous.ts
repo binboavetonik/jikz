@@ -21,7 +21,7 @@ export default function render(container: HTMLElement) {
       ),
       { style: { stroke: color, strokeWidth: 1.5 } },
     )
-    pic.text(point(cx, 185), `${a}:${b}`, { fontSize: 11 })
+    pic.text(point(cx, 185), `${a}:${b}`, { style: { fontSize: 11 } })
   })
 
   pic.mount(container, { width: 480, height: 205 })

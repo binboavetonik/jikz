@@ -21,7 +21,7 @@ export default function render(container: HTMLElement) {
       style: {
         stroke: '#92400e', strokeWidth: 1,
         fill: depth > 4 ? '#d97706' : depth > 2 ? '#65a30d' : '#16a34a',
-        'fill-opacity': 0.85,
+        fillOpacity: 0.85,
       },
     })
 

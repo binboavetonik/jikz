@@ -93,7 +93,7 @@ describe('Node labels', () => {
   it('label font size drives the measurement', () => {
     const n = mkNode()
     const m = measureText('foo', { fontSize: 20 })
-    const p = n.labelPoint({ text: 'foo', options: { fontSize: 20 } })
+    const p = n.labelPoint({ text: 'foo', style: { fontSize: 20 } })
     expect(p.y).toBeCloseTo(100 - (30 + DEFAULT_LABEL_DISTANCE + m.height / 2))
   })
 

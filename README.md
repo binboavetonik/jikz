@@ -16,8 +16,12 @@ model, not on a scene graph.
 - **Runs anywhere.** `toSVG()` works in Node, workers, and SSR with no
   DOM; `mount()` attaches a live tree in the browser.
 - **TikZ semantics.** Named nodes with boundary-aware edges, compass
-  anchors, `\path`/`\draw`/`\fill`/`\filldraw` verbs, inner/outer sep,
-  bend/out/in edge routing, fill patterns, snake/zigzag decorations.
+  anchors, `\path`/`\draw`/`\fill`/`\filldraw` verbs, one option list
+  per statement, `every node`/`every edge` defaults, `right=of A`
+  placement, inner/outer sep, bend/out/in edge routing, fill patterns,
+  snake/zigzag decorations. The
+  [support matrix](https://binboavetonik.github.io/jikz/concepts/tikz-support)
+  says, area by area, what carries over and what does not.
 
 ## Install
 
@@ -41,6 +45,8 @@ away. The documentation lives in the sidebar next to it:
 
 - **[TikZ → jikz mapping](https://binboavetonik.github.io/jikz/concepts/tikz-mapping)** —
   if you know TikZ, start here: the idiom-by-idiom translation table.
+- **[TikZ support matrix](https://binboavetonik.github.io/jikz/concepts/tikz-support)** —
+  what is supported, what is partial, what is not, and why.
 - **[Coordinate system](https://binboavetonik.github.io/jikz/concepts/coordinate-system)** —
   SVG screen space, clockwise angles, and porting rules.
 - **[Two API levels](https://binboavetonik.github.io/jikz/concepts/two-api-levels)** —
@@ -79,9 +85,27 @@ mix is a set too. A bare `picture()` resolves no names — hand it a kind
 directly instead (`shape: allShapes.star`), which also skips the set.
 
 Edges between bare node names auto-resolve to the **boundary point**
-facing the other endpoint (like `\draw (A) -- (B)` in TikZ). Pin a
-specific anchor with a string spec: `.edge('A.north', 'B.south')` —
-aliases and angles work too (`'A.ne'`, `'A.270'`).
+facing the other endpoint (like `\draw (A) -- (B)` in TikZ) and, like
+TikZ, carry no arrow tip unless asked (`arrowEnd: 'stealth'` or
+`'->'`). Pin a specific anchor with a string spec:
+`.edge('A.north', 'B.south')` — aliases and angles work too (`'A.ne'`,
+`'A.270'`).
+
+Every call takes **one option bag**, as a TikZ statement takes one
+option list: geometry (`at`, `shape`, `text`), paint (`style`,
+`textStyle`), placement (`rightOf: 'A'`) and labels sit side by side.
+Defaults by kind are `every`, and a scope can add its own:
+
+```ts
+picture({
+  shapes: basicShapes,
+  every: { node: { fill: '#f8fafc' }, edge: { strokeWidth: 1.5 }, text: { fontSize: 12 } },
+  styles: { hot: { stroke: '#dc2626' } },            // \tikzset, per picture
+})
+  .node('A', { at: point(60, 60), shape: 'circle', text: 'A' })
+  .node('B', { rightOf: 'A', distance: 60, shape: 'rectangle', text: 'B' })   // right=of A
+  .edge('A', 'B', { arrowEnd: '->', style: 'hot', label: { text: 'x', pos: 0.3 } })
+```
 
 Bare geometry uses TikZ's path verbs:
 
@@ -172,45 +196,64 @@ pic.pen({ style: { stroke: '#0f172a', strokeWidth: 1.6 } })
 
 ## Styling
 
-Three interchangeable forms, all typed:
+One `style` key, four ways to fill it — all typed, all mixable:
 
 ```ts
 // 1. Inline object (the canonical form)
 pic.draw(edge, { style: { stroke: '#2563eb', strokeWidth: 2 } })
 
-// 2. TikZ's option list — an array of named preset objects, merged
-//    left-to-right (later wins), mixable with inline overrides:
-import { thick, dashed, red } from '@ozan.e/jikz'
-pic.draw(edge, { style: [thick, dashed, red] })
-pic.draw(edge, { style: [thick, { stroke: '#2563eb' }] })
+// 2. TikZ's option list — names and objects, merged left-to-right
+//    (later wins):
+pic.draw(edge, { style: ['thick', 'dashed', { stroke: '#2563eb' }] })
 
-// 3. TikZ string syntax (compat; unknown names warn instead of
-//    failing silently)
-parseStyleString('thick, dashed, red')
+// 3. The same presets as frozen objects, for autocomplete and imports:
+import { thick, dashed, red } from '@ozan.e/jikz/styles'
+pic.draw(edge, { style: [thick, dashed, red] })
+
+// 4. TikZ string syntax, for data-driven code
+pic.draw(edge, { style: parseStyleString('thick, dashed, red') })
 ```
 
-**Named styles** — TikZ's `\tikzset`. Register a style once, reference it
-by name (string form) or by the frozen preset it returns (typed form):
+An unknown name throws a `JikzError` (`code: 'unknown-name'`) that
+lists what is known — a typo never renders as a silently-default line.
+
+**Named styles** — TikZ's `\tikzset`. Per picture, where two
+libraries can never disagree about a name:
 
 ```ts
-import { registerStyle, parseStyleString } from '@ozan.e/jikz'
-
-const brand = registerStyle('brand', { stroke: '#2563eb', strokeWidth: 2 })
-registerStyle('brandsoft', ['brand', dashed])   // compose named styles
-
-pic.draw(edge, { style: [brand] })                 // typed
-pic.draw(edge, { style: parseStyleString('brandsoft, dashed') })
+picture({ styles: { brand: { stroke: '#2563eb', strokeWidth: 2 }, soft: ['brand', 'dashed'] } })
+  .draw(edge, { style: 'soft' })
 ```
-Re-registering a name replaces it; registered names shadow built-ins.
-`registerStyle` resolves its recipe eagerly (register dependencies
-first); use lowercase names if you want them reachable from
-`parseStyleString` (which lowercases).
+
+or globally, for every picture in the process:
+
+```ts
+import { registerStyle } from '@ozan.e/jikz'
+const brand = registerStyle('brand', { stroke: '#2563eb', strokeWidth: 2 })
+pic.draw(edge, { style: [brand, 'dashed'] })
+```
+
+**Kind-scoped defaults** — `every node`, `every edge`, `every path`,
+`every label`:
+
+```ts
+picture({ every: { node: { fill: '#f8fafc' }, edge: 'thick', text: { fontSize: 12 } } })
+pic.scope({ every: { edge: { stroke: '#dc2626' } } }, (s) => …)
+```
+
+Precedence, weakest first: path-mode baseline → `every.<kind>` →
+scope `style` → the item's own `style`. Text has one vocabulary
+everywhere — a node's `textStyle`, a label's `style`, `pic.text`'s
+`style` and `every.text` are all a `TextStyle`
+(`fill`, `fontSize`, `fontFamily`, `fontWeight`).
 
 Named fields use literal-union types: `dash: 'dashed'`,
 `lineCap: 'round'` — typos are compile errors. Fill patterns are values:
 `fillPattern: fillPatterns['north east lines']`, or a spec that tunes
-one, `{ pattern: fillPatterns.grid, color: '#2563eb', scale: 1.5 }`. `DASH_PATTERN_NAMES` and `PRESET_OBJECTS` export the
-catalogs for introspection.
+one, `{ pattern: fillPatterns.grid, color: '#2563eb', scale: 1.5 }`.
+`roundedCorners: 4` rounds any path (TikZ `rounded corners`), and
+`clip: circle(p, r)` clips to any shape. `DASH_PATTERN_NAMES` and
+`PRESET_OBJECTS` (from `/styles`) export the catalogs for introspection.
 
 ## LaTeX math labels
 
@@ -289,9 +332,9 @@ registerDecoration('heartbeat', (path, options) => myTransform(path, options))
 
 Registered names for arrow tips and decorations are accepted everywhere
 built-ins are — `edge(a, b, { arrowEnd })`, `decoratePath` — and unknown
-names throw errors listing the known ones. Those two stay registries on
-purpose: their tables are small, and nearly every edge draws a tip, so
-there is nothing to save by making callers carry one.
+names throw errors listing the known ones. A picture can also carry
+its own tips, resolved before the global table:
+`picture({ arrowTips: { pennant: { … } } })`.
 
 Shapes and fill patterns are values instead: hand the ones you use to
 the picture or the style, and a drawing that never fills with a pattern
@@ -323,7 +366,8 @@ Electrical symbols — jikz's analogue of `\usetikzlibrary{circuits.ee}` —
 live in the `ext/circuits` package and are opt-in:
 
 ```ts
-import { picture, circuitShapes, wire, junctionDot, circuit, point } from '@ozan.e/jikz'
+import { picture, point } from '@ozan.e/jikz'
+import { circuitShapes, wire, junctionDot, circuit } from '@ozan.e/jikz/circuits'
 
 // circuitShapes is jikz's \usetikzlibrary{circuits.ee}
 const pic = picture({ shapes: circuitShapes })
@@ -384,7 +428,8 @@ Digital logic — jikz's analogue of TikZ's `shapes.gates.logic` — ships
 as the opt-in `ext/gates` package, as another shape set:
 
 ```ts
-import { picture, gateShapes, gates, point } from '@ozan.e/jikz'
+import { picture, point } from '@ozan.e/jikz'
+import { gateShapes, gates } from '@ozan.e/jikz/gates'
 
 // gateShapes is jikz's \usetikzlibrary{shapes.gates.logic.US}
 const pic = picture({ shapes: gateShapes })

@@ -21,17 +21,17 @@ export default function render(container: HTMLElement) {
   pic.filldraw(rect(30, 30, 130, 90), {
     style: { stroke: '#334155', fillPattern: { pattern: herringbone, color: '#2563eb' } },
   })
-  pic.text(point(95, 140), 'herringbone (custom)', { fontSize: 10 })
+  pic.text(point(95, 140), 'herringbone (custom)', { style: { fontSize: 10 } })
 
   pic.filldraw(rect(190, 30, 130, 90), {
     style: { stroke: '#334155', fillPattern: { pattern: herringbone, color: '#b45309', scale: 1.6, rotation: 15 } },
   })
-  pic.text(point(255, 140), 'scaled + rotated', { fontSize: 10 })
+  pic.text(point(255, 140), 'scaled + rotated', { style: { fontSize: 10 } })
 
   pic.filldraw(rect(350, 30, 130, 90), {
     style: { stroke: '#334155', fillPattern: fillPatterns.bricks },
   })
-  pic.text(point(415, 140), "'bricks' (built-in)", { fontSize: 10 })
+  pic.text(point(415, 140), "'bricks' (built-in)", { style: { fontSize: 10 } })
 
   pic.mount(container, { width: 510, height: 165 })
 }

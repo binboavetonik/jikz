@@ -18,7 +18,7 @@ export default function render(container: HTMLElement) {
     const center = point(cx, 105)
     pic.draw(circle(center, 60), { style: { stroke: '#e2e8f0' } }) // r = 1 guide ring
     pic.draw(plotRose(k, 60, center), { style: { stroke: color, strokeWidth: 1.5 } })
-    pic.text(point(cx, 175), `r = cos(${k}θ)`, { at: 'south', fontSize: 11 })
+    pic.text(point(cx, 175), `r = cos(${k}θ)`, { at: 'south', style: { fontSize: 11 } })
   }
 
   pic.mount(container, { fit: true, padding: 14 })

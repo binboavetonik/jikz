@@ -19,9 +19,9 @@ export default function render(container: HTMLElement) {
   pic.draw(plot((x) => -w2(x), opts), { style: { stroke: '#16a34a', dash: 'dashed', strokeWidth: 1.2 } })
   pic.draw(plot((x) => -(w1(x) + w2(x)), opts), { style: { stroke: '#111827', strokeWidth: 2.2 } })
 
-  pic.text(point(40, 30), 'sum', { fontSize: 10, style: { stroke: '#111827' } })
-  pic.text(point(80, 30), '$w_1$', { fontSize: 10, style: { stroke: '#2563eb' } })
-  pic.text(point(115, 30), '$w_2$', { fontSize: 10, style: { stroke: '#16a34a' } })
+  pic.text(point(40, 30), 'sum', { style: { fontSize: 10, fill: '#111827' } })
+  pic.text(point(80, 30), '$w_1$', { style: { fontSize: 10, fill: '#2563eb' } })
+  pic.text(point(115, 30), '$w_2$', { style: { fontSize: 10, fill: '#16a34a' } })
 
   pic.mount(container, { width: 480, height: 220 })
 }

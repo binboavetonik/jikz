@@ -111,7 +111,7 @@ export {
   DEFAULT_LABEL_DISTANCE,
   DEFAULT_LABEL_FONT_SIZE,
 } from './Node'
-export type { NodeLabel, NodeOptions } from './Node'
+export type { Label, TextStyle, NodeOptions } from './Node'
 
 // Edge
 export {

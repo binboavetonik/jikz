@@ -67,8 +67,9 @@ describe('named style registry', () => {
     expect(parseStyleString('thick').strokeWidth).toBe(99)
   })
 
-  it('warns on unknown names in recipes instead of failing', () => {
-    const result = resolveStyle(['no-such-style', { stroke: '#000000' }])
-    expect(result.stroke).toBe('#000000')
+  it('throws on unknown names in recipes, listing what is known', () => {
+    expect(() => resolveStyle(['no-such-style', { stroke: '#000000' }])).toThrow(
+      /no-such-style.*known: .*brand/
+    )
   })
 })

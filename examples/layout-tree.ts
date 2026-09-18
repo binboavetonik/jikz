@@ -4,7 +4,7 @@ export default function render(container: HTMLElement) {
   // A layout result joins the picture with add(): its named nodes
   // register, so 'CEO', 'QA.north' and edge('QA', 'CFO') work on them
   // like on any node declared with pic.node().
-  const org = tree({ at: point(220, 35), grow: 'down' })
+  const org = tree({ edgeOptions: { arrowEnd: 'stealth' }, at: point(220, 35), grow: 'down' })
     .root('CEO')
       .child('CTO')
         .children(['Eng', 'QA'])

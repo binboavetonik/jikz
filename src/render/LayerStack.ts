@@ -1,3 +1,4 @@
+import { JikzError } from '../core/errors'
 import type { SVGBuilder } from './SVGBuilder'
 import type { LayerName } from './Layer'
 
@@ -50,7 +51,7 @@ export class LayerStack {
    */
   set(name: LayerName): void {
     if (!this.layers.has(name)) {
-      throw new Error(`Unknown layer: ${name}`)
+      throw new JikzError('unknown-name', `Unknown layer: ${name}`)
     }
     this.currentName = name
   }

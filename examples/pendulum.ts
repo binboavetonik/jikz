@@ -16,7 +16,7 @@ export default function render(container: HTMLElement) {
   // vertical reference + angle arc between vertical and rod
   pic.draw(line(PIVOT, PIVOT.add(polar(90, L * 0.85))), { style: { stroke: '#94a3b8', dash: 'dashed' } })
   pic.draw(arc(PIVOT, 52, 90, 90 - THETA, false), { style: { stroke: '#dc2626', strokeWidth: 1.2 } })
-  pic.text(PIVOT.add(polar(90 - THETA / 2, 70)), '$\\theta$', { fontSize: 13 })
+  pic.text(PIVOT.add(polar(90 - THETA / 2, 70)), '$\\theta$', { style: { fontSize: 13 } })
 
   // ceiling, pivot, rod, bob
   pic.draw(line(point(110, 40), point(250, 40)), { style: { stroke: '#334155', strokeWidth: 2.5 } })

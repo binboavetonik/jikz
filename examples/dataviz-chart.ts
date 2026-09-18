@@ -1,4 +1,5 @@
-import { picture, point, chart } from 'jikz'
+import { picture, point } from 'jikz'
+import { chart } from 'jikz/dataviz'
 
 // ext/dataviz — jikz's datavisualization analogue: chart() infers
 // domains from the series (nice ticks included), draws axes with

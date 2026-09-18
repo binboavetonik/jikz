@@ -47,12 +47,9 @@ export default function render(container: HTMLElement) {
   // nodes first — edge endpoints resolve eagerly, by name
   for (const n of nodes) {
     const isTarget = n.text === String(SEARCH_KEY)
-    pic.node(n.text, { at: n.center, shape: 'circle', minWidth: 30, minHeight: 30, text: n.text }, {
-      style: isTarget
+    pic.node(n.text, { at: n.center, shape: 'circle', minWidth: 30, minHeight: 30, text: n.text, style: isTarget
         ? { stroke: '#dc2626', fill: '#fee2e2', strokeWidth: 2 }
-        : { stroke: '#334155', fill: '#f1f5f9', strokeWidth: 1.5 },
-      textStyle: { fontSize: 11 },
-    })
+        : { stroke: '#334155', fill: '#f1f5f9', strokeWidth: 1.5 }, textStyle: { fontSize: 11 } })
   }
 
   // edges by name — drawn from the parent links, not the layout's
@@ -63,15 +60,13 @@ export default function render(container: HTMLElement) {
     for (const child of [n.l, n.r]) {
       if (!child) continue
       const onPath = searchPath.includes(n.v) && searchPath.includes(child.v)
-      pic.edge(String(n.v), String(child.v), {}, {
-        style: onPath ? { stroke: '#dc2626', strokeWidth: 2.2 } : { stroke: '#94a3b8', strokeWidth: 1.2 },
-      })
+      pic.edge(String(n.v), String(child.v), { arrowEnd: 'stealth', style: onPath ? { stroke: '#dc2626', strokeWidth: 2.2 } : { stroke: '#94a3b8', strokeWidth: 1.2 } })
       drawEdges(child)
     }
   }
   drawEdges(root)
 
-  pic.text(point(20, 240), `search path for ${SEARCH_KEY} in red`, { fontSize: 10, textAnchor: 'start', style: { stroke: '#64748b' } })
+  pic.text(point(20, 240), `search path for ${SEARCH_KEY} in red`, { textAnchor: 'start', style: { fontSize: 10, fill: '#64748b' } })
   pic.mount(container, { fit: true, padding: 12 })
 }
 

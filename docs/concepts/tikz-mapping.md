@@ -76,7 +76,8 @@ Named endpoints work too: `pen.moveTo('P').vhTo('Q')` is
 
 | TikZ | jikz |
 |---|---|
-| `\node[circle, draw] (A) at (p) {A};` | `pic.node('A', { at: p, shape: 'circle', text: 'A' })` — the name resolves against the picture's shape set |
+| `\node[circle, draw, fill=blue!10] (A) at (p) {A};` | `pic.node('A', { at: p, shape: 'circle', text: 'A', style: { fill: '#dbeafe' } })` — one option bag: geometry and paint together |
+| `\node[right=of A] (B) {B};` | `pic.node('B', { rightOf: 'A', distance: 40, text: 'B' })` — also `leftOf`, `above`, `below`, `aboveLeft`, … |
 | `minimum width=1cm` | `minWidth: 10` (px) |
 | `inner sep=4pt` / `outer sep=2pt` | `innerSep: 4` / `outerSep: 4` |
 | no size given → fits text | omit `width`/`height` — the node measures its text |
@@ -103,9 +104,9 @@ angles work everywhere TikZ does — with the screen convention
 |---|---|
 | `\node[label=north:$\alpha$] ...` | `labels: [{ text: '$\\alpha$', at: 'north' }]` |
 | `label distance=8` | `labelDistance: 8` (node-wide default) |
-| `label={[red]east:x}` | `labels: [{ text: 'x', at: 'east', options: { style: { stroke: 'red' } } }]` |
+| `label={[red]east:x}` | `labels: [{ text: 'x', at: 'east', style: { fill: 'red' } }]` — one `Label` type everywhere |
 | `node[right]{x}` inside a `\draw` | `pic.draw(l, { label: { text: 'x', at: 'east' } })` |
-| `node[midway, above]{x}` on an edge | `.edge('A', 'B', { label: 'x', labelPos: 0.5, labelOffset: 9 })` |
+| `node[midway, above]{x}` on an edge | `.edge('A', 'B', { label: { text: 'x', pos: 0.5, offset: 9 } })` — `labels: [...]` for several |
 
 Label placement is border-to-border (`distance` is a gap, outer sep
 included), so font size never causes collisions.
@@ -126,10 +127,15 @@ included), so font size never causes collisions.
 | TikZ | jikz |
 |---|---|
 | `[thick, red]` | `{ style: { strokeWidth: 2, stroke: 'red' } }` |
-| `[thick, red]` as reusable data | `[thick, { stroke: 'red' }]` — typed array form, later entries win |
+| `[thick, red]` as reusable data | `['thick', { stroke: 'red' }]` — names or the preset objects from `jikz/styles`, later entries win |
+| `\tikzset{brand/.style={…}}` | `picture({ styles: { brand: {…} } })`, or `registerStyle('brand', …)` for every picture |
+| `every node/.style={…}`, `every edge` | `picture({ every: { node: {…}, edge: {…}, path: {…}, text: {…} } })` — scopes take `every` too |
+| `rounded corners=4pt` | `roundedCorners: 4` on any path |
+| `\clip (0,0) circle (1);` | `style: { clip: circle(p, r) }`, or `clip` on a scope |
 | `dashed` / `dotted` / `dashdotted` | `dash: 'dashed'` — full vocabulary incl. `densely dashed`, `loosely dotted`, … |
-| `fill opacity=0.3` | `'fill-opacity': 0.3` |
+| `fill opacity=0.3` | `fillOpacity: 0.3` |
 | `double` | `doubleLine: { spacing: 5 }` |
+| unknown key → TeX error | a `JikzError` with `code: 'unknown-name'` naming what is known |
 | `pattern=north east lines` | `fillPattern: fillPatterns['north east lines']` — all 12 TikZ tiles in `fillPatterns` |
 | `shade` / gradients | `gradient: { type: 'linear', angle: 45, stops: [...] }` |
 | `drop shadow` | `dropShadow: { blur: 4, offsetX: 3, offsetY: 3, color: '#000' }` |

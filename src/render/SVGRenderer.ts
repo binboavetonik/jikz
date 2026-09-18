@@ -1,3 +1,4 @@
+import { JikzError, warn } from '../core/errors'
 import { Point } from '../core/Point'
 import { LINE_HEIGHT } from '../text/measureText'
 import type { Transform } from '../core/Transform'
@@ -68,7 +69,9 @@ import type { LayerName } from './Layer'
 import { createSVGBuilder, SVGBuilder, SVGElement } from './SVGBuilder'
 import { DefsManager } from './DefsManager'
 import { LayerStack } from './LayerStack'
-import { getArrowTip, resolveArrowTipKind } from './ArrowTip'
+import { getArrowTip, resolveArrowTipKind, type ArrowTipDefinition } from './ArrowTip'
+import { roundCorners } from '../path/PathOperations'
+import { pathFromSVG } from '../path/svgPath'
 import {
   MathRenderer,
   MathRendererOptions,
@@ -137,6 +140,12 @@ export interface SVGRendererOptions {
    * document root either way.
    */
   viewportGroup?: boolean
+  /**
+   * Arrow tips this renderer resolves names against before the global
+   * registry — what `picture({ arrowTips })` hands over. A name here
+   * shadows a registered or built-in one.
+   */
+  arrowTips?: Readonly<Record<string, ArrowTipDefinition>>
 }
 
 /**
@@ -160,6 +169,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
   private readonly defsManager: DefsManager
   private readonly layerStack: LayerStack
   private readonly mathRenderer?: MathRenderer
+  private readonly arrowTips?: Readonly<Record<string, ArrowTipDefinition>>
 
   constructor(
     draw?: SVGBuilder,
@@ -181,6 +191,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
     this.defsManager = new DefsManager(this.draw)
     this.layerStack = new LayerStack(this.sceneRoot)
     this.mathRenderer = options?.mathRenderer
+    this.arrowTips = options?.arrowTips
   }
 
   /**
@@ -210,7 +221,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
    */
   private ensureMarker(arrowType: string, color: string, position: 'start' | 'end' = 'end'): string | null {
     const kind = resolveArrowTipKind(arrowType)
-    const shape = getArrowTip(kind)
+    const shape = this.arrowTips?.[kind] ?? getArrowTip(kind)
     if (!shape) return null
 
     const art = shape[position]
@@ -371,41 +382,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
 
   private ensureClipPath(spec: ClipSpec): string {
     const id = `jikz-clip-${this.clipPathCounter++}`
-    const clip = this.draw.defs().el('clipPath', { id })
-
-    switch (spec.shape) {
-      case 'rect':
-        clip.el('rect', {
-          x: spec.x ?? 0,
-          y: spec.y ?? 0,
-          width: spec.width ?? 100,
-          height: spec.height ?? 100,
-        })
-        break
-      case 'circle':
-        clip.el('circle', {
-          cx: spec.cx ?? 50,
-          cy: spec.cy ?? 50,
-          r: spec.r ?? 50,
-        })
-        break
-      case 'ellipse':
-        clip.el('ellipse', {
-          cx: spec.cx ?? 50,
-          cy: spec.cy ?? 50,
-          rx: spec.rx ?? 50,
-          ry: spec.ry ?? 30,
-        })
-        break
-      case 'path':
-        clip.el('path', {
-          d: spec.d ?? 'M0,0 L100,0 L100,100 L0,100 Z',
-        })
-        break
-      default:
-        clip.el('rect', { width: 100, height: 100 })
-    }
-
+    this.draw.defs().el('clipPath', { id }).el('path', { d: spec.toSVGPath() })
     return `url(#${id})`
   }
 
@@ -438,15 +415,18 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
       attrs['clip-path'] = this.ensureClipPath(style.clip)
     }
 
-    // Border radius (handled in renderRect, but also add to attrs for consistency)
-    if (style.borderRadius !== undefined || style.borderRadiusX !== undefined) {
-      attrs.rx = style.borderRadiusX ?? style.borderRadius
-    }
-    if (style.borderRadius !== undefined || style.borderRadiusY !== undefined) {
-      attrs.ry = style.borderRadiusY ?? style.borderRadius
-    }
-
     return attrs
+  }
+
+  /**
+   * Path data with `roundedCorners` applied when the style asks for it.
+   * Rectangles take the native `rx`/`ry` route in {@link renderRect};
+   * everything else is re-emitted with arcs at its corners.
+   */
+  private pathData(d: string, style: RenderStyle): string {
+    const r = style.roundedCorners
+    if (r === undefined || r <= 0) return d
+    return roundCorners(pathFromSVG(d), r).toSVGPath()
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -634,6 +614,9 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
         ...attrs,
         x: rect.x,
         y: rect.y,
+        ...(style.roundedCorners !== undefined
+          ? { rx: style.roundedCorners, ry: style.roundedCorners }
+          : {}),
       })
 
     return this.applyOptions(el, options)
@@ -644,7 +627,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
     const attrs = this.resolveStyleAttributes(style)
 
     const el = this.getTarget()
-      .path(polygon.toSVGPath())
+      .path(this.pathData(polygon.toSVGPath(), style))
       .attr(attrs)
 
     return this.applyOptions(el, options)
@@ -729,9 +712,10 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
    * expansion, style resolution, target/layer routing. Used by
    * renderPath, renderShape, rotated-ellipse, and double renderLine.
    */
-  private renderPathData(pathData: string, options?: RenderOptions): SVGElement {
+  private renderPathData(rawPathData: string, options?: RenderOptions): SVGElement {
     const style = this.getStyle(options)
     const attrs = this.resolveStyleAttributes(style)
+    const pathData = this.pathData(rawPathData, style)
 
     // Handle double line
     if (style.doubleLine) {
@@ -779,7 +763,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
     const g = this.getTarget().group()
 
     // Render shape
-    g.path(node.toSVGPath()).attr(attrs)
+    g.path(this.pathData(node.toSVGPath(), style)).attr(attrs)
 
     // Render text if present. On rotated nodes the text goes into a
     // subgroup carrying the rotation transform (the shape outline is
@@ -844,33 +828,31 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
     // Render path
     g.path(edge.toSVGPath()).attr(pathAttrs)
 
-    // Render label if present
-    if (edge.label) {
-      const labelPoint = edge.labelPoint
-
-      if (this.isLaTeX(edge.label)) {
-        this.renderLaTeX(edge.label, labelPoint, g)
-      } else {
-        // An edge's label is its own text, so it answers to `textStyle`
-        // exactly as a node's does — and not to `style.fill`, which on
-        // an edge already paints the path (a filled lens under a bend).
-        // Behind it, the label follows the pen.
-        const textOpts = options?.textStyle ?? {}
-        const font: Record<string, unknown> = {
-          'font-family': textOpts.fontFamily ?? 'sans-serif',
-          'font-size': textOpts.fontSize ?? 12,
-          'text-anchor': 'middle',
-          'dominant-baseline': 'middle',
-          fill: textOpts.fill ?? style.stroke ?? '#000',
-        }
-        // Only when asked: `normal` is the SVG default, and emitting it
-        // would add a redundant attribute to every edge label ever drawn.
-        if (textOpts.fontWeight !== undefined) font['font-weight'] = textOpts.fontWeight
-        g.text(edge.label)
-          .center(labelPoint.x, labelPoint.y)
-          .font(font)
-          .lines(edge.label, (font['font-size'] as number) * LINE_HEIGHT)
+    // Labels ride the edge. Each answers to its own `style`, then to
+    // the edge's `textStyle` — and not to `style.fill`, which on an
+    // edge already paints the path (a filled lens under a bend). Behind
+    // both, the label follows the pen.
+    for (const label of edge.labels) {
+      const at = edge.labelPoint(label)
+      if (this.isLaTeX(label.text)) {
+        this.renderLaTeX(label.text, at, g, { fontSize: label.style?.fontSize })
+        continue
       }
+      const textOpts = { ...options?.textStyle, ...label.style }
+      const font: Record<string, unknown> = {
+        'font-family': textOpts.fontFamily ?? 'sans-serif',
+        'font-size': textOpts.fontSize ?? 12,
+        'text-anchor': 'middle',
+        'dominant-baseline': 'middle',
+        fill: textOpts.fill ?? style.stroke ?? '#000',
+      }
+      // Only when asked: `normal` is the SVG default, and emitting it
+      // would add a redundant attribute to every edge label ever drawn.
+      if (textOpts.fontWeight !== undefined) font['font-weight'] = textOpts.fontWeight
+      g.text(label.text)
+        .center(at.x, at.y)
+        .font(font)
+        .lines(label.text, (font['font-size'] as number) * LINE_HEIGHT)
     }
 
     return this.applyOptions(g, options)
@@ -954,7 +936,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
           errorColor: '#cc0000',
         })
       } catch (e) {
-        console.warn('KaTeX rendering failed:', e)
+        warn('KaTeX rendering failed:', e)
       }
 
       if (html !== undefined) {
@@ -1089,7 +1071,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
   /** Close the most recent {@link beginGroup}. */
   endGroup(): void {
     if (this.groupStack.length === 0) {
-      throw new Error('SVGRenderer.endGroup: no group is open')
+      throw new JikzError('render', 'SVGRenderer.endGroup: no group is open')
     }
     this.currentGroup = this.groupStack.pop() ?? null
   }
@@ -1153,7 +1135,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
       return this.renderShape(obj, options)
     }
 
-    throw new Error(`Unknown renderable type: ${obj}`)
+    throw new JikzError('unsupported', `Unknown renderable type: ${obj}`)
   }
 
   /**

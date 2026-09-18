@@ -6,6 +6,7 @@ export default function render(container: HTMLElement) {
   // minimizer (weighted median + transpose sweeps) untangles the
   // implements-edges automatically.
   const { nodes, edges } = layered({
+    edgeOptions: { arrowEnd: 'stealth' },
     at: point(24, 16),
     grow: 'down',
     rankSep: 36,

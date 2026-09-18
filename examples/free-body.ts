@@ -24,7 +24,7 @@ export default function render(container: HTMLElement) {
   // the incline angle at the foot, between the ground and the surface
   pic.draw(arc(foot, 52, SLOPE, 0), {
     style: { stroke: '#64748b', strokeWidth: 1.5 },
-    label: { text: `${ANGLE}°`, at: SLOPE / 2, distance: 8, options: { fontSize: 11 } },
+    label: { text: `${ANGLE}°`, at: SLOPE / 2, distance: 8, style: { fontSize: 11 } },
   })
 
   // The block: centered half a block-height along the surface normal,
@@ -46,10 +46,10 @@ export default function render(container: HTMLElement) {
   ]
   for (const [label, deg, len, color] of vectors) {
     const tip = C.add(polar(deg, len))
-    pic.edge(C, tip, { arrowEnd: 'stealth' }, { style: { stroke: color, strokeWidth: 2 } })
+    pic.edge(C, tip, { arrowEnd: 'stealth', style: { stroke: color, strokeWidth: 2 } })
     // `at: deg` continues the vector's own direction, so the label sits
     // past the arrowhead however the incline is tilted.
-    pic.text(tip, label, { at: deg, distance: 5, fontSize: 12, style: { stroke: color } })
+    pic.text(tip, label, { at: deg, distance: 5, style: { fontSize: 12, fill: color } })
   }
 
   pic.mount(container, { fit: true, padding: 16 })

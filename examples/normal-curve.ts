@@ -12,13 +12,13 @@ export default function render(container: HTMLElement) {
   const xScale = 80, yScale = 220, xOff = 60, yBase = 230
 
   // axes
-  pic.edge(point(20, yBase), point(400, yBase), { arrowEnd: 'stealth' }, { style: { stroke: '#334155' } })
-  pic.edge(point(xOff, 245), point(xOff, 15), { arrowEnd: 'stealth' }, { style: { stroke: '#334155' } })
+  pic.edge(point(20, yBase), point(400, yBase), { arrowEnd: 'stealth', style: { stroke: '#334155' } })
+  pic.edge(point(xOff, 245), point(xOff, 15), { arrowEnd: 'stealth', style: { stroke: '#334155' } })
 
   // the shaded tail first (under the curve): closed plot on [1.5, 3.5]
   pic.filldraw(
     plot((x) => -PHI(x), { domain: [1.5, 3.5], samples: 60, xScale, yScale, xOffset: xOff, yOffset: yBase, closed: true }),
-    { style: { stroke: 'none', fill: '#2563eb', 'fill-opacity': 0.3 } },
+    { style: { stroke: 'none', fill: '#2563eb', fillOpacity: 0.3 } },
   )
 
   // The full curve on top. The domain is symmetric but xOff only
@@ -31,9 +31,9 @@ export default function render(container: HTMLElement) {
   const bx = xOff + 1.5 * xScale
   pic.draw(line(point(bx, yBase), point(bx, yBase - PHI(1.5) * yScale)),
     { style: { stroke: '#1e40af', strokeWidth: 1 } })
-  pic.text(point(bx, yBase + 13), '1.5', { fontSize: 10 })
-  pic.text(point(bx + 42, yBase - 40), '$P(X > 1.5)$', { fontSize: 11 })
-  pic.text(point(xOff, yBase + 13), '0', { fontSize: 10 })
+  pic.text(point(bx, yBase + 13), '1.5', { style: { fontSize: 10 } })
+  pic.text(point(bx + 42, yBase - 40), '$P(X > 1.5)$', { style: { fontSize: 11 } })
+  pic.text(point(xOff, yBase + 13), '0', { style: { fontSize: 10 } })
 
   pic.mount(container, { fit: true, padding: 14 })
 }

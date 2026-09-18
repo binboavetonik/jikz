@@ -37,9 +37,10 @@ export default function render(container: HTMLElement) {
       at: p, shape: 'circle', width: 10, height: 10,
       labels: [{
         text: name, at: dir + 90, distance: 6,
-        options: { fontSize: 10, style: { stroke: color } },
+        style: { fontSize: 10, fill: color },
       }],
-    }, { style: { stroke: color, fill: color, strokeWidth: 1 } })
+      style: { stroke: color, fill: color, strokeWidth: 1 }
+    })
   }
 
   pic.mount(container, { fit: true, padding: 14 })

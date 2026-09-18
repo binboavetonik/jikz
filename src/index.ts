@@ -1,5 +1,7 @@
 // Core
 export { Point, point, polar, origin } from './core/Point'
+export { JikzError, warn, setWarningHandler } from './core/errors'
+export type { JikzErrorCode, WarningHandler } from './core/errors'
 export { Transform, transform, fromMatrix } from './core/Transform'
 
 // Types
@@ -30,6 +32,8 @@ export type {
   TextMeasurementBackend,
 } from './text/measureText'
 export { placeText, estimateLabelSize } from './text/placeText'
+export { toLabel, labelList } from './text/Label'
+export type { LabelSpec } from './text/Label'
 export type { TextPlacement } from './text/placeText'
 
 // Geometry
@@ -338,7 +342,8 @@ export type {
   RectangleSplitOptions,
   SplitDirection,
   NodeOptions,
-  NodeLabel,
+  Label,
+  TextStyle,
   ArrowTip,
   EdgeRouting,
   EdgeAnchorSpec,
@@ -376,6 +381,7 @@ export {
   smoothPath,
   subPath,
   joinPaths,
+  roundCorners,
   // Brace/bracket
   bracePath,
   bracketPath,
@@ -456,66 +462,12 @@ export {
   applyPresets,
   parseStyleString,
   resolveStyle,
+  styleList,
   registerStyle,
   hasStyle,
   registeredStyleNames,
   styleToSVGAttributes,
   styleToCSSString,
-  // Named preset objects for the array form of `style`
-  // ([thick, dashed, red] — TikZ's option list, typed)
-  ultraThin,
-  veryThin,
-  thin,
-  semithick,
-  thick,
-  veryThick,
-  ultraThick,
-  solid,
-  dashed,
-  dotted,
-  dashdotted,
-  denselyDashed,
-  looselyDashed,
-  denselyDotted,
-  looselyDotted,
-  red,
-  blue,
-  green,
-  orange,
-  purple,
-  black,
-  gray,
-  white,
-  fillRed,
-  fillBlue,
-  fillGreen,
-  fillOrange,
-  fillPurple,
-  fillGray,
-  fillWhite,
-  fillOnly,
-  patternHorizontalLines,
-  patternVerticalLines,
-  patternNorthEastLines,
-  patternNorthWestLines,
-  patternGrid,
-  patternCrosshatch,
-  patternDots,
-  patternCrosshatchDots,
-  patternFivepointedStars,
-  patternSixpointedStars,
-  patternBricks,
-  patternCheckerboard,
-  shadow,
-  shadowSm,
-  shadowLg,
-  rounded,
-  roundedSm,
-  roundedLg,
-  roundedXl,
-  roundedFull,
-  double,
-  PRESET_OBJECTS,
   // Layers
   DEFAULT_LAYERS,
   // SVG Renderer + builder substrate
@@ -572,7 +524,7 @@ export {
 } from './picture'
 export { Pen } from './picture'
 export type { PenOptions, PenHost, PenPoint, ToOptions } from './picture'
-export type { NodeOptionsFor, AddableItems, AddOptions } from './picture'
+export type { NodeOptionsFor, AddableItems, AddOptions, EveryOptions, PictureEdgeOptions, PlacementOptions } from './picture'
 export type {
   PictureEndpoint,
   PictureItem,
@@ -586,7 +538,6 @@ export type {
   PanZoomMount,
   DrawOptions,
   ShadeOptions,
-  DrawLabel,
   ScopeOptions,
   GroupRenderOptions,
   ContainerRoot,
@@ -606,7 +557,9 @@ export type {
   SVGAttributes,
   StylePreset,
   StyleSpec,
+  StyleEntry,
   StyleRecipe,
+  StyleLookup,
   DashPatternName,
   KaTeXOptions,
   SVGRendererOptions,
@@ -696,164 +649,8 @@ export type {
   CircularOptions,
 } from './layout'
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Extensions (domain vocabularies on the public seams — opt-in shape sets)
-// ─────────────────────────────────────────────────────────────────────────────
-
-export {
-  circuit,
-  TwoTerminalSymbol,
-  twoTerminalPorts,
-  TWO_TERMINAL_PORTS,
-  OPAMP_PORTS,
-  GROUND_PORTS,
-  CIRCUIT_PORTS,
-  junctionDot,
-  circuitShapes,
-  wire,
-  Resistor,
-  resistor,
-  RESISTOR_DEFAULT_WIDTH,
-  RESISTOR_DEFAULT_HEIGHT,
-  Capacitor,
-  capacitor,
-  Inductor,
-  inductor,
-  Diode,
-  diode,
-  Switch,
-  createSwitch,
-  VoltageSource,
-  CurrentSource,
-  voltageSource,
-  currentSource,
-  Ground,
-  ground,
-  OpAmp,
-  opAmp,
-} from './ext/circuits'
-
-export type {
-  CircuitShapeName,
-  CircuitBuilder,
-  TwoTerminalPort,
-  OpAmpPort,
-  GroundPort,
-  CircuitPort,
-  ResistorOptions,
-  ResistorVariant,
-  CapacitorOptions,
-  CapacitorVariant,
-  InductorOptions,
-  DiodeOptions,
-  DiodeVariant,
-  SwitchOptions,
-  SwitchVariant,
-  SourceOptions,
-  GroundOptions,
-  OpAmpOptions,
-} from './ext/circuits'
-
-// Logic gates (TikZ shapes.gates.logic) — opt-in shape set
-
-export {
-  GATE_PORTS,
-  UNARY_GATE_PORTS,
-  BINARY_GATE_PORTS,
-  gates,
-  gateShapes,
-  LogicGate,
-  UnaryGate,
-  BinaryGate,
-  isUnaryGate,
-  gate,
-  andGate,
-  nandGate,
-  orGate,
-  norGate,
-  xorGate,
-  xnorGate,
-  notGate,
-  bufferGate,
-  GATE_DEFAULT_WIDTH,
-  GATE_DEFAULT_HEIGHT,
-} from './ext/gates'
-
-export type {
-  GateShapeName,
-  GatePort,
-  UnaryGatePort,
-  BinaryGatePort,
-  GateBuilder,
-  GateKind,
-  UnaryGateKind,
-  BinaryGateKind,
-  GateVariant,
-  LogicGateOptions,
-} from './ext/gates'
-
-// Data visualization (TikZ datavisualization) — axes, ticks, legends,
-// and line/scatter/bar series builders. Pure drawing helpers; no
-// shape registration needed.
-
-export {
-  chart,
-  axes,
-  ChartFrame,
-  legend,
-  legendSize,
-  linearScale,
-  niceNumber,
-  niceTicks,
-  dataDomain,
-  includeInDomain,
-  formatTick,
-  mapSeries,
-} from './ext/dataviz'
-
-export type {
-  ChartOptions,
-  ChartSeriesSpec,
-  ChartAxisOptions,
-  ChartLegendOptions,
-  AxesOptions,
-  AxisOptions,
-  FrameLineOptions,
-  FrameScatterOptions,
-  FrameBarOptions,
-  LegendOptions,
-  LegendEntry,
-  Scale,
-  NiceTicks,
-  DataSeries,
-} from './ext/dataviz'
-
-// Petri nets (TikZ petri) — place and transition shapes, the arc
-// styles for the flow relation, and token positions. Tokens are values
-// rather than part of the place: a pale place with solid dots is two
-// paints, which one shape cannot carry.
-
-export {
-  petriShapes,
-  petri,
-  petriArcs,
-  tokens,
-  tokenPositions,
-  PLACE_MIN_SIZE,
-  TRANSITION_MIN_SIZE,
-  TOKEN_SIZE,
-  TOKEN_DISTANCE_RATIO,
-  TOKEN_DISTANCE_DEFAULT,
-  TOKEN_COLOR_DEFAULT,
-  TOKEN_TEXT_COLOR_DEFAULT,
-  TOKEN_FONT_SIZE,
-  PETRI_INNER_SEP,
-  MAX_LAID_OUT_TOKENS,
-} from './ext/petri'
-
-export type {
-  PetriShapeName,
-  PetriBuilder,
-  Token,
-  TokenOptions,
-} from './ext/petri'
+// The extension vocabularies (circuits, gates, dataviz, petri) and the
+// named style presets are NOT re-exported here. Import them from their
+// own subpaths — `@ozan.e/jikz/circuits`, `/gates`, `/dataviz`,
+// `/petri`, `/styles` — so the root stays the core vocabulary and short
+// names like `red`, `double` or `wire` never collide with yours.

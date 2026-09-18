@@ -199,8 +199,8 @@ describe('Edge', () => {
 
   describe('labelPoint', () => {
     it('returns point offset from path', () => {
-      const e = edge(point(0, 0), point(100, 0), { labelPos: 0.5, labelOffset: 10 })
-      const lp = e.labelPoint
+      const e = edge(point(0, 0), point(100, 0), { label: { text: 'x', pos: 0.5, offset: 10 } })
+      const lp = e.labelPoint(e.labels[0]!)
       expect(lp.x).toBeCloseTo(50)
       // Left of travel (TikZ auto=left); for an eastward edge that's
       // visually above the line, i.e. negative y on screen.

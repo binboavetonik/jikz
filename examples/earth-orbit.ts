@@ -9,14 +9,16 @@ export default function render(container: HTMLElement) {
   // of the perihelion Earth dot (focus distance ≈ 18.7 from the orbit).
   pic.node('sun', {
     at: orbit.foci[1], shape: 'circle', width: 20, height: 20,
-    labels: [{ text: 'Sun', at: 'south', distance: 4, options: { fontSize: 11 } }],
-  }, { style: { stroke: '#d97706', fill: '#fbbf24', strokeWidth: 2 } })
+    labels: [{ text: 'Sun', at: 'south', distance: 4, style: { fontSize: 11 } }],
+    style: { stroke: '#d97706', fill: '#fbbf24', strokeWidth: 2 }
+  })
 
   // the empty second focus
   pic.node('f2', {
     at: orbit.foci[0], shape: 'circle', width: 6, height: 6,
-    labels: [{ text: 'F2', at: 'south', distance: 4, options: { fontSize: 10, style: { stroke: '#94a3b8' } } }],
-  }, { style: { stroke: '#94a3b8', fill: '#94a3b8', strokeWidth: 1 } })
+    labels: [{ text: 'F2', at: 'south', distance: 4, style: { fontSize: 10, fill: '#94a3b8' } }],
+    style: { stroke: '#94a3b8', fill: '#94a3b8', strokeWidth: 1 }
+  })
 
   // Earth at four true anomalies. Labels ride the node's border
   // (`at` = radially outward), so the measured text can never overlap
@@ -31,9 +33,10 @@ export default function render(container: HTMLElement) {
     pic.node(name, {
       at: orbit.pointAt(angle), shape: 'circle', width: 10, height: 10,
       labels: label
-        ? [{ text: label, at: labelAt, distance: 4, options: { fontSize: 10 } }]
+        ? [{ text: label, at: labelAt, distance: 4, style: { fontSize: 10 } }]
         : [],
-    }, { style: { stroke: '#2563eb', fill: '#93c5fd', strokeWidth: 1.5 } })
+      style: { stroke: '#2563eb', fill: '#93c5fd', strokeWidth: 1.5 }
+    })
   }
 
   pic.mount(container, { width: 440, height: 230 })

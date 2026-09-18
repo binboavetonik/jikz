@@ -1,13 +1,14 @@
 import { defineConfig } from 'vite'
 import { resolve } from 'path'
 import dts from 'vite-plugin-dts'
+import { jikzAliases } from './scripts/aliases'
 
 export default defineConfig({
   // Lets examples/ import from 'jikz' and resolve to the live source —
   // the demo page tracks the working tree during development. Unused
   // inside src/ itself, so the library build is unaffected.
   resolve: {
-    alias: { jikz: resolve(__dirname, 'src/index.ts') },
+    alias: jikzAliases(__dirname),
   },
   plugins: [
     dts({

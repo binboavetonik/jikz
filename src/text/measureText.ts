@@ -28,6 +28,7 @@
  * scales with line count.
  */
 
+import { warn } from '../core/errors'
 /** Which measurement strategy {@link measureText} uses. */
 export type TextMeasurementBackend = 'metrics' | 'canvas'
 
@@ -298,7 +299,7 @@ export function measureText(
     } else {
       if (!warnedAboutMissingCanvas) {
         warnedAboutMissingCanvas = true
-        console.warn(
+        warn(
           'jikz: the canvas text-measurement backend needs a DOM; falling ' +
             'back to the metrics table. Measurements here will not match a ' +
             'browser render that uses canvas.'

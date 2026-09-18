@@ -29,6 +29,7 @@
  * plus resolved marks, and the renderer paints each mark with the
  * path's stroke color — the same convention as edge arrowheads.
  */
+import { JikzError } from '../core/errors'
 import { Point } from '../core/Point'
 import { Path } from './Path'
 import { toPath, type PathLike } from './PathLike'
@@ -146,7 +147,7 @@ function normalizeArtwork(mark: MarkSpec): NormalizedArtwork {
     }
     const tips = registeredArrowTips().map((n) => `"${n}"`).join(', ')
     const marks = PLOT_MARK_NAMES.map((n) => `"${n}"`).join(', ')
-    throw new Error(
+    throw new JikzError('invalid-argument', 
       `Unknown mark: "${mark}" (arrow tips: ${tips}; plot marks: ${marks}).`
     )
   }
@@ -175,7 +176,7 @@ function positionsOf(spec: MarkingSpec): number[] {
   if (spec.between !== undefined) {
     const step = spec.step ?? 0.1
     if (!(step > 0)) {
-      throw new Error('markPath: `step` must be > 0.')
+      throw new JikzError('invalid-argument', 'markPath: `step` must be > 0.')
     }
     const [from, to] = spec.between
     const out: number[] = []

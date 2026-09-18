@@ -37,6 +37,7 @@
  * resolved when `.label()` is called (same philosophy as node labels:
  * they don't track later mutations).
  */
+import { JikzError } from '../core/errors'
 import { Point, point } from '../core/Point'
 import type { PointLike } from '../core/types'
 import { Path, path } from '../path/Path'
@@ -45,7 +46,8 @@ import {
   placeText,
   DEFAULT_LABEL_FONT_SIZE,
 } from '../text/placeText'
-import { pathLabelPoint, type DrawLabel } from '../text/shapeLabels'
+import { pathLabelPoint } from '../text/shapeLabels'
+import type { Label } from '../text/Label'
 import type { RenderOptions } from '../render/Renderer'
 import type { StyleSpec } from '../render/StyleMapper'
 import type { PathMode, PictureItem, PictureTextOptions } from './Picture'
@@ -73,6 +75,8 @@ export type ToOptions = BezierRouteOptions
 export interface PenHost {
   coordinate(name: string, at: PointLike): unknown
   resolve(spec: string): Point
+  /** A label with the container's `every.text` and the label default folded in. */
+  labelStyle?(label: Label): Label
 }
 
 /** A point or a named reference — `"A"`, `"A.north"`, `"A.45"`. */
@@ -314,7 +318,7 @@ export class Pen {
   coordinate(name: string): this {
     const at = this.requirePen('coordinate')
     if (!this.host) {
-      throw new Error(
+      throw new JikzError('invalid-argument', 
         'pen.coordinate(): needs a picture — create pens via pic.pen().'
       )
     }
@@ -361,30 +365,31 @@ export class Pen {
    *     closing segment.
    * The pen does not move.
    */
-  label(text: string, label: Omit<DrawLabel, 'text'> = {}): this {
+  label(text: string, spec: Omit<Label, 'text'> = {}): this {
     const pen = this.requirePen('label')
+    const raw: Label = { text, ...spec }
+    const label = this.host?.labelStyle?.(raw) ?? {
+      ...raw,
+      style: { fontSize: DEFAULT_LABEL_FONT_SIZE, ...raw.style },
+    }
     let at: Point
     if (label.pos !== undefined) {
       if (!this.lastOp) {
-        throw new Error(
+        throw new JikzError('invalid-argument', 
           `pen.label(): 'pos' rides the segment just drawn — none yet ` +
             `(needs a lineTo/close before it).`
         )
       }
-      at = pathLabelPoint(this.lastOp, { text, ...label })
+      at = pathLabelPoint(this.lastOp, label)
     } else {
       at = placeText(pen, text, {
         at: label.at,
         distance: label.distance,
-        fontSize: label.options?.fontSize,
-        fontFamily: label.options?.fontFamily,
+        fontSize: label.style?.fontSize,
+        fontFamily: label.style?.fontFamily,
       })
     }
-    this.texts.push({
-      at,
-      text,
-      options: { fontSize: DEFAULT_LABEL_FONT_SIZE, ...label.options },
-    })
+    this.texts.push({ at, text, options: { style: label.style } })
     return this
   }
 
@@ -434,7 +439,7 @@ export class Pen {
 
   private requirePen(verb: string): Point {
     if (!this.penPoint) {
-      throw new Error(`pen.${verb}(): no pen position yet — start with moveTo.`)
+      throw new JikzError('no-pen-position', `pen.${verb}(): no pen position yet — start with moveTo.`)
     }
     return this.penPoint
   }
@@ -443,7 +448,7 @@ export class Pen {
   private pt(a: PenPoint | number, b?: number): Point {
     if (typeof a === 'string') {
       if (!this.host) {
-        throw new Error(
+        throw new JikzError('invalid-argument', 
           `pen: string coordinates ('${a}') need a picture — create pens via pic.pen().`
         )
       }

@@ -24,10 +24,10 @@ describe('Picture.add', () => {
     expect(pic.getNode('CTO')!.text).toBe('CTO')
     // Names resolve like any other node: anchors and edges by name.
     expect(pic.resolve('CEO.south').y).toBeGreaterThan(20)
-    pic.edge('CFO', 'CTO', { bendAngle: 30 })
+    pic.edge('CFO', 'CTO', { bendAngle: 30, arrowEnd: 'stealth' })
     const svg = pic.toSVG({ fit: true })
     expect(svg.match(/<text/g)!.length).toBe(3)
-    expect(svg.match(/marker-end/g)!.length).toBe(3) // 2 tree edges + 1
+    expect(svg.match(/marker-end/g)!.length).toBe(1) // tree edges are plain lines
   })
 
   it('applies per-kind render options', () => {

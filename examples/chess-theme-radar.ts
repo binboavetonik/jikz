@@ -28,7 +28,7 @@ export default function render(container: HTMLElement) {
 
   // Series — closed filldraw pen statements
   const series = (vals: number[], color: string, fillOp: number) => {
-    const pen = pic.pen({ mode: 'filldraw', style: { stroke: color, strokeWidth: 2, fill: color, 'fill-opacity': fillOp } })
+    const pen = pic.pen({ mode: 'filldraw', style: { stroke: color, strokeWidth: 2, fill: color, fillOpacity: fillOp } })
     vals.forEach((v, i) => (i === 0 ? pen.moveTo(vertex(i, v)) : pen.lineTo(vertex(i, v))))
     pen.close()
   }
@@ -38,14 +38,14 @@ export default function render(container: HTMLElement) {
 
   // Axis labels on compass placement
   themes.forEach((t, i) => {
-    pic.text(C.add(polar(-90 + (i * 360) / N, R + 26)), t, { fontSize: 10 })
+    pic.text(C.add(polar(-90 + (i * 360) / N, R + 26)), t, { style: { fontSize: 10 } })
   })
 
   // Legend
   pic.pen({ style: { stroke: '#2563eb', strokeWidth: 2.5 } }).moveTo(110, 310).lineTo(135, 310)
-  pic.text(point(138, 310), 'current', { at: 'east', distance: 2, fontSize: 10 })
+  pic.text(point(138, 310), 'current', { at: 'east', distance: 2, style: { fontSize: 10 } })
   pic.pen({ style: { stroke: '#94a3b8', strokeWidth: 2.5 } }).moveTo(210, 310).lineTo(235, 310)
-  pic.text(point(238, 310), '3 months ago', { at: 'east', distance: 2, fontSize: 10 })
+  pic.text(point(238, 310), '3 months ago', { at: 'east', distance: 2, style: { fontSize: 10 } })
 
   pic.mount(container, { fit: true, padding: 10 })
 }

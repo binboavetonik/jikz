@@ -157,7 +157,7 @@ export function legend<S extends ShapeSet>(
     }
 
     pic.text(point(sx1 + o.gap, cy), entry.label, {
-      fontSize: o.fontSize,
+      style: { fontSize: o.fontSize },
       textAnchor: 'start',
       dominantBaseline: 'middle',
     })

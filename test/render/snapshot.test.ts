@@ -113,7 +113,7 @@ describe('snapshot: named-anchor edge', () => {
       r.renderNode(a)
       r.renderNode(b)
       r.renderEdge(
-        edge(a, b, { fromAnchor: 'north', toAnchor: 'south', label: 'up' })
+        edge(a, b, { fromAnchor: 'north', toAnchor: 'south', label: 'up', arrowEnd: 'stealth' })
       )
     })
     expect(svg).toMatchSnapshot()
@@ -281,7 +281,7 @@ describe('snapshot: full picture', () => {
       .node('C', { at: point(125, 150), shape: SHAPES['diamond'], width: 70, height: 50, text: 'C' })
       .edge('A', 'B', { arrowEnd: 'stealth', label: 'ab' })
       .edge('A.south', 'C.west', { arrowEnd: 'latex' })
-      .edge('C.east', 'B.south', { arrowEnd: 'to' }, { style: { stroke: '#2563eb' } })
+      .edge('C.east', 'B.south', { arrowEnd: 'to', style: { stroke: '#2563eb' } })
       .toSVG({ width: 260, height: 190 })
     expect(svg).toMatchSnapshot()
   })

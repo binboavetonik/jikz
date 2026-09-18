@@ -85,7 +85,7 @@ describe('Picture.text with placement', () => {
 
   it('placement moves the render point like placeText', () => {
     const svg = picture()
-      .text(REF, 'X', { at: 'east', distance: 10, fontSize: 12 })
+      .text(REF, 'X', { at: 'east', distance: 10, style: { fontSize: 12 } })
       .toSVG({ width: 200, height: 200 })
     const xy = textXY(svg, 'X')
     const expected = placeText(REF, 'X', { at: 'east', distance: 10, fontSize: 12 })

@@ -11,7 +11,7 @@ export default function render(container: HTMLElement) {
   const x0 = 40, yBase = 190, binW = 52, yScale = 1.8
 
   // the step outline: horizontal run, then vertical rise, repeat
-  const pen = pic.pen({ style: { stroke: '#2563eb', strokeWidth: 2, fill: '#dbeafe', 'fill-opacity': 0.6 }, mode: 'filldraw' })
+  const pen = pic.pen({ style: { stroke: '#2563eb', strokeWidth: 2, fill: '#dbeafe', fillOpacity: 0.6 }, mode: 'filldraw' })
     .moveTo(x0, yBase)
   let x = x0
   for (const v of SAMPLES) {
@@ -21,9 +21,9 @@ export default function render(container: HTMLElement) {
   pen.lineTo(x, yBase).close() // back down to the axis and close
 
   // axis + faint bin guides
-  pic.edge(point(20, yBase), point(430, yBase), { arrowEnd: 'stealth' }, { style: { stroke: '#334155' } })
+  pic.edge(point(20, yBase), point(430, yBase), { arrowEnd: 'stealth', style: { stroke: '#334155' } })
   SAMPLES.forEach((_v, i) => {
-    pic.text(point(x0 + i * binW + binW / 2, yBase + 14), `b${i + 1}`, { fontSize: 9, style: { stroke: '#64748b' } })
+    pic.text(point(x0 + i * binW + binW / 2, yBase + 14), `b${i + 1}`, { style: { fontSize: 9, fill: '#64748b' } })
   })
 
   pic.mount(container, { width: 450, height: 220 })

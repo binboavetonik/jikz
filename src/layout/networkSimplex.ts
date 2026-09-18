@@ -9,6 +9,7 @@
  * handling rely on upstream.
  */
 
+import { JikzError } from '../core/errors'
 export interface SimplexVertex {
   rank: number
 }
@@ -149,7 +150,7 @@ export class NetworkSimplex {
     while (leave >= 0 && pivots++ < maxPivots) {
       const enter = this.findEnterEdge(leave)
       if (enter < 0) {
-        throw new Error('network simplex: no replacement edge found (infeasible)')
+        throw new JikzError('layout', 'network simplex: no replacement edge found (infeasible)')
       }
       this.exchangeEdges(leave, enter)
       leave = this.findLeaveEdge()
@@ -238,7 +239,7 @@ export class NetworkSimplex {
     }
 
     if (processed !== n) {
-      throw new Error('network simplex: graph is not acyclic')
+      throw new JikzError('layout', 'network simplex: graph is not acyclic')
     }
   }
 

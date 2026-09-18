@@ -8,7 +8,7 @@ import { picture, ellipse, parabola, hyperbola, point } from 'jikz'
 
 export default function render(container: HTMLElement) {
   const pic = picture()
-  const caption = { at: 'south', fontSize: 11 } as const
+  const caption = { at: 'south', style: { fontSize: 11 } } as const
 
   pic.draw(ellipse(point(80, 75), 55, 35), { style: { stroke: '#2563eb', strokeWidth: 2 } })
   pic.text(point(80, 155), 'ellipse', caption)

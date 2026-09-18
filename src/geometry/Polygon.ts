@@ -1,3 +1,4 @@
+import { JikzError } from '../core/errors'
 import { Point, point } from '../core/Point'
 import type { PointLike } from '../core/types'
 import { parseAnchorSpec, type AnchorSpec } from '../core/Anchor'
@@ -19,7 +20,7 @@ export class Polygon implements Shape {
 
   constructor(vertices: PointLike[]) {
     if (vertices.length < 3) {
-      throw new Error('Polygon requires at least 3 vertices')
+      throw new JikzError('invalid-argument', 'Polygon requires at least 3 vertices')
     }
     this.vertices = vertices.map((v) => point(v.x, v.y))
   }
@@ -458,7 +459,7 @@ export function regularPolygon(
   startAngle = -90
 ): Polygon {
   if (sides < 3) {
-    throw new Error('Regular polygon requires at least 3 sides')
+    throw new JikzError('invalid-argument', 'Regular polygon requires at least 3 sides')
   }
 
   const vertices: Point[] = []
@@ -520,7 +521,7 @@ export function star(
   startAngle = -90
 ): Polygon {
   if (points < 3) {
-    throw new Error('Star requires at least 3 points')
+    throw new JikzError('invalid-argument', 'Star requires at least 3 points')
   }
 
   const vertices: Point[] = []

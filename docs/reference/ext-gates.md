@@ -13,7 +13,8 @@ Gates are a shape set, like every other shape family — hand it to the
 picture, alone or merged with others:
 
 ```ts
-import { gateShapes, gates, picture, point } from '@ozan.e/jikz'
+import { picture, point } from '@ozan.e/jikz'
+import { gateShapes, gates } from '@ozan.e/jikz/gates'
 
 const pic = picture({ shapes: gateShapes })
 ```
@@ -58,7 +59,7 @@ for the wrong arity's port fails at the call site rather than as an
 constants and unions for annotating your own values:
 
 ```ts
-import { BINARY_GATE_PORTS, type BinaryGatePort } from '@ozan.e/jikz'
+import { BINARY_GATE_PORTS, type BinaryGatePort } from '@ozan.e/jikz/gates'
 
 const feed: BinaryGatePort = 'in1'   // 'in' would not compile
 pic.edge(`A.${feed}`, 'N.in')
@@ -79,7 +80,7 @@ off, and `junctionDot()` marks a tap. See the
 [half-adder example](../cookbook/#logic-gates-ext-gates).
 
 ```ts
-import { junctionDot, wire } from '@ozan.e/jikz'
+import { junctionDot, wire } from '@ozan.e/jikz/circuits'
 
 wire(pic, ['a', point(40, 57.5), 'X.in1'])
 pic.fill(junctionDot(point(40, 57.5)))

@@ -40,7 +40,7 @@ describe('fit viewBox', () => {
   it('includes measured text boxes (incl. placed labels)', () => {
     const pic = picture()
     pic.draw(circle(point(0, 0), 50))
-    pic.text(point(50, 0), 'R', { at: 'east', distance: 4, fontSize: 12 })
+    pic.text(point(50, 0), 'R', { at: 'east', distance: 4, style: { fontSize: 12 } })
     const svg = pic.toSVG({ fit: true, padding: 0 })
     const [, , w] = viewBoxOf(svg)
     const m = measureText('R', { fontSize: 12 })

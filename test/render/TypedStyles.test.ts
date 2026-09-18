@@ -1,3 +1,4 @@
+import { JikzError } from '../../src/core/errors'
 import { describe, it, expect, vi } from 'vitest'
 import {
   styleToSVGAttributes,
@@ -51,26 +52,14 @@ describe('dash style field (TikZ names)', () => {
 
 describe('CSS-alias opacity keys', () => {
   it("'stroke-opacity' / 'fill-opacity' aliases are honored", () => {
-    const attrs = styleToSVGAttributes({ 'stroke-opacity': 0.35, 'fill-opacity': 0.15 })
+    const attrs = styleToSVGAttributes({ strokeOpacity: 0.35, fillOpacity: 0.15 })
     expect(attrs['stroke-opacity']).toBe(0.35)
     expect(attrs['fill-opacity']).toBe(0.15)
   })
 
-  it('camelCase wins over the alias when both are set', () => {
-    const attrs = styleToSVGAttributes({ strokeOpacity: 0.5, 'stroke-opacity': 0.9 })
-    expect(attrs['stroke-opacity']).toBe(0.5)
-  })
-
-  it('aliases survive mergeStyles (DEFAULT_STYLE must not shadow them)', () => {
-    const merged = mergeStyles({ 'stroke-opacity': 0.35, 'fill-opacity': 0.15 })
-    expect(merged.strokeOpacity).toBe(0.35)
-    expect(merged.fillOpacity).toBe(0.15)
-    expect('stroke-opacity' in merged).toBe(false)
-  })
-
   it('aliases render through the picture pipeline', () => {
     const svg = picture()
-      .draw(line(point(0, 0), point(10, 0)), { style: { stroke: '#000', 'stroke-opacity': 0.35 } })
+      .draw(line(point(0, 0), point(10, 0)), { style: { stroke: '#000', strokeOpacity: 0.35 } })
       .toSVG({ width: 20, height: 10 })
     expect(svg).toContain('stroke-opacity="0.35"')
   })
@@ -131,26 +120,28 @@ describe('preset objects', () => {
   })
 })
 
-describe('unknown preset warnings', () => {
-  it('parseStyleString warns on unknown names instead of silence', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    parseStyleString('thick, dasheed, red')
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('dasheed'))
-    warn.mockRestore()
+describe('unknown style names', () => {
+  it('parseStyleString throws a JikzError naming the unknown name', () => {
+    expect(() => parseStyleString('thick, dasheed, red')).toThrow(/dasheed/)
+    try {
+      parseStyleString('thick, dasheed, red')
+    } catch (e) {
+      expect((e as JikzError).code).toBe('unknown-name')
+    }
   })
 
-  it('applyPreset warns and returns {} for unknown names', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  it('applyPreset throws for unknown names', () => {
     // @ts-expect-error — intentionally passing an invalid preset
-    expect(applyPreset('dasheed')).toEqual({})
-    expect(warn).toHaveBeenCalled()
-    warn.mockRestore()
+    expect(() => applyPreset('dasheed')).toThrow(/dasheed/)
   })
 
-  it('known names do not warn', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    parseStyleString('thick, dashed, red')
-    expect(warn).not.toHaveBeenCalled()
-    warn.mockRestore()
+  it('known names resolve', () => {
+    expect(parseStyleString('thick, dashed, red').stroke).toBe('#e74c3c')
+  })
+
+  it('a string entry in a style list resolves like the preset object', () => {
+    expect(mergeStyles(['thick', { stroke: '#2563eb' }])).toEqual(
+      mergeStyles([thick, { stroke: '#2563eb' }])
+    )
   })
 })

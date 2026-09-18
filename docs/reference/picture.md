@@ -75,6 +75,10 @@ throws rather than silently dropping them.
 ```ts
 picture(options?: {
   shapes?: ShapeSet       // the names node({ shape }) may use — see below
+  styles?: Record<string, StyleSpec>   // per-picture \tikzset: names for `style`
+  every?: { node?, edge?, path?: StyleSpec; text?: TextStyle }   // every node / every edge / …
+  arrowTips?: Record<string, ArrowTipDefinition>   // tips local to this picture
+  mathRenderer?: MathRenderer   // katexAdapter(katex) / mathjaxAdapter(MathJax)
   transform?: Transform   // canvas transform — maps the whole scene
   scale?: number          // uniform canvas scale (composes with transform)
 })
@@ -107,13 +111,13 @@ is TikZ's `node[right]{x}` inside the statement.
 
 | method | purpose |
 |---|---|
-| `pic.node(name, options, renderOpts?)` | register + paint a node |
-| `pic.edge(from, to, edgeOpts?, renderOpts?)` | boundary-aware edge by name/anchor/point |
+| `pic.node(name, options)` | register + paint a node — geometry, `style`/`textStyle`, `labels`, and `rightOf: 'A'` placement in one bag |
+| `pic.edge(from, to, options)` | boundary-aware edge by name/anchor/point; `label`/`labels`, `style` in the same bag |
 | `pic.coordinate(name, at)` | name a raw point (TikZ `\coordinate`) |
 | `pic.add(result, { nodes?, edges? })` | take a layout result (or a list of nodes/edges) whole; named nodes register |
 | `pic.getNode(name)` | look up (returns `Node \| undefined`) |
 | `pic.pen(options?)` | start a fluent path statement |
-| `pic.text(p, text, options?)` | bare text with directional placement |
+| `pic.text(p, text, { at, distance, style })` | bare text with directional placement; `style` is a `TextStyle` |
 
 Endpoint strings: `'A'` (auto-boundary), `'A.north'`, `'A.ne'`,
 `'A.270'`, or a named coordinate.

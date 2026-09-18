@@ -39,18 +39,29 @@ function bundleExports(bundleSource: string): Set<string> {
   return names
 }
 
-/** Value (non-type) named imports from 'jikz' in an example source. */
-function jikzValueImports(code: string): string[] {
-  const names: string[] = []
-  const re = /import\s*\{([^}]+)\}\s*from\s*'jikz'/g
+/** Built file each `jikz[/subpath]` specifier resolves to. */
+const BUNDLE_OF: Record<string, string> = {
+  jikz: 'dist/index.js',
+  'jikz/circuits': 'dist/ext/circuits/index.js',
+  'jikz/gates': 'dist/ext/gates/index.js',
+  'jikz/dataviz': 'dist/ext/dataviz/index.js',
+  'jikz/petri': 'dist/ext/petri/index.js',
+  'jikz/layout': 'dist/layout/index.js',
+  'jikz/styles': 'dist/render/presets.js',
+}
+
+/** Value (non-type) named imports from 'jikz' and its subpaths, per specifier. */
+function jikzValueImports(code: string): { spec: string; name: string }[] {
+  const out: { spec: string; name: string }[] = []
+  const re = /import\s*\{([^}]+)\}\s*from\s*'(jikz(?:\/[a-z]+)?)'/g
   let m: RegExpExecArray | null
   while ((m = re.exec(code)) !== null) {
     for (const part of m[1]!.split(',')) {
       const name = part.trim()
-      if (name && !name.startsWith('type ')) names.push(name)
+      if (name && !name.startsWith('type ')) out.push({ spec: m[2]!, name })
     }
   }
-  return names
+  return out
 }
 
 const exampleFiles = readdirSync(EXAMPLES_DIR)
@@ -62,19 +73,24 @@ describe('built bundle satisfies every example import', () => {
   })
 
   it.skipIf(!existsSync(DIST_BUNDLE))(
-    'dist/index.js exports every jikz name used by any example',
+    'the built entry of every jikz subpath exports every name the examples import from it',
     () => {
-      const exports = bundleExports(readFileSync(DIST_BUNDLE, 'utf8'))
+      const exportsOf = new Map<string, Set<string>>()
+      for (const [spec, file] of Object.entries(BUNDLE_OF)) {
+        exportsOf.set(spec, bundleExports(readFileSync(join(ROOT, file), 'utf8')))
+      }
       const missing: string[] = []
       for (const file of exampleFiles) {
         const code = readFileSync(join(EXAMPLES_DIR, file), 'utf8')
-        for (const name of jikzValueImports(code)) {
-          if (!exports.has(name)) missing.push(`${file}: ${name}`)
+        for (const { spec, name } of jikzValueImports(code)) {
+          const exports = exportsOf.get(spec)
+          if (!exports) missing.push(`${file}: unknown specifier '${spec}'`)
+          else if (!exports.has(name)) missing.push(`${file}: ${name} from '${spec}'`)
         }
       }
       expect(
         missing,
-        `dist/index.js is stale — these example imports are missing from the bundle. Run \`npm run build\`.\n  ${missing.join('\n  ')}`
+        `dist/ is stale — these example imports are missing from the build. Run \`npm run build\`.\n  ${missing.join('\n  ')}`
       ).toEqual([])
     }
   )

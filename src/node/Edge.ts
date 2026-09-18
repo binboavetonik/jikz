@@ -3,6 +3,7 @@ import type { PointLike } from '../core/types'
 import { degToRad, EPSILON } from '../utils/math'
 import type { AnchorSpec, Anchorable } from '../core/Anchor'
 import { bezierControlPoints } from '../path/bezier'
+import { labelList, type Label, type LabelSpec } from '../text/Label'
 
 /**
  * Arrow tip styles. The named members are the built-ins; any name
@@ -184,25 +185,21 @@ export interface EdgeOptions {
   shortenEnd?: number
 
   /**
-   * Label text
+   * A label riding the edge — text, or a {@link Label} with `pos`
+   * (default 0.5, TikZ `midway`) and `offset` (px left of travel,
+   * default 5; negative flips sides — TikZ `auto`/`swap`).
    */
-  label?: string
+  label?: LabelSpec
 
-  /**
-   * Label position along path (0-1)
-   */
-  labelPos?: number
-
-  /**
-   * Label offset from the path, in pixels. Positive places the label to
-   * the **left** of the travel direction (TikZ `auto=left`); negative
-   * flips it to the right.
-   */
-  labelOffset?: number
+  /** Several labels — TikZ allows any number of `node`s on a path. */
+  labels?: readonly Label[]
 }
 
 /**
  * Default edge options.
+ *
+ * No arrow tip, as TikZ's `\draw (A) -- (B)` — ask for one with
+ * `arrowEnd: 'stealth'` (or `'->'`), or use the {@link arrow} factory.
  *
  * `fromAnchor` and `toAnchor` default to `'auto'`: the edge endpoint is
  * resolved by asking the node for the boundary point along the ray toward
@@ -217,7 +214,7 @@ const DEFAULT_EDGE_OPTIONS = {
   fromAnchor: 'auto' as EdgeAnchorSpec,
   toAnchor: 'auto' as EdgeAnchorSpec,
   arrowStart: 'none' as ArrowTip,
-  arrowEnd: 'stealth' as ArrowTip,
+  arrowEnd: 'none' as ArrowTip,
   routing: 'straight' as EdgeRouting,
   bendAngle: 0,
   loop: undefined as LoopDirection | undefined,
@@ -228,10 +225,11 @@ const DEFAULT_EDGE_OPTIONS = {
   inLooseness: undefined as number | undefined,
   shortenStart: 0,
   shortenEnd: 0,
-  label: '',
-  labelPos: 0.5,
-  labelOffset: 5,
 }
+
+/** Default riding position and side for an edge label. */
+const DEFAULT_LABEL_POS = 0.5
+const DEFAULT_LABEL_OFFSET = 5
 
 /**
  * Whether both endpoints denote the same place — the same object, or
@@ -303,9 +301,8 @@ export class Edge {
   readonly inLooseness?: number
   readonly shortenStart: number
   readonly shortenEnd: number
-  readonly label: string
-  readonly labelPos: number
-  readonly labelOffset: number
+  /** Labels riding the edge, in order (see {@link EdgeOptions.label}). */
+  readonly labels: readonly Label[]
   readonly bendPoints: Point[]
 
   // Control points for bezier curves
@@ -393,9 +390,7 @@ export class Edge {
     this.inLooseness = opts.inLooseness
     this.shortenStart = opts.shortenStart
     this.shortenEnd = opts.shortenEnd
-    this.label = opts.label
-    this.labelPos = opts.labelPos
-    this.labelOffset = opts.labelOffset
+    this.labels = labelList(opts.label, opts.labels)
   }
 
   /**
@@ -596,21 +591,19 @@ export class Edge {
   }
 
   /**
-   * Get label position point: the point on the path at `labelPos`,
-   * offset to the left of the travel direction by `labelOffset`
-   * (TikZ `auto=left`; negative offset flips sides).
+   * Where a label sits: the point on the path at `label.pos` (default
+   * 0.5), offset to the left of the travel direction by `label.offset`
+   * (default 5; TikZ `auto=left`, negative flips sides).
    */
-  get labelPoint(): Point {
-    const p = this.pointAt(this.labelPos)
-    const tangent = this.tangentAt(this.labelPos)
+  labelPoint(label: Label): Point {
+    const pos = label.pos ?? DEFAULT_LABEL_POS
+    const offset = label.offset ?? DEFAULT_LABEL_OFFSET
+    const p = this.pointAt(pos)
+    const tangent = this.tangentAt(pos)
     // Left of travel = counterclockwise normal = tangent − 90° in
     // screen convention.
-    const normalAngle = tangent - 90
-    const rad = degToRad(normalAngle)
-    return point(
-      p.x + this.labelOffset * Math.cos(rad),
-      p.y + this.labelOffset * Math.sin(rad)
-    )
+    const rad = degToRad(tangent - 90)
+    return point(p.x + offset * Math.cos(rad), p.y + offset * Math.sin(rad))
   }
 
   // ─────────────────────────────────────────────────────────────────────────────

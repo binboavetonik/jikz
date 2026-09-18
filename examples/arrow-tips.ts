@@ -25,8 +25,8 @@ export default function render(container: HTMLElement) {
     const y = 25 + i * 24
     pic.node(`s${i}`, { at: point(40, y),  shape: 'circle', width: 14, height: 14 })
     pic.node(`e${i}`, { at: point(200, y), shape: 'circle', width: 14, height: 14,
-      labels: [{ text: tip, at: 'east', options: { fontSize: 11 } }] })
-    pic.edge(`s${i}`, `e${i}`, { arrowEnd: tip }, { style: { stroke: color, strokeWidth: 1.5 } })
+      labels: [{ text: tip, at: 'east', style: { fontSize: 11 } }] })
+    pic.edge(`s${i}`, `e${i}`, { arrowEnd: tip, style: { stroke: color, strokeWidth: 1.5 } })
   })
 
   pic.mount(container, { fit: true, padding: 12 })

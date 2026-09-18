@@ -1,4 +1,5 @@
-import { circle, picture, point, petriShapes, petri, petriArcs, tokens } from 'jikz'
+import { circle, picture, point } from 'jikz'
+import { petriShapes, petri, petriArcs, tokens } from 'jikz/petri'
 
 // The Petri net classic on ext/petri — places, transitions, a marking,
 // and t1 enabled (one token in each of its input places) so its arcs
@@ -30,9 +31,9 @@ export default function render(container: HTMLElement) {
       name,
       {
         ...petri.place({ at, width: 44, height: 44 }),
-        labels: [{ text: name, at: 'north', options: { fontSize: 10 } }],
-      },
-      { style: { stroke: '#334155', fill: '#ffffff', strokeWidth: 1.5 } }
+        labels: [{ text: name, at: 'north', style: { fontSize: 10 } }],
+        style: { stroke: '#334155', fill: '#ffffff', strokeWidth: 1.5 }
+      }
     )
     for (const t of tokens(at, count, { size: 8 })) {
       pic.fill(circle(t.center, t.radius), { style: { fill: t.color } })
@@ -46,19 +47,19 @@ export default function render(container: HTMLElement) {
       name,
       {
         ...petri.transition({ at: point(x, y), width: 12, height: 40 }),
-        labels: [{ text: name, at: 'south', options: { fontSize: 10 } }],
-      },
-      { style: { stroke: '#334155', fill: '#334155', strokeWidth: 1 } }
+        labels: [{ text: name, at: 'south', style: { fontSize: 10 } }],
+        style: { stroke: '#334155', fill: '#334155', strokeWidth: 1 }
+      }
     )
   }
 
   // flow relation — petriArcs.post is TikZ's `post`: -> shortened 1pt
-  pic.edge('p1', 't1', petriArcs.post, { style: hot })
-  pic.edge('t1', 'p3', petriArcs.post, { style: hot })
-  pic.edge('p2', 't2', petriArcs.post, { style: es })
-  pic.edge('t2', 'p4', petriArcs.post, { style: es })
-  pic.edge('p3', 't2', { ...petriArcs.post, bendAngle: 20 }, { style: es })
-  pic.edge('t2', 'p1', { ...petriArcs.post, bendAngle: 20 }, { style: es })
+  pic.edge('p1', 't1', { ...petriArcs.post, style: hot })
+  pic.edge('t1', 'p3', { ...petriArcs.post, style: hot })
+  pic.edge('p2', 't2', { ...petriArcs.post, style: es })
+  pic.edge('t2', 'p4', { ...petriArcs.post, style: es })
+  pic.edge('p3', 't2', { ...petriArcs.post, bendAngle: 20, style: es })
+  pic.edge('t2', 'p1', { ...petriArcs.post, bendAngle: 20, style: es })
 
   pic.mount(container, { fit: true, padding: 14 })
 }

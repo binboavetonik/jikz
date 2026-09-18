@@ -32,7 +32,7 @@ export default function render(container: HTMLElement) {
         : { stroke: color, strokeWidth: 1.5, fill: '#ffffff' },
       label: {
         text, at, distance: 5,
-        options: { fontSize: 10, ...(transposition ? { style: { stroke: color } } : {}) },
+        style: { fontSize: 10, ...(transposition ? { fill: color } : {}) },
       },
     })
     return c  // an Anchorable — edges resolve its boundary automatically
@@ -49,16 +49,16 @@ export default function render(container: HTMLElement) {
   const bg5 = dot('bg5', '4.Bg5', 'east')
 
   const link = { style: { stroke: '#64748b', strokeWidth: 1.25 } }
-  pic.edge(d4, d5, {}, link)
-  pic.edge(d4, nf6, {}, link)
-  pic.edge(d5, c4L, {}, link)
-  pic.edge(c4L, nf3L, {}, link)
-  pic.edge(nf6, c4R, {}, link)
-  pic.edge(c4R, d5R, {}, link)
+  pic.edge(d4, d5, { arrowEnd: 'stealth', ...link })
+  pic.edge(d4, nf6, { arrowEnd: 'stealth', ...link })
+  pic.edge(d5, c4L, { arrowEnd: 'stealth', ...link })
+  pic.edge(c4L, nf3L, { arrowEnd: 'stealth', ...link })
+  pic.edge(nf6, c4R, { arrowEnd: 'stealth', ...link })
+  pic.edge(c4R, d5R, { arrowEnd: 'stealth', ...link })
   // the merge — out/in headings make the histories join like rail tracks
-  pic.edge(nf3L, qgd, { out: 45, in: 45 }, { style: { stroke: '#d97706', strokeWidth: 1.5 } })
-  pic.edge(d5R, qgd, { out: 135, in: 135 }, { style: { stroke: '#d97706', strokeWidth: 1.5 } })
-  pic.edge(qgd, bg5, {}, link)
+  pic.edge(nf3L, qgd, { arrowEnd: 'stealth', out: 45, in: 45, style: { stroke: '#d97706', strokeWidth: 1.5 } })
+  pic.edge(d5R, qgd, { arrowEnd: 'stealth', out: 135, in: 135, style: { stroke: '#d97706', strokeWidth: 1.5 } })
+  pic.edge(qgd, bg5, { arrowEnd: 'stealth', ...link })
 
   pic.mount(container, { fit: true, padding: 10 })
 }

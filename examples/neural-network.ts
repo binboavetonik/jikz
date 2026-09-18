@@ -19,7 +19,8 @@ export default function render(container: HTMLElement) {
       pic.node(`l${li}n${i}`, {
         at: point(layerX[li]!, yTop + i * spacing),
         shape: 'circle', width: 30, height: 30,
-      }, { style: { stroke: '#334155', fill: li === 0 ? '#dbeafe' : li === 3 ? '#dcfce7' : '#f1f5f9', strokeWidth: 1.4 } })
+        style: { stroke: '#334155', fill: li === 0 ? '#dbeafe' : li === 3 ? '#dcfce7' : '#f1f5f9', strokeWidth: 1.4 }
+      })
     }
   })
 
@@ -32,11 +33,9 @@ export default function render(container: HTMLElement) {
         const a = `l${li}n${i}`, b = `l${li + 1}n${j}`
         const onPath = highlight.includes(a) && highlight.includes(b)
           && highlight.indexOf(b) === highlight.indexOf(a) + 1
-        pic.edge(a, b, {}, {
-          style: onPath
+        pic.edge(a, b, { arrowEnd: 'stealth', style: onPath
             ? { stroke: '#dc2626', strokeWidth: 2 }
-            : { stroke: '#cbd5e1', strokeWidth: 0.8 },
-        })
+            : { stroke: '#cbd5e1', strokeWidth: 0.8 } })
       }
     }
   })
@@ -47,9 +46,7 @@ export default function render(container: HTMLElement) {
   const labels = ['input', 'hidden', 'hidden', 'output']
   LAYERS.forEach((count, li) => {
     const bottom = 150 + ((count - 1) * spacing) / 2 + 15 // + node radius
-    pic.text(point(layerX[li]!, bottom), labels[li]!, {
-      at: 'south', distance: 10, fontSize: 10, style: { stroke: '#64748b' },
-    })
+    pic.text(point(layerX[li]!, bottom), labels[li]!, { at: 'south', distance: 10, style: { fontSize: 10, fill: '#64748b' } })
   })
 
   pic.mount(container, { fit: true, padding: 14 })

@@ -45,13 +45,13 @@ export default function render(container: HTMLElement) {
 
   // θ arc + labels
   pic.draw(arc(O, 34, 0, -THETA, true), { style: { stroke: '#64748b' } })
-  pic.text(O.add(P(THETA / 2, 50)), '$\\theta$', { fontSize: 12 })
-  pic.text(point(O.x + R + 8, O.y - tanLen / 2), '$\\tan\\theta$', { textAnchor: 'start', fontSize: 12, style: { stroke: '#dc2626' } })
+  pic.text(O.add(P(THETA / 2, 50)), '$\\theta$', { style: { fontSize: 12 } })
+  pic.text(point(O.x + R + 8, O.y - tanLen / 2), '$\\tan\\theta$', { textAnchor: 'start', style: { fontSize: 12, fill: '#dc2626' } })
   // sec labels the hypotenuse itself, so it rides further down the ray
   // than tan's label on the vertical — otherwise the two collide where
   // the secant meets the tangent.
-  pic.text(O.add(P(THETA - 16, R * 0.72)), '$\\sec\\theta$', { fontSize: 12, style: { stroke: '#7c3aed' } })
-  pic.text(onCircle.add(point(6, -8)), '$(\\cos\\theta, \\sin\\theta)$', { textAnchor: 'start', fontSize: 10 })
+  pic.text(O.add(P(THETA - 16, R * 0.72)), '$\\sec\\theta$', { style: { fontSize: 12, fill: '#7c3aed' } })
+  pic.text(onCircle.add(point(6, -8)), '$(\\cos\\theta, \\sin\\theta)$', { textAnchor: 'start', style: { fontSize: 10 } })
 
   pic.mount(container, { fit: true, padding: 10 })
 }

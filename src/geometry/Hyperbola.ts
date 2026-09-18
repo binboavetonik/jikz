@@ -1,3 +1,4 @@
+import { JikzError } from '../core/errors'
 import { Point, point } from '../core/Point'
 import type { PointLike } from '../core/types'
 import { degToRad, EPSILON, approxEqual } from '../utils/math'
@@ -471,7 +472,7 @@ export function hyperbolaFromFoci(focus1: PointLike, focus2: PointLike, a: numbe
   const c = f1.distanceTo(f2) / 2
 
   if (c < a) {
-    throw new Error('Focal distance must be greater than transverse axis for hyperbola')
+    throw new JikzError('invalid-argument', 'Focal distance must be greater than transverse axis for hyperbola')
   }
 
   // c² = a² + b², so b = √(c² - a²)
@@ -519,7 +520,7 @@ export function hyperbolaFromEccentricity(
   rotation = 0
 ): Hyperbola {
   if (eccentricity <= 1) {
-    throw new Error('Eccentricity must be > 1 for hyperbola')
+    throw new JikzError('invalid-argument', 'Eccentricity must be > 1 for hyperbola')
   }
 
   // e = c/a, so c = e*a

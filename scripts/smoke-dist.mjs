@@ -49,8 +49,11 @@ for (const [label, lib] of [['esm', esm], ['cjs', cjs]]) {
 // builders disagree.
 const subEsm = await import(resolve(ROOT, 'dist/ext/circuits/index.js'))
 const subCjs = require(resolve(ROOT, 'dist/ext/circuits/index.cjs'))
-if (subEsm.circuitShapes !== esm.circuitShapes) fail('ESM subpath ./circuits is a second copy of circuitShapes')
+if (typeof subEsm.circuit?.resistor !== 'function') fail('ESM subpath ./circuits is missing circuit.resistor')
 if (typeof subCjs.circuit?.resistor !== 'function') fail('CJS subpath ./circuits is missing circuit.resistor')
+if ('circuitShapes' in esm) fail('the root entry still re-exports the circuits extension')
+const styles = await import(resolve(ROOT, 'dist/render/presets.js'))
+if (styles.thick?.strokeWidth !== 0.8) fail('ESM subpath ./styles is missing the presets')
 
 for (const f of ['dist/index.js.map', 'dist/core/Point.js.map', 'dist/index.d.ts', 'dist/index.d.cts', 'dist/layout/index.cjs', 'dist/render/presets.d.cts']) {
   if (!existsSync(resolve(ROOT, f))) fail(`missing ${f}`)
