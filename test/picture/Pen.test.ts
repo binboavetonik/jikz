@@ -83,8 +83,24 @@ describe('pen path geometry', () => {
     pic.pen().moveTo(0, 0).through(point(50, -20), point(100, 0))
     pic.pen().moveTo(0, 50).bendTo(point(100, 50), 30)
     const svg = pic.toSVG({ width: 120, height: 80 })
-    expect(svg).toMatch(/M 0 0 C [\d.]+ [\d.-]+, [\d.]+ [\d.-]+, 100 0/)
+    // `through` passes THROUGH its point: two cubics joined there.
+    expect(svg).toMatch(
+      /M 0 0 C [\d.]+ [\d.-]+, [\d.]+ [\d.-]+, 50 -20 C [\d.]+ [\d.-]+, [\d.]+ [\d.-]+, 100 0/
+    )
     expect(svg).toMatch(/M 0 50 C [\d.]+ [\d.-]+, [\d.]+ [\d.-]+, 100 50/)
+  })
+
+  it('bendTo bends the same way as to({ bend }) and as an edge', () => {
+    const a = picture()
+    a.pen().moveTo(0, 50).bendTo(point(100, 50), 30)
+    const b = picture()
+    b.pen().moveTo(0, 50).to(point(100, 50), { bend: 30 })
+    const svgA = a.toSVG({ width: 120, height: 80 })
+    const svgB = b.toSVG({ width: 120, height: 80 })
+    expect(svgA).toBe(svgB)
+    // Positive bend is LEFT of travel; heading east on screen that is up.
+    const cp = svgA.match(/C ([\d.]+) ([\d.-]+),/)!
+    expect(Number(cp[2])).toBeLessThan(50)
   })
 
   it('to() without options is a straight segment (TikZ --)', () => {

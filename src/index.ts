@@ -572,7 +572,7 @@ export {
 } from './picture'
 export { Pen } from './picture'
 export type { PenOptions, PenHost, PenPoint, ToOptions } from './picture'
-export type { NodeOptionsFor } from './picture'
+export type { NodeOptionsFor, AddableItems, AddOptions } from './picture'
 export type {
   PictureEndpoint,
   PictureItem,

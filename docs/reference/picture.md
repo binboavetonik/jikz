@@ -110,6 +110,7 @@ is TikZ's `node[right]{x}` inside the statement.
 | `pic.node(name, options, renderOpts?)` | register + paint a node |
 | `pic.edge(from, to, edgeOpts?, renderOpts?)` | boundary-aware edge by name/anchor/point |
 | `pic.coordinate(name, at)` | name a raw point (TikZ `\coordinate`) |
+| `pic.add(result, { nodes?, edges? })` | take a layout result (or a list of nodes/edges) whole; named nodes register |
 | `pic.getNode(name)` | look up (returns `Node \| undefined`) |
 | `pic.pen(options?)` | start a fluent path statement |
 | `pic.text(p, text, options?)` | bare text with directional placement |

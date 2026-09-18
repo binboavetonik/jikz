@@ -9,6 +9,7 @@ import {
   polygonPath,
   polylinePath,
 } from '../../src/path/Path'
+import { bezierControlPoints } from '../../src/path/bezier'
 import { point } from '../../src/core/Point'
 
 describe('Path', () => {
@@ -149,6 +150,40 @@ describe('Path', () => {
     it('bendTo creates curved path', () => {
       const p = path().moveTo(point(0, 0)).bendTo(point(100, 0), 30)
       expect(p.segments[1]?.type).toBe('C')
+    })
+
+    it('to() with routing options is a cubic on the shared Bézier model', () => {
+      const from = point(0, 0)
+      const to = point(100, 0)
+      const p = path().moveTo(from).to(to, { out: 30, in: 150, looseness: 1.5 })
+      expect(p.segments[1]?.type).toBe('C')
+      const [c1, c2] = bezierControlPoints(from, to, { out: 30, in: 150, looseness: 1.5 })
+      expect(p.segments[1]!.points[0]!.equals(c1)).toBe(true)
+      expect(p.segments[1]!.points[1]!.equals(c2)).toBe(true)
+      expect(p.currentPoint.equals(to)).toBe(true)
+    })
+
+    it('bendTo bends left for a positive angle, like an edge', () => {
+      // Heading east on screen, "left of travel" is up (negative y).
+      const p = path().moveTo(point(0, 0)).bendTo(point(100, 0), 30)
+      const [c1, c2] = p.segments[1]!.points
+      expect(c1!.y).toBeLessThan(0)
+      expect(c2!.y).toBeLessThan(0)
+      const [e1, e2] = bezierControlPoints(point(0, 0), point(100, 0), { bend: 30 })
+      expect(c1!.equals(e1)).toBe(true)
+      expect(c2!.equals(e2)).toBe(true)
+    })
+
+    it('through() passes through its point with a continuous tangent', () => {
+      const mid = point(50, -20)
+      const p = path().moveTo(point(0, 0)).through(mid, point(100, 0))
+      expect(p.segments.map((s) => s.type)).toEqual(['M', 'C', 'C'])
+      expect(p.segments[1]!.points[2]!.equals(mid)).toBe(true)
+      // The incoming and outgoing control points mirror across `mid`.
+      const cIn = p.segments[1]!.points[1]!
+      const cOut = p.segments[2]!.points[0]!
+      expect(mid.sub(cIn).equals(cOut.sub(mid))).toBe(true)
+      expect(p.currentPoint.equals(point(100, 0))).toBe(true)
     })
   })
 

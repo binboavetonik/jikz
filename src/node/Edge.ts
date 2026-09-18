@@ -253,6 +253,37 @@ function isSameEndpoint(
 }
 
 /**
+ * Interpret TikZ-style arrow specs. `'->'`/`'<-'`/`'<->'` describe the
+ * whole path's decoration in one token, so they redistribute across
+ * start/end: `arrowEnd: '<-'` puts the tip at the START, exactly like
+ * TikZ `\draw[<-]`. Concrete tip names ('stealth', 'latex', 'to', '|')
+ * are positional and left alone. Pure — the constructor assigns the
+ * result to its readonly fields once.
+ */
+function normalizeArrowTips(
+  arrowStart: ArrowTip,
+  arrowEnd: ArrowTip
+): { start: ArrowTip; end: ArrowTip } {
+  let start = arrowStart
+  let end = arrowEnd
+  for (const [key, value] of [
+    ['arrowEnd', arrowEnd],
+    ['arrowStart', arrowStart],
+  ] as const) {
+    if (value === '->') {
+      end = 'to'
+    } else if (value === '<-') {
+      start = 'to'
+      if (key === 'arrowEnd') end = 'none'
+    } else if (value === '<->') {
+      start = 'to'
+      end = 'to'
+    }
+  }
+  return { start, end }
+}
+
+/**
  * An edge connecting two nodes or points
  */
 export class Edge {
@@ -345,10 +376,15 @@ export class Edge {
       this.to = point(to.x, to.y)
     }
 
-    this.arrowStart = opts.arrowStart
-    this.arrowEnd = opts.arrowEnd
-    this.normalizeArrowTips()
-    this.routing = opts.routing
+    const tips = normalizeArrowTips(opts.arrowStart, opts.arrowEnd)
+    this.arrowStart = tips.start
+    this.arrowEnd = tips.end
+    // out/in/bendAngle imply bezier routing — otherwise the curve
+    // options would be silently ignored and the edge render straight.
+    this.routing =
+      opts.out !== undefined || opts.in !== undefined || opts.bendAngle !== 0
+        ? 'bezier'
+        : opts.routing
     this.bendAngle = opts.bendAngle
     this.outAngle = opts.out
     this.inAngle = opts.in
@@ -360,38 +396,6 @@ export class Edge {
     this.label = opts.label
     this.labelPos = opts.labelPos
     this.labelOffset = opts.labelOffset
-
-    // If out/in/bendAngle is specified, automatically use bezier
-    // routing — otherwise the curve options are silently ignored and
-    // the edge renders straight.
-    if (this.outAngle !== undefined || this.inAngle !== undefined || this.bendAngle !== 0) {
-      (this as { routing: EdgeRouting }).routing = 'bezier'
-    }
-  }
-
-  /**
-   * Interpret TikZ-style arrow specs. `'->'`/`'<-'`/`'<->'` describe
-   * the whole path's decoration in one token, so they redistribute
-   * across arrowStart/arrowEnd: `arrowEnd: '<-'` puts the tip at the
-   * START, exactly like TikZ `\draw[<-]`. Concrete tip names
-   * ('stealth', 'latex', 'to', '|') are positional and left alone.
-   */
-  private normalizeArrowTips(): void {
-    const self = this as { arrowStart: ArrowTip; arrowEnd: ArrowTip }
-    for (const [key, value] of [
-      ['arrowEnd', self.arrowEnd],
-      ['arrowStart', self.arrowStart],
-    ] as const) {
-      if (value === '->') {
-        self.arrowEnd = 'to'
-      } else if (value === '<-') {
-        self.arrowStart = 'to'
-        if (key === 'arrowEnd') self.arrowEnd = 'none'
-      } else if (value === '<->') {
-        self.arrowStart = 'to'
-        self.arrowEnd = 'to'
-      }
-    }
   }
 
   /**

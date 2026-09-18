@@ -128,6 +128,28 @@ export function mergePathModeIn(
 }
 
 /**
+ * What {@link ItemContainer.add} accepts: a layout result (anything
+ * with `nodes` and/or `edges` arrays — every layout builder's `build()`
+ * returns one) or a flat list of nodes and edges (`toRenderables()`).
+ */
+export type AddableItems =
+  | { readonly nodes?: readonly Node[]; readonly edges?: readonly Edge[] }
+  | readonly (Node | Edge)[]
+
+/** `Array.isArray` narrows a readonly-array union poorly; this does not. */
+function isItemList(items: AddableItems): items is readonly (Node | Edge)[] {
+  return Array.isArray(items)
+}
+
+/** Render options {@link ItemContainer.add} applies to what it adds. */
+export interface AddOptions {
+  /** Applied to every node added. */
+  nodes?: RenderOptions
+  /** Applied to every edge added. */
+  edges?: RenderOptions
+}
+
+/**
  * Items stored in a container in the order they were added.
  * Insertion order is paint order.
  */
@@ -377,6 +399,61 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
         text: label.text,
         options: { fontSize: DEFAULT_LABEL_FONT_SIZE, ...label.options },
       })
+    }
+    return this
+  }
+
+  /**
+   * Add already-built nodes and edges — the result of a layout builder
+   * (`tree()`, `layered()`, `graph()`, `chain()`, `matrix()`), or any
+   * array of `Node`/`Edge` values. Nodes that carry a name register
+   * under it, so `edge('CEO', 'CTO')`, `'CEO.south'` and `resolve()`
+   * work on them exactly as on nodes declared with {@link node};
+   * unnamed nodes just paint. Duplicate names throw, as everywhere.
+   *
+   * ```ts
+   * const org = tree({ at: point(220, 35) }).root('CEO').child('CTO').build()
+   * picture({ shapes: allShapes })
+   *   .add(org, { nodes: { style: green }, edges: { style: { stroke: '#64748b' } } })
+   *   .edge('CTO', 'CEO', { bendAngle: 40 })
+   * ```
+   */
+  add(
+    items: AddableItems,
+    options: AddOptions = {}
+  ): this {
+    // A result paints its edges first so nodes sit on top of them; a
+    // flat list paints in the order given.
+    const list: readonly (Node | Edge)[] = isItemList(items)
+      ? items
+      : [...(items.edges ?? []), ...(items.nodes ?? [])]
+    for (const item of list) {
+      if (item.kind === 'node') {
+        if (item.name) {
+          if (this.registry.hasName(item.name)) {
+            throw new Error(
+              `Picture: node name "${item.name}" already exists in this picture.`
+            )
+          }
+          this.registry.registerNode(item.name, item, this.ownTransform)
+        }
+        this.itemList.push({
+          kind: 'node',
+          node: item,
+          name: item.name,
+          options: options.nodes,
+        })
+        for (const label of item.labels) {
+          this.itemList.push({
+            kind: 'text',
+            at: item.labelPoint(label),
+            text: label.text,
+            options: { fontSize: DEFAULT_LABEL_FONT_SIZE, ...label.options },
+          })
+        }
+      } else {
+        this.itemList.push({ kind: 'edge', edge: item, options: options.edges })
+      }
     }
     return this
   }

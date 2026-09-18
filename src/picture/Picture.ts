@@ -36,6 +36,8 @@ export {
   TransformedAnchorable,
 } from './Container'
 export type {
+  AddableItems,
+  AddOptions,
   DrawLabel,
   DrawOptions,
   ShadeOptions,

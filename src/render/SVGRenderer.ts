@@ -1,4 +1,5 @@
 import { Point } from '../core/Point'
+import { LINE_HEIGHT } from '../text/measureText'
 import type { Transform } from '../core/Transform'
 import { PANZOOM_VIEWPORT_CLASS } from './PanZoom'
 import { Path } from '../path/Path'
@@ -807,6 +808,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
         textTarget.text(node.text)
           .center(node.center.x, node.center.y)
           .font(textStyleAttrs)
+          .lines(node.text, textStyleAttrs['font-size'] * LINE_HEIGHT)
       }
     }
 
@@ -864,7 +866,10 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
         // Only when asked: `normal` is the SVG default, and emitting it
         // would add a redundant attribute to every edge label ever drawn.
         if (textOpts.fontWeight !== undefined) font['font-weight'] = textOpts.fontWeight
-        g.text(edge.label).center(labelPoint.x, labelPoint.y).font(font)
+        g.text(edge.label)
+          .center(labelPoint.x, labelPoint.y)
+          .font(font)
+          .lines(edge.label, (font['font-size'] as number) * LINE_HEIGHT)
       }
     }
 
@@ -900,6 +905,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
         'text-anchor': options?.textAnchor ?? 'start',
         'dominant-baseline': options?.dominantBaseline ?? 'auto',
       })
+      .lines(text, (options?.fontSize ?? 14) * LINE_HEIGHT)
 
     return this.applyOptions(el, options)
   }

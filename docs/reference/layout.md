@@ -1,8 +1,10 @@
 # Reference: layout
 
-Structure in, coordinates out. The three builders return plain
-geometry — `{ nodes, edges }` — that you render with `SVGRenderer`
-or `picture`. Full API: <a href="../api/index.html" target="_blank">generated reference</a> (`npm run
+Structure in, coordinates out. The builders return plain geometry —
+`{ nodes, edges }` — that a picture takes whole with
+`pic.add(result, { nodes, edges })` (named nodes register, so they
+resolve like any other), or that you render piecewise with
+`SVGRenderer`. Full API: <a href="../api/index.html" target="_blank">generated reference</a> (`npm run
 docs:api`).
 
 Layout builders take node options as values: `shape` is a kind

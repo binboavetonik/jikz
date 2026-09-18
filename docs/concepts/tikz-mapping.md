@@ -170,7 +170,7 @@ Results are plain `Point`s — draw them, label them, compute with them.
 |---|---|
 | chains library (`on chain, going below`) | `chain(at, { spacing }).node(...).going('below').build()` |
 | `\matrix of nodes` | `matrix({ at, columnSep, rowSep }).rows([...]).build()` |
-| trees (`child { node {...} }`) | `tree({ at, grow: 'down' }).root('A').child('B').build()` |
+| trees (`child { node {...} }`) | `pic.add(tree({ at, grow: 'down' }).root('A').child('B').build())` — the result's names register in the picture |
 | `\node[fit=(a)(b)]` | `rectFit(corners)` — tight bbox + padding |
 | nodes on a circle | `nodeCircle(center, radius, names)` |
 
