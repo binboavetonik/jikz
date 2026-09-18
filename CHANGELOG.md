@@ -4,6 +4,40 @@
 
 ### Added
 
+- **`pic.add()` — a layout result joins the picture.** `tree()`,
+  `layered()`, `graph()`, `chain()` and `matrix()` return `{ nodes,
+  edges }`, and until now the only ways to draw one were a renderer
+  loop or re-declaring every node by hand (`pic.node(n.text, { at:
+  n.center, shape: n.shape, … })`, which the positioning-tour example
+  did). `pic.add(result, { nodes, edges })` takes the result whole —
+  or any flat list of nodes and edges — with render options per kind.
+  Nodes that carry a name register under it, so `pic.edge('CEO',
+  'CFO')`, `'QA.north'` and `resolve()` work on laid-out nodes exactly
+  as on declared ones; unnamed nodes just paint. Inside a `scope`, the
+  names resolve into picture space like everything else there. The two
+  tree examples use it now.
+
+- **Subpath exports.** `@ozan.e/jikz/circuits`, `/gates`, `/dataviz`,
+  `/petri`, `/layout` and `/styles` (the preset objects) resolve to
+  the same modules the root re-exports — the root surface is
+  unchanged. They exist so a consumer can take a narrower import, and
+  so the ext modules have an address of their own ahead of the root
+  slimming down. Each subpath has `import` and `require` conditions
+  with paired declarations, plus `typesVersions` for the `node10`
+  resolver; `check:pkg` covers all of them.
+
+  To serve the `require` condition, the build now emits one CommonJS
+  file per module next to the ES one, and the UMD bundle is built by a
+  second config (`vite.config.umd.ts`): Rollup's name deconfliction
+  leaks between a preserved-modules output and a single-file one in
+  the same build, and the UMD came out with `function math.x(...)` in
+  it. The install grows by the CJS tree (about 1 MB unpacked).
+
+- **`Path.to()` takes routing options.** `path().moveTo(a).to(b, {
+  bend: 'left' })` and `to(b, { out: 30, in: 150 })` draw the same
+  cubic the pen's `to()` and an edge would; with no options it is the
+  straight segment it always was.
+
 - **A picture can be given a math renderer.** `$...$` labels needed
   KaTeX injected through `new SVGRenderer(…, { mathRenderer })`, which
   the picture layer never exposed — so `toSVG()` and `mount()` had no
@@ -53,6 +87,33 @@
   Both shipped adapters are written against the public interface with
   no privileged access, which is the only thing that makes "write your
   own" true rather than decorative.
+
+### Fixed
+
+- **A node's multi-line text rendered on one line.** `measureText`
+  sizes a node for every `\n`-separated line, but a newline inside
+  `<text>` is whitespace to SVG — so `text: 'line one\nline two'`
+  produced a box two lines tall with both lines run together on one.
+  Lines are now `<tspan>`s: centred on the node (and on an edge label),
+  hanging below the first line for bare `renderText`. Single-line text
+  serializes byte-for-byte as before, so no existing output moves.
+
+- **`Path.bendTo()` bent the wrong way, and not like anything else.**
+  `Path.through()`/`bendTo()` carried their own control-point
+  arithmetic (`0.2`/`0.4` chord factors, sign flipped), so
+  `path().bendTo(b, 30)` bent to the *right* while `pen.bendTo(b, 30)`,
+  `to(b, { bend: 30 })` and `edge(a, b, { bendAngle: 30 })` all bend
+  left. `bendTo` is now `to(end, { bend: angle })` on the shared
+  `bezierControlPoints` model, and `through(p, end)` genuinely passes
+  through `p` — two cubics with a continuous tangent at the point
+  (Catmull-Rom, as `smoothPath` uses), where the old single cubic only
+  bulged toward it. Both verbs on the pen change accordingly; no
+  example used either, so no snapshot moved.
+
+- **`Edge` assigned two `readonly` fields through a cast.** The
+  arrow-spec normalisation and the "curve keys imply bezier routing"
+  rule mutated `this` after construction via `(this as { … })`. Both
+  are computed before the fields are assigned now. No behaviour change.
 
 ### Changed
 

@@ -6,6 +6,28 @@
   "main": "./dist/jikz.umd.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "circuits": [
+        "./dist/ext/circuits/index.d.ts"
+      ],
+      "gates": [
+        "./dist/ext/gates/index.d.ts"
+      ],
+      "dataviz": [
+        "./dist/ext/dataviz/index.d.ts"
+      ],
+      "petri": [
+        "./dist/ext/petri/index.d.ts"
+      ],
+      "layout": [
+        "./dist/layout/index.d.ts"
+      ],
+      "styles": [
+        "./dist/render/presets.d.ts"
+      ]
+    }
+  },
   "exports": {
     ".": {
       "import": {
@@ -16,7 +38,68 @@
         "types": "./dist/index.d.cts",
         "default": "./dist/jikz.umd.cjs"
       }
-    }
+    },
+    "./circuits": {
+      "import": {
+        "types": "./dist/ext/circuits/index.d.ts",
+        "default": "./dist/ext/circuits/index.js"
+      },
+      "require": {
+        "types": "./dist/ext/circuits/index.d.cts",
+        "default": "./dist/ext/circuits/index.cjs"
+      }
+    },
+    "./gates": {
+      "import": {
+        "types": "./dist/ext/gates/index.d.ts",
+        "default": "./dist/ext/gates/index.js"
+      },
+      "require": {
+        "types": "./dist/ext/gates/index.d.cts",
+        "default": "./dist/ext/gates/index.cjs"
+      }
+    },
+    "./dataviz": {
+      "import": {
+        "types": "./dist/ext/dataviz/index.d.ts",
+        "default": "./dist/ext/dataviz/index.js"
+      },
+      "require": {
+        "types": "./dist/ext/dataviz/index.d.cts",
+        "default": "./dist/ext/dataviz/index.cjs"
+      }
+    },
+    "./petri": {
+      "import": {
+        "types": "./dist/ext/petri/index.d.ts",
+        "default": "./dist/ext/petri/index.js"
+      },
+      "require": {
+        "types": "./dist/ext/petri/index.d.cts",
+        "default": "./dist/ext/petri/index.cjs"
+      }
+    },
+    "./layout": {
+      "import": {
+        "types": "./dist/layout/index.d.ts",
+        "default": "./dist/layout/index.js"
+      },
+      "require": {
+        "types": "./dist/layout/index.d.cts",
+        "default": "./dist/layout/index.cjs"
+      }
+    },
+    "./styles": {
+      "import": {
+        "types": "./dist/render/presets.d.ts",
+        "default": "./dist/render/presets.js"
+      },
+      "require": {
+        "types": "./dist/render/presets.d.cts",
+        "default": "./dist/render/presets.cjs"
+      }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
@@ -26,7 +109,7 @@
   "scripts": {
     "dev": "vitepress dev docs",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json && tsc -p tsconfig.scripts.json && tsc -p tsconfig.parser.json",
-    "build": "npm run typecheck && vite build && node scripts/postbuild-dts.mjs",
+    "build": "npm run typecheck && vite build && vite build -c vite.config.umd.ts && node scripts/postbuild-dts.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",

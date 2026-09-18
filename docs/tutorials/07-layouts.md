@@ -3,9 +3,12 @@
 In which we declare *structure* and let jikz compute *positions* —
 chains, matrices, trees, rings, and fit-boxes.
 
-The layout builders return plain geometry (`{ nodes, edges }`); you
-render the pieces yourself, at either [API level](../concepts/two-api-levels.md).
-Nothing is hidden, nothing is painted behind your back.
+The layout builders return plain geometry (`{ nodes, edges }`). Hand
+it to a picture with `pic.add(result)` — the named nodes register, so
+edges by name, `'CEO.south'` anchors and `{ fit: true }` all work on
+them — or render the pieces yourself with `SVGRenderer`, at either
+[API level](../concepts/two-api-levels.md). Nothing is hidden, nothing
+is painted behind your back.
 
 ## Chain — successive nodes, auto-wired
 
@@ -13,9 +16,9 @@ TikZ's chains library: place a start, then keep `going` in a
 direction. Edges between successive nodes come for free:
 
 ```ts
-import { chain, point, SVGRenderer, allShapes } from 'jikz'
+import { chain, point, picture, allShapes } from 'jikz'
 
-const { nodes, edges } = chain(point(60, 70), { spacing: 46 })
+const states = chain(point(60, 70), { spacing: 46 })
   .node({ text: 'q0', shape: allShapes.circle, width: 40, height: 40 })
   .node({ text: 'q1', shape: allShapes.circle, width: 40, height: 40 })
   .going('below')
@@ -24,11 +27,19 @@ const { nodes, edges } = chain(point(60, 70), { spacing: 46 })
   .node({ text: 'q3', shape: allShapes.circle, width: 40, height: 40 })
   .build()
 
-const r = new SVGRenderer()
-for (const e of edges) r.renderEdge(e, { style: { stroke: '#64748b' } })
-for (const n of nodes) r.renderNode(n, { style: { stroke: '#2563eb', fill: '#dbeafe' } })
-r.builder.mount(container, { width: 340, height: 180 })
+picture()
+  .add(states, {
+    edges: { style: { stroke: '#64748b' } },
+    nodes: { style: { stroke: '#2563eb', fill: '#dbeafe' } },
+  })
+  .mount(container, { width: 340, height: 180 })
 ```
+
+`add()` takes any `{ nodes, edges }` result or a flat list of nodes and
+edges; `nodes`/`edges` options apply to everything it adds. Nodes that
+carry a name (every layout builder names its nodes after their text)
+register under it, so the chain above answers to `pic.edge('q0', 'q3')`
+afterwards. Duplicate names throw, as with `pic.node()`.
 
 ## Matrix — rows of cells
 

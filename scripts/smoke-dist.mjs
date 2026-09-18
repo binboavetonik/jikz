@@ -43,7 +43,16 @@ for (const [label, lib] of [['esm', esm], ['cjs', cjs]]) {
   if (!svg.includes('&lt;A&amp;B&gt;')) fail(`${label}: escaped text not found`)
 }
 
-for (const f of ['dist/index.js.map', 'dist/core/Point.js.map', 'dist/index.d.ts', 'dist/index.d.cts']) {
+// Subpath exports resolve in both module systems and hand back the same
+// objects the root does — a second copy of a shape set would make
+// `picture({ shapes: circuitShapes })` and the root's `circuit.*`
+// builders disagree.
+const subEsm = await import(resolve(ROOT, 'dist/ext/circuits/index.js'))
+const subCjs = require(resolve(ROOT, 'dist/ext/circuits/index.cjs'))
+if (subEsm.circuitShapes !== esm.circuitShapes) fail('ESM subpath ./circuits is a second copy of circuitShapes')
+if (typeof subCjs.circuit?.resistor !== 'function') fail('CJS subpath ./circuits is missing circuit.resistor')
+
+for (const f of ['dist/index.js.map', 'dist/core/Point.js.map', 'dist/index.d.ts', 'dist/index.d.cts', 'dist/layout/index.cjs', 'dist/render/presets.d.cts']) {
   if (!existsSync(resolve(ROOT, f))) fail(`missing ${f}`)
 }
 

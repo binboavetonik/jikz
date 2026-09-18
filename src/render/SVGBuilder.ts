@@ -127,6 +127,43 @@ export class SVGElement {
     this.node.attrs.y = y
     return this
   }
+
+  /**
+   * Lay a `<text>` element's content out as lines. SVG collapses a
+   * newline inside `<text>` to a space, so a two-line label measured
+   * (and sized) as two lines used to render as one. Each line becomes
+   * a `<tspan x=… dy=…>`; single-line content stays plain text so the
+   * common case emits exactly what it did before.
+   *
+   * Call after `move`/`center`, since the lines take their `x` from the
+   * element. With `dominant-baseline: middle` (the `center` case) the
+   * block is centred on `y`, matching how {@link measureText} sizes it;
+   * otherwise the first line sits on `y` and the rest hang below.
+   *
+   * @param lineHeight line advance in px — `fontSize × LINE_HEIGHT`
+   */
+  lines(content: string, lineHeight: number): this {
+    const lines = content.split('\n')
+    if (lines.length === 1) {
+      this.node.text = content
+      return this
+    }
+    const x = this.node.attrs.x ?? 0
+    const y = Number(this.node.attrs.y ?? 0)
+    if (this.node.attrs['dominant-baseline'] === 'middle') {
+      this.node.attrs.y = y - ((lines.length - 1) / 2) * lineHeight
+    }
+    delete this.node.text
+    this.node.children.push(
+      ...lines.map((line, i) => ({
+        tag: 'tspan',
+        attrs: i === 0 ? { x } : { x, dy: lineHeight },
+        children: [],
+        text: line,
+      }))
+    )
+    return this
+  }
 }
 
 /**

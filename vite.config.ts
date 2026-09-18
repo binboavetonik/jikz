@@ -29,8 +29,20 @@ export default defineConfig({
     // tree (see "files" in package.json), not a second embedded copy.
     sourcemap: true,
     lib: {
-      entry: resolve(__dirname, 'src/index.ts'),
-      name: 'Jikz',
+      // Every subpath in package.json `exports` is an entry here. With
+      // preserveModules a pure re-export barrel is folded into its
+      // importers and never written, so a subpath that is not an entry
+      // has no file to resolve to.
+      entry: {
+        index: resolve(__dirname, 'src/index.ts'),
+        'ext/circuits/index': resolve(__dirname, 'src/ext/circuits/index.ts'),
+        'ext/gates/index': resolve(__dirname, 'src/ext/gates/index.ts'),
+        'ext/dataviz/index': resolve(__dirname, 'src/ext/dataviz/index.ts'),
+        'ext/petri/index': resolve(__dirname, 'src/ext/petri/index.ts'),
+        'layout/index': resolve(__dirname, 'src/layout/index.ts'),
+        'render/presets': resolve(__dirname, 'src/render/presets.ts'),
+      },
+      formats: ['es', 'cjs'],
     },
     rollupOptions: {
       output: [
@@ -46,14 +58,18 @@ export default defineConfig({
           entryFileNames: '[name].js',
           sourcemapExcludeSources: true,
         },
-        // UMD stays a single file for <script> consumers and require().
+        // CommonJS, one file per module, for the `require` condition of
+        // the subpath exports (`@ozan.e/jikz/circuits` …). The root
+        // `require` keeps resolving to the UMD file, which is built by
+        // vite.config.umd.ts: Rollup's name deconfliction leaks between
+        // a preserved-modules output and a single-file one in the same
+        // build, so the two cannot share a config.
         {
-          format: 'umd',
-          name: 'Jikz',
-          entryFileNames: 'jikz.umd.cjs',
-          // No map for the legacy single-file build: it would add ~470 kB
-          // to every install for the <script>-tag path nobody debugs
-          // through node_modules. The ES modules carry the maps.
+          format: 'cjs',
+          preserveModules: true,
+          preserveModulesRoot: 'src',
+          entryFileNames: '[name].cjs',
+          exports: 'named',
           sourcemap: false,
         },
       ],

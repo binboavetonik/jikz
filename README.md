@@ -27,6 +27,12 @@ npm install @ozan.e/jikz
 npm install katex
 ```
 
+Everything is reachable from the root import. The extension modules,
+the layout builders and the style presets also have their own
+subpaths — `@ozan.e/jikz/circuits`, `/gates`, `/dataviz`, `/petri`,
+`/layout`, `/styles` — for when you want a narrower import surface.
+Both resolve to the same modules.
+
 ## Documentation
 
 **https://binboavetonik.github.io/jikz/** — the site opens on the
@@ -161,7 +167,7 @@ pic.pen({ style: { stroke: '#0f172a', strokeWidth: 1.6 } })
 | `picture` | Named-node registry, named coordinates (`pic.coordinate('A', p)`), string anchor resolution (`'A.north'`), fluent path statements (`pic.pen()` — TikZ `\draw (a) -- (b) node[right]{x} -- cycle` as a chain, with `pos` labels, named endpoints, mid-statement restyling via `push`), `path`/`draw`/`fill`/`filldraw`/`shade` verbs with TikZ-style shape labels (`draw(l, { label: { text, at: 'east' } })` = `node[right]` inside a `\draw`), bare `text` with directional placement (`pic.text(p, 'h', { at: 'south east' })` = `\node[below right] at (p) {h}`), `toSVG`/`mount` with fixed or auto-fit viewBox (`{ fit: true }` sizes from content, TikZ-style) |
 | `path` | Chainable path builder, decorations (snake, zigzag, coil, bumps, saw, brace…), operations (offset, double, smooth, join), SVG path import (`pathFromSVG` parses any `d` string — absolute/relative, `H`/`V`/`S`/`T`, arcs — into a drawable/decoratable/measurable `Path`) |
 | `render` | `SVGRenderer` + `SVGBuilder` (string/DOM), 12 TikZ fill patterns, linear/radial gradients, named shadings (`axis`/`radial`/`ball` + TikZ `left color`/`ball color`/… keys), drop shadows, clip paths, double lines, layers, 10 arrow tip kinds — `stealth`, `latex`, `to`, `bar`, `||`, `circle`, `o`, `square`, `diamond`, `roundCap` — plus TikZ spellings `->`/`<-`/`<->`/`*` (color follows the edge stroke). Every geometry type is renderable — uncommon shapes fall back to their path outline |
-| `layout` | `chain`, `matrix`, `tree`, `layered` (Sugiyama DAG) and `graph` (force-directed Fruchterman–Reingold + circular) auto-layout builders |
+| `layout` | `chain`, `matrix`, `tree`, `layered` (Sugiyama DAG) and `graph` (force-directed Fruchterman–Reingold + circular) auto-layout builders; `pic.add(result)` puts a result in a picture with its node names registered |
 | `text` | `measureText` — deterministic per-character font metrics, identical in Node, workers and the browser (so SSR output doesn't reflow on hydration); powers auto-sized nodes (`node({ text })` with no width/height). Opt into the browser's own canvas measurement with `setTextMeasurementBackend('canvas')`. `placeText` — directional label placement for bare text (same ray math as node labels) |
 
 ## Styling

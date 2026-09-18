@@ -1,6 +1,5 @@
 import { Point, point } from '../core/Point'
 import type { PointLike } from '../core/types'
-import { degToRad } from '../utils/math'
 import {
   endpointToCenter,
   arcLength,
@@ -8,6 +7,7 @@ import {
   arcExtremes,
   type ArcCenterParams,
 } from './arcMath'
+import { bezierControlPoints, type BezierRouteOptions } from './bezier'
 
 /**
  * Path segment types
@@ -259,10 +259,23 @@ export class Path {
   // ─────────────────────────────────────────────────────────────────────────────
 
   /**
-   * TikZ -- operator: line to point
+   * TikZ's `to` operation. With no routing options it is exactly `--`
+   * (a straight segment); with `out`/`in`/`bend`/`looseness` it is one
+   * cubic Bézier whose control points come from those angles — the
+   * same {@link bezierControlPoints} model {@link Edge} and the pen's
+   * `to()` use, so a curve reads the same wherever it is written:
+   *
+   * ```ts
+   * path().moveTo(a).to(b)                    // straight, like lineTo
+   * path().moveTo(a).to(b, { bend: 'left' })  // TikZ `to[bend left]`
+   * path().moveTo(a).to(b, { out: 30, in: 150 })
+   * ```
    */
-  to(p: PointLike): Path {
-    return this.lineTo(p)
+  to(p: PointLike, options?: BezierRouteOptions): Path {
+    const end = point(p.x, p.y)
+    if (!options || !hasRouting(options)) return this.lineTo(end)
+    const [c1, c2] = bezierControlPoints(this._currentPoint, end, options)
+    return this.curveTo(c1, c2, end)
   }
 
   /**
@@ -280,48 +293,33 @@ export class Path {
   }
 
   /**
-   * Draw a smooth curve through a point (TikZ .. operator)
+   * Smooth curve from the current point THROUGH `p` to `end`: two cubic
+   * segments joined at `p` with a shared tangent (Catmull-Rom, the same
+   * spline {@link smoothPath} uses), so the curve actually passes
+   * through the point rather than bulging toward it.
    */
   through(p: PointLike, end: PointLike): Path {
-    // Create a smooth curve through the intermediate point
-    const mid = point(p.x, p.y)
-    const endPt = point(end.x, end.y)
-
-    // Calculate control points for a curve through the midpoint
-    const cp1 = this._currentPoint.toward(mid, 0.5).add(
-      (mid.x - this._currentPoint.x) * 0.2,
-      (mid.y - this._currentPoint.y) * 0.2
+    const p0 = this._currentPoint
+    const p1 = point(p.x, p.y)
+    const p2 = point(end.x, end.y)
+    // Catmull-Rom with the end points reflected as phantom neighbours,
+    // so the tangent at p1 is the chord p0→p2 and the ends are relaxed.
+    const t1 = point((p2.x - p0.x) / 6, (p2.y - p0.y) / 6)
+    const t0 = point((p1.x - p0.x) / 3, (p1.y - p0.y) / 3)
+    const t2 = point((p2.x - p1.x) / 3, (p2.y - p1.y) / 3)
+    return this.curveTo(p0.add(t0), p1.sub(t1), p1).curveTo(
+      p1.add(t1),
+      p2.sub(t2),
+      p2
     )
-    const cp2 = mid.toward(endPt, 0.5).add(
-      (mid.x - endPt.x) * 0.2,
-      (mid.y - endPt.y) * 0.2
-    )
-
-    return this.curveTo(cp1, cp2, endPt)
   }
 
   /**
-   * Draw a bent curve (TikZ bend left/right)
+   * Bent curve — TikZ `to[bend left=<angle>]`; a negative angle bends
+   * right. Sugar for `to(end, { bend: angle })`.
    */
   bendTo(end: PointLike, angle: number): Path {
-    const endPt = point(end.x, end.y)
-    const dist = this._currentPoint.distanceTo(endPt)
-    const baseAngle = this._currentPoint.angleTo(endPt)
-    const controlDist = dist * 0.4
-
-    const outAngle = baseAngle + angle
-    const inAngle = baseAngle + 180 - angle
-
-    const cp1 = point(
-      this._currentPoint.x + controlDist * Math.cos(degToRad(outAngle)),
-      this._currentPoint.y + controlDist * Math.sin(degToRad(outAngle))
-    )
-    const cp2 = point(
-      endPt.x + controlDist * Math.cos(degToRad(inAngle)),
-      endPt.y + controlDist * Math.sin(degToRad(inAngle))
-    )
-
-    return this.curveTo(cp1, cp2, endPt)
+    return this.to(end, { bend: angle })
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -741,6 +739,11 @@ export class Path {
   toString(): string {
     return `Path(${this._segments.length} segments)`
   }
+}
+
+/** Whether `to()` options ask for a curve (out/in/bend set). */
+function hasRouting(o: BezierRouteOptions): boolean {
+  return o.out !== undefined || o.in !== undefined || (o.bend ?? 0) !== 0
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
