@@ -1,7 +1,7 @@
 import { allShapes, layered, picture, point, rect } from 'jikz'
 
 export default function render(container: HTMLElement) {
-  const g = layered({ at: point(24, 30), grow: 'down', nodeSep: 26, rankSep: 40, clusterPadding: 14 })
+  const g = layered({ edgeOptions: { arrowEnd: 'stealth' }, at: point(24, 30), grow: 'down', nodeSep: 26, rankSep: 40, clusterPadding: 14 })
     .node('req', { shape: allShapes['rectangle'], text: 'request', minWidth: 74 })
     .node('auth', { shape: allShapes['rectangle'], text: 'auth', minWidth: 66 })
     .node('rate', { shape: allShapes['rectangle'], text: 'rate limit', minWidth: 66 })
@@ -31,18 +31,14 @@ export default function render(container: HTMLElement) {
         stroke: c.depth === 0 ? '#94a3b8' : '#c4b5fd',
         fill: c.depth === 0 ? '#f1f5f9' : '#faf5ff',
         dash: 'dashed',
-        borderRadius: 6,
+        roundedCorners: 6,
       },
     })
     // Caption inside its own box, not floating above it: nested
     // clusters sit only clusterPadding apart, so labels hung above the
     // border collided with the parent's.
     if (c.label) {
-      pic.text(point(x0 + 6, y0 + 9), c.label, {
-        fontSize: 10,
-        textAnchor: 'start',
-        style: { fill: c.depth === 0 ? '#64748b' : '#7c3aed' },
-      })
+      pic.text(point(x0 + 6, y0 + 9), c.label, { textAnchor: 'start', style: { fontSize: 10, fill: c.depth === 0 ? '#64748b' : '#7c3aed' } })
     }
   }
 

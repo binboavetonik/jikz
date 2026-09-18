@@ -1,9 +1,98 @@
 # Changelog
 
-## Unreleased
+## Unreleased — the 0.9 consolidation
+
+0.9 settles the vocabulary before 1.0 freezes it. It is one breaking
+release rather than several: every call takes one option bag, every
+label is the same `Label`, every piece of text is styled by the same
+`TextStyle`, style names are strings anywhere a style goes, and the
+root import is the core vocabulary only. The migration is mechanical;
+`scripts/codemod-0.9.ts` is the exact one the repository ran on its
+own examples, tests and docs, and the table below is what it does.
+
+### Upgrading to 0.9
+
+| 0.8 | 0.9 |
+|---|---|
+| `pic.node('A', { at, shape }, { style, textStyle, className })` | `pic.node('A', { at, shape, style, textStyle, className })` — one bag |
+| `pic.edge(a, b, { bendAngle }, { style })` | `pic.edge(a, b, { bendAngle, style })` |
+| `pic.edge(a, b)` drew a stealth arrow | draws a plain line, as `\draw (a) -- (b)`; write `arrowEnd: 'stealth'` (or `'->'`) for the arrow. Layout builders' edges too: pass `edgeOptions: { arrowEnd }` |
+| `label: 'x', labelPos: 0.3, labelOffset: -8` on an edge | `label: { text: 'x', pos: 0.3, offset: -8 }`; several: `labels: [...]` |
+| `labels: [{ text, at, options: { fontSize, style: { stroke } } }]` | `labels: [{ text, at, style: { fontSize, fill } }]` |
+| `pen.label('x', { options: { fontSize } })` | `pen.label('x', { style: { fontSize } })` |
+| `pic.text(p, 'x', { fontSize: 10, style: { stroke: c } })` | `pic.text(p, 'x', { style: { fontSize: 10, fill: c } })` |
+| `NodeLabel`, `DrawLabel` types | `Label`; `TextStyle` for `textStyle`/`label.style`/`text().style` |
+| `'fill-opacity'`, `'stroke-opacity'` keys | `fillOpacity`, `strokeOpacity` |
+| `borderRadius` (rectangles only) | `roundedCorners` (any path) |
+| `clip: { shape: 'circle', cx, cy, r }` | `clip: circle(point(cx, cy), r)` — any shape, path or node |
+| `import { thick, red } from '@ozan.e/jikz'` | `from '@ozan.e/jikz/styles'` |
+| `import { circuit, gates, chart, petri } from '@ozan.e/jikz'` | `from '@ozan.e/jikz/circuits'`, `/gates`, `/dataviz`, `/petri` |
+| unknown style name → `console.warn` and skip | throws `JikzError` (`code: 'unknown-name'`) listing what is known |
+| `applyPreset('nope')` → `{}` with a warning | throws |
+| `catch (e) { /* e.message */ }` | every jikz error is a `JikzError` with a `code`; `AnchorError` extends it |
+| `console.warn` from the library | `setWarningHandler(fn \| null)` to redirect or silence |
+
+### Breaking
+
+- **One option bag per call.** `pic.node(name, options)` and
+  `pic.edge(from, to, options)` take their render keys — `style`,
+  `textStyle`, `className`, `id`, `attributes`, `animate` — in the
+  same object as their geometry, as a TikZ statement takes one option
+  list. The third/fourth positional argument is gone.
+- **One `Label`, one `TextStyle`.** `NodeLabel` and `DrawLabel` are
+  now the single `Label` (`text`, `at`, `distance`, `frame`, `pos`,
+  `offset`, `style`), used by node `labels`, edge `label`/`labels`,
+  the draw verbs and the pen. A label's `options: TextOptions` is
+  `style: TextStyle` (`fill`, `fontSize`, `fontFamily`, `fontWeight`);
+  so is a node's `textStyle` and `pic.text()`'s `style`. Edges carry
+  `labels: Label[]` and `Edge.labelPoint(label)`; `labelPos` and
+  `labelOffset` are the label's `pos` and `offset`.
+- **Edges draw no arrow by default**, matching `\draw (A) -- (B)`.
+  `arrow()` still adds one; so does `arrowEnd: '->'`.
+- **Style keys have one spelling.** The `'fill-opacity'` and
+  `'stroke-opacity'` aliases are gone; `borderRadius*` is
+  `roundedCorners` and rounds any path, not just rectangles; `clip`
+  takes a shape instead of a descriptor.
+- **Unknown style names throw** instead of warning, with the known
+  names in the message — like unknown shapes and tips always did.
+- **The root import is the core vocabulary.** The extension modules
+  and the preset objects moved to their subpaths (`/circuits`,
+  `/gates`, `/dataviz`, `/petri`, `/styles`), so `red`, `double`,
+  `wire` and forty other short names no longer sit in the root
+  namespace.
 
 ### Added
 
+- **Style names anywhere a style goes.** `style: ['thick', 'dashed',
+  { stroke }]`, `style: 'brand'`, scope `style: 'hot'`,
+  `every: { edge: 'thick' }` — a string resolves against the
+  picture's own `styles`, then `registerStyle`, then the built-in
+  presets.
+- **Per-picture styles and arrow tips.** `picture({ styles: { brand:
+  {…}, soft: ['brand', 'dashed'] } })` is `\tikzset` scoped to one
+  picture; `picture({ arrowTips })` resolves tip names before the
+  global registry. Two libraries can no longer disagree about a name.
+- **`every` — kind-scoped defaults.** `picture({ every: { node, edge,
+  path, text } })` and `scope({ every })` are TikZ's `every node`,
+  `every edge`, `every path` and `every label`. Precedence, weakest
+  first: path-mode baseline → `every.<kind>` → scope `style` → the
+  item's own `style`. `every.text` reaches node text, labels and bare
+  text, and is folded in at insertion so placement measures the same
+  font that renders.
+- **Relative placement in the picture.** `pic.node('B', { rightOf:
+  'A', distance: 40 })` — and `leftOf`, `above`, `below`,
+  `aboveLeft`, `aboveRight`, `belowLeft`, `belowRight` — is TikZ's
+  `right=of A`: the reference may be a node or coordinate name, an
+  `Anchorable` or a point; `distance` is the border-to-border gap.
+- **`roundedCorners` on any path** (TikZ `rounded corners=<inset>`):
+  straight-segment corners become tangent arcs, capped at half the
+  shorter adjacent segment, via the new `roundCorners(path, inset)`.
+  Rectangles keep the native `rx`/`ry`.
+- **`JikzError`** with a stable `code` (`unknown-name`,
+  `duplicate-name`, `unknown-anchor`, `invalid-argument`,
+  `unsupported`, `no-pen-position`, `layout`, `render`) on every error
+  the library throws, and **`setWarningHandler`** for every warning
+  it emits.
 - **`pic.add()` — a layout result joins the picture.** `tree()`,
   `layered()`, `graph()`, `chain()` and `matrix()` return `{ nodes,
   edges }`, and until now the only ways to draw one were a renderer

@@ -116,7 +116,7 @@ describe('Node-side rendering: zero-dependency toSVG()', () => {
     const r = new SVGRenderer()
     r.renderRect(rect(0, 0, 100, 60), {
       style: {
-        clip: { shape: 'circle', cx: 50, cy: 30, r: 25 },
+        clip: circle(point(50, 30), 25),
       },
     })
     const svg = r.toSVG({ width: 100, height: 100 })

@@ -65,11 +65,11 @@ describe('StyleMapper', () => {
     })
 
     it('has rounded corner presets', () => {
-      expect(STYLE_PRESETS['rounded'].borderRadius).toBe(4)
-      expect(STYLE_PRESETS['rounded-sm'].borderRadius).toBe(2)
-      expect(STYLE_PRESETS['rounded-lg'].borderRadius).toBe(8)
-      expect(STYLE_PRESETS['rounded-xl'].borderRadius).toBe(12)
-      expect(STYLE_PRESETS['rounded-full'].borderRadius).toBe(9999)
+      expect(STYLE_PRESETS['rounded'].roundedCorners).toBe(4)
+      expect(STYLE_PRESETS['rounded-sm'].roundedCorners).toBe(2)
+      expect(STYLE_PRESETS['rounded-lg'].roundedCorners).toBe(8)
+      expect(STYLE_PRESETS['rounded-xl'].roundedCorners).toBe(12)
+      expect(STYLE_PRESETS['rounded-full'].roundedCorners).toBe(9999)
     })
 
     it('has double line preset', () => {
@@ -121,9 +121,8 @@ describe('StyleMapper', () => {
       expect(result.strokeWidth).toBe(0.8)
     })
 
-    it('returns empty object for unknown preset', () => {
-      const result = applyPreset('unknown' as any)
-      expect(result).toEqual({})
+    it('throws for an unknown preset', () => {
+      expect(() => applyPreset('unknown' as any)).toThrow(/unknown style preset "unknown"/)
     })
   })
 
@@ -150,10 +149,8 @@ describe('StyleMapper', () => {
       expect(result.strokeDasharray).toBe('3 3')
     })
 
-    it('handles unknown presets gracefully', () => {
-      const result = parseStyleString('thick, unknown, dashed')
-      expect(result.strokeWidth).toBe(0.8)
-      expect(result.strokeDasharray).toBe('3 3')
+    it('throws on an unknown name, naming it', () => {
+      expect(() => parseStyleString('thick, unknown, dashed')).toThrow(/unknown style "unknown"/)
     })
 
     it('parses shadow presets', () => {
@@ -163,14 +160,14 @@ describe('StyleMapper', () => {
 
     it('parses rounded presets', () => {
       const result = parseStyleString('rounded-lg')
-      expect(result.borderRadius).toBe(8)
+      expect(result.roundedCorners).toBe(8)
     })
 
     it('combines shadow with other presets', () => {
       const result = parseStyleString('fill blue, shadow, rounded')
       expect(result.fill).toBe('#3498db')
       expect(result.dropShadow).toBeDefined()
-      expect(result.borderRadius).toBe(4)
+      expect(result.roundedCorners).toBe(4)
     })
   })
 

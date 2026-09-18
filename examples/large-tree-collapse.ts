@@ -55,7 +55,7 @@ export default function render(container: HTMLElement) {
 
     const { nodes, edges, collapsed } = treeFromSpec(
       { content: rootData.label, children: rootData.children.map((c) => toSpec(c, 1)) },
-      { grow: 'right', levelDistance: 14, siblingDistance: 6 }
+      { grow: 'right', levelDistance: 14, siblingDistance: 6, edgeOptions: { arrowEnd: 'stealth' } }
     )
 
     const pic = picture({ shapes: allShapes })
@@ -69,16 +69,13 @@ export default function render(container: HTMLElement) {
         {
           at: n.center, shape: 'rectangle', width: n.width, height: n.height,
           text: n.text, innerSep: 0, minWidth: 0, minHeight: 0,
-        },
-        {
           style: isCollapsed
             ? { stroke: '#d97706', fill: '#fef3c7', strokeWidth: 1.5 }
-            : { stroke: '#2563eb', fill: '#dbeafe', strokeWidth: 1.5 },
-          attributes: {
+            : { stroke: '#2563eb', fill: '#dbeafe', strokeWidth: 1.5 }, attributes: {
             ...(isCollapsed ? { 'data-drill': n.name } : {}),
             ...(isRoot && rootData !== data ? { 'data-reset': '1' } : {}),
             cursor: isCollapsed || (isRoot && rootData !== data) ? 'pointer' : 'default',
-          },
+          }
         }
       )
     }

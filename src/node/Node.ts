@@ -1,3 +1,4 @@
+import { JikzError } from '../core/errors'
 import { Point, point } from '../core/Point'
 import { measureText, LINE_HEIGHT } from '../text/measureText'
 import {
@@ -13,11 +14,9 @@ import { degToRad } from '../utils/math'
 import { nodeRight, nodeLeft, nodeAbove, nodeBelow } from './Positioning'
 import type { PointLike } from '../core/types'
 import { parseAnchorSpec, isTextAnchor, type AnchorSpec, type Anchorable, type TextAnchor } from '../core/Anchor'
+import type { Label } from '../text/Label'
 import type { Shape, ShapeOptions } from '../geometry/Shape'
 import { Rotated } from '../geometry/Rotated'
-// Type-only import: Renderer imports Node as a type too, so a value
-// import would create a cycle. TextOptions is erased at compile time.
-import type { TextOptions } from '../render/Renderer'
 
 /**
  * Shape spec accepted by `node({ shape: … })`:
@@ -59,55 +58,7 @@ export function assertType<T extends true>(_phantom?: T): void {
 import { isShapeKind, type ShapeKind } from '../geometry/ShapeKind'
 import { basicShapes, defaultShape } from '../geometry/shapes/basic'
 
-/**
- * A TikZ-style node label: `label=<spec>:<text>`.
- *
- * The label is placed on the node's boundary at `at` (outer sep
- * included, matching TikZ where label distance is measured from the
- * outer border), then pushed outward by `distance` plus half the
- * label's own extent along the placement ray — so `distance` is a
- * border-to-border gap, not a center offset.
- *
- * Numeric angles follow the library's screen convention (0° = east,
- * 90° = south, 270° = north) — consistent with {@link Node.anchor},
- * but note this differs from TikZ where numeric 90° is north.
- */
-export interface NodeLabel {
-  /** Label text. '$...$' routes through KaTeX like `Picture.text`. */
-  text: string
-  /**
-   * Placement: compass anchor, alias ('ne'), or degrees.
-   * TikZ: `label=<angle>:...`. Default: 'north'.
-   *
-   * On rotated nodes the placement follows the node's local frame
-   * (labels rotate with the node, TikZ semantics): 'north' on a node
-   * rotated 90° places the label on the node's visual right. Text
-   * anchors ('base', 'mid', …) are rejected — they cannot position a
-   * label outside the border.
-   */
-  at?: AnchorSpec
-  /**
-   * Gap between the node's (outer-sep) boundary and the label, px.
-   * TikZ: `label distance=<d>`. Default: the node's `labelDistance`.
-   */
-  distance?: number
-  /**
-   * Per-label styling forwarded to the text renderer.
-   * TikZ: `label={[red, font=\tiny]...}`.
-   */
-  options?: TextOptions
-  /**
-   * Which frame `at` is interpreted in. `'local'` (default): the label
-   * rides the node's rotation — `'north'` on a node rotated 90° lands
-   * on its visual right (TikZ label semantics under `transform shape`).
-   * `'screen'`: `at` is a screen-absolute direction from the shape as
-   * drawn — `'north'` is always the visual top; named specs resolve to
-   * their screen angle, so the reference is the border point along that
-   * ray (matching numeric-anchor behavior). The label text itself
-   * stays upright in both frames (TikZ).
-   */
-  frame?: 'local' | 'screen'
-}
+export type { Label, TextStyle } from '../text/Label'
 
 /**
  * Label placement constants live in `text/placeText` (the placement
@@ -181,9 +132,9 @@ export interface NodeOptions<S extends ShapeSpec = ShapeSpec> {
   anchor?: AnchorSpec
   /**
    * TikZ-style labels: `label=<spec>:<text>` entries rendered as text
-   * placed outward from the node's boundary. See {@link NodeLabel}.
+   * placed outward from the node's boundary. See {@link Label}.
    */
-  labels?: NodeLabel[]
+  labels?: readonly Label[]
   /**
    * Node-wide default gap between boundary and labels, px.
    * TikZ: `label distance=<d>`. Default: {@link DEFAULT_LABEL_DISTANCE}.
@@ -220,7 +171,7 @@ export class Node implements Anchorable {
   readonly shape: Shape
   readonly innerSep: number
   readonly outerSep: number
-  readonly labels: readonly NodeLabel[]
+  readonly labels: readonly Label[]
   readonly labelDistance: number
   /** Rotation in degrees (clockwise on screen); 0 when unrotated. */
   readonly rotate: number
@@ -437,10 +388,10 @@ export class Node implements Anchorable {
    * position relative to the node's own text and are meaningless for
    * placing another text outside the border.
    */
-  labelPoint(label: NodeLabel): Point {
+  labelPoint(label: Label): Point {
     const spec = label.at ?? 'north'
     if (isTextAnchor(spec)) {
-      throw new Error(
+      throw new JikzError('invalid-argument', 
         `Node label: '${spec}' is a text anchor and cannot position a ` +
           `label — use a cardinal name, alias, or angle.`
       )
@@ -449,10 +400,10 @@ export class Node implements Anchorable {
     if (angle === null) return this.center
 
     const gap = label.distance ?? this.labelDistance
-    const fontSize = label.options?.fontSize ?? DEFAULT_LABEL_FONT_SIZE
+    const fontSize = label.style?.fontSize ?? DEFAULT_LABEL_FONT_SIZE
     const { width, height } = estimateLabelSize(label.text, {
       fontSize,
-      fontFamily: label.options?.fontFamily,
+      fontFamily: label.style?.fontFamily,
     })
 
     // Screen frame: the spec is a screen-absolute DIRECTION from the

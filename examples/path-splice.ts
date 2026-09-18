@@ -24,6 +24,6 @@ export default function render(container: HTMLElement) {
   // center vein
   pic.draw(path().moveTo(tip).lineTo(stem), { style: { stroke: '#16a34a', strokeWidth: 1 } })
 
-  pic.text(point(170, 200), 'two open curves → joinPaths(…, true) → one closed leaf', { fontSize: 10 })
+  pic.text(point(170, 200), 'two open curves → joinPaths(…, true) → one closed leaf', { style: { fontSize: 10 } })
   pic.mount(container, { fit: true, padding: 14 })
 }

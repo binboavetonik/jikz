@@ -52,15 +52,13 @@ export default function render(container: HTMLElement) {
   const pic = picture({ shapes: { ...allShapes, house } })
   const st = { stroke: '#b45309', fill: '#fef3c7', strokeWidth: 2 }
 
-  pic.node('H', { shape: 'house', at: point(100, 110), width: 70, height: 60, text: 'home' }, { style: st })
-  pic.node('G', { shape: 'circle', at: point(280, 130), width: 50, height: 50, text: 'G' },
-    { style: { stroke: '#334155', fill: '#f1f5f9', strokeWidth: 2 } })
+  pic.node('H', { shape: 'house', at: point(100, 110), width: 70, height: 60, text: 'home', style: st })
+  pic.node('G', { shape: 'circle', at: point(280, 130), width: 50, height: 50, text: 'G', style: { stroke: '#334155', fill: '#f1f5f9', strokeWidth: 2 } })
 
   // edges resolve custom-shape boundaries AND the custom 'apex' anchor
-  pic.edge('G', 'H', { arrowEnd: 'stealth' }, { style: { stroke: '#64748b', strokeWidth: 1.4 } })
-  pic.edge('G.north', 'H.apex', { arrowEnd: 'stealth', bendAngle: -20 },
-    { style: { stroke: '#dc2626', dash: 'dashed', strokeWidth: 1.4 } })
-  pic.text(point(210, 55), "'H.apex' — the custom anchor", { fontSize: 10, style: { stroke: '#dc2626' } })
+  pic.edge('G', 'H', { arrowEnd: 'stealth', style: { stroke: '#64748b', strokeWidth: 1.4 } })
+  pic.edge('G.north', 'H.apex', { arrowEnd: 'stealth', bendAngle: -20, style: { stroke: '#dc2626', dash: 'dashed', strokeWidth: 1.4 } })
+  pic.text(point(210, 55), "'H.apex' — the custom anchor", { style: { fontSize: 10, fill: '#dc2626' } })
 
   pic.mount(container, { fit: true, padding: 14 })
 }

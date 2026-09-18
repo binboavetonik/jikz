@@ -14,7 +14,7 @@ pic.draw(g, {
     stroke: '#2563eb',
     strokeWidth: 2,
     fill: '#dbeafe',
-    'fill-opacity': 0.3,
+    fillOpacity: 0.3,
   },
 })
 ```
@@ -28,11 +28,11 @@ TikZ's `[thick, red]` option list becomes a **typed array** — later
 entries win:
 
 ```ts
-import { thick } from 'jikz'
+import { thick } from 'jikz/styles'
 
 const edgeStyle = [thick, { stroke: '#111827' }]
 
-pic.edge('input', 'transform', { arrowEnd: 'stealth' }, { style: edgeStyle })
+pic.edge('input', 'transform', { arrowEnd: 'stealth', style: edgeStyle })
 ```
 
 ## The dash vocabulary
@@ -91,21 +91,24 @@ dependency, so SSR output includes them verbatim.
 
 ## Text styling
 
-Nodes and labels take a parallel `textStyle` (and labels take
-`options.fontSize` / `options.style`):
+A node's own text takes `textStyle`; a label, an edge label and
+`pic.text()` take `style`. All four are the same `TextStyle`
+(`fill`, `fontSize`, `fontFamily`, `fontWeight`), and `every.text`
+sets the default for all of them:
 
 ```ts
-pic.node('A', { ..., text: 'CLOSED' }, {
-  style: { stroke: '#334155', fill: '#f1f5f9' },
-  textStyle: { fontSize: 11, fontWeight: 'bold' },
-})
+pic.node('A', { ..., text: 'CLOSED', style: { stroke: '#334155', fill: '#f1f5f9' }, textStyle: { fontSize: 11, fontWeight: 'bold' } })
 ```
 
 ## What to notice
 
-- **Quoted keys are SVG attributes**: `'fill-opacity'` maps to
-  `fill-opacity`. Unquoted conveniences (`strokeWidth`) are the
-  camelCase friends.
+- **One spelling**: every key is camelCase (`fillOpacity`,
+  `strokeWidth`); jikz maps them to the SVG attributes.
+- **Names are styles too**: `style: ['thick', 'dashed']` resolves
+  against the picture's own `styles`, then `registerStyle`, then the
+  built-in presets — and throws on a name nothing knows.
+- **`every` is TikZ's `every node`**: `picture({ every: { node, edge,
+  path, text } })` sits under scope styles and above the mode baseline.
 - **User style wins over mode baseline** — `fill` on a `draw` verb is
   honored; you're overriding, not fighting defaults.
 - **Compose by array**: `[thick, myBrand, { dash: 'dashed' }]` reads

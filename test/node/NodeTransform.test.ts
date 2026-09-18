@@ -177,7 +177,7 @@ describe('labels on rotated nodes', () => {
   // x∈[80,120], y∈[60,140]. Label 'X' at font 12: Helvetica X = 667/1000
   // → 8.004 × 15 measured; default gap 4 → push = 4 + 8.004/2 = 8.002
   // along the push direction.
-  const mk = (label: import('../../src/node/Node').NodeLabel) =>
+  const mk = (label: import('../../src/node/Node').Label) =>
     rectNode({
       at: point(100, 100),
       width: 80,

@@ -1,4 +1,5 @@
-import { picture, line, point, axes } from 'jikz'
+import { picture, line, point } from 'jikz'
+import { axes } from 'jikz/dataviz'
 
 // A box plot computed from raw arrays: quartiles in code, boxes and
 // whiskers as pen statements. ext/dataviz owns the axis system — nice

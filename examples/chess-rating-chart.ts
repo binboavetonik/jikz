@@ -1,4 +1,5 @@
-import { picture, line, point, axes } from 'jikz'
+import { picture, line, point } from 'jikz'
+import { axes } from 'jikz/dataviz'
 
 // Chess-app card: your rapid rating over 12 months as a line chart
 // with a 1500 "goal" line. ext/dataviz owns the axes — nice y ticks
@@ -30,11 +31,7 @@ export default function render(container: HTMLElement) {
     line(point(frame.x(0), frame.y(1500)), point(frame.x(11), frame.y(1500))),
     { style: { stroke: '#dc2626', dash: 'dashed', strokeWidth: 1.2 } }
   )
-  pic.text(point(frame.x(11), frame.y(1500) - 7), '1500', {
-    fontSize: 9,
-    textAnchor: 'end',
-    style: { stroke: '#dc2626' },
-  })
+  pic.text(point(frame.x(11), frame.y(1500) - 7), '1500', { textAnchor: 'end', style: { fontSize: 9, fill: '#dc2626' } })
 
   // the series: one point per month, open-circle marks
   frame.line(
@@ -42,6 +39,6 @@ export default function render(container: HTMLElement) {
     { style: { stroke: '#2563eb', strokeWidth: 2 }, marks: { name: 'o', size: 6 } }
   )
 
-  pic.text(point(48, 18), 'rapid rating, 12 months', { fontSize: 10, textAnchor: 'start' })
+  pic.text(point(48, 18), 'rapid rating, 12 months', { textAnchor: 'start', style: { fontSize: 10 } })
   pic.mount(container, { width: 460, height: 230 })
 }

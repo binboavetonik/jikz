@@ -22,11 +22,11 @@ export default function render(container: HTMLElement) {
   pic.pen({ style: { stroke: '#2563eb', strokeWidth: 1.5 } })
     .moveTo(O.add(polar(-35, 46)))
     .circularArcTo(46, false, true, O.add(polar(0, 46)))
-    .label('$\\alpha$', { pos: 0.5, offset: 20, options: { fontSize: 12, style: { stroke: '#2563eb' } } })
+    .label('$\\alpha$', { pos: 0.5, offset: 20, style: { fontSize: 12, fill: '#2563eb' } })
   pic.pen({ style: { stroke: '#dc2626', strokeWidth: 1.5 } })
     .moveTo(O.add(polar(-80, 30)))
     .circularArcTo(30, false, true, O.add(polar(-35, 30)))
-    .label('$\\beta$', { pos: 0.5, offset: 20, options: { fontSize: 12, style: { stroke: '#dc2626' } } })
+    .label('$\\beta$', { pos: 0.5, offset: 20, style: { fontSize: 12, fill: '#dc2626' } })
 
   pic.mount(container, { width: 310, height: 200 })
 }

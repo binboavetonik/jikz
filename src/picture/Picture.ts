@@ -1,3 +1,4 @@
+import { JikzError } from '../core/errors'
 import { Point, point } from '../core/Point'
 import type { ShapeSet } from '../geometry/ShapeKind'
 import { Transform } from '../core/Transform'
@@ -5,7 +6,8 @@ import { estimateLabelSize } from '../text/placeText'
 import type { Node } from '../node/Node'
 import type { Edge } from '../node/Edge'
 import type { Renderable, RenderOptions, TextOptions } from '../render/Renderer'
-import type { RenderStyle } from '../render/StyleMapper'
+import type { RenderStyle, StyleSpec } from '../render/StyleMapper'
+import type { ArrowTipDefinition } from '../render/ArrowTip'
 import { SVGRenderer } from '../render/SVGRenderer'
 import type { MathRenderer } from '../render/MathRenderer'
 import type { ViewBoxSpec } from '../render/SVGBuilder'
@@ -20,10 +22,13 @@ import {
   composeTransform,
   mergePathModeIn,
   type ContainerRoot,
+  type EveryOptions,
   type GroupRenderOptions,
   type PictureItem,
+  type PictureTextOptions,
   type Scope,
 } from './Container'
+import { styleList } from '../render/StyleMapper'
 
 // Re-exported so `import { PathMode } from 'jikz'` keeps working after
 // the container/scope split.
@@ -38,8 +43,10 @@ export {
 export type {
   AddableItems,
   AddOptions,
-  DrawLabel,
   DrawOptions,
+  EveryOptions,
+  PictureEdgeOptions,
+  PlacementOptions,
   ShadeOptions,
   GroupRenderOptions,
   PathMode,
@@ -136,6 +143,38 @@ export interface PictureOptions<S extends ShapeSet = {}> {
    * {@link setDefaultMathRenderer}.
    */
   mathRenderer?: MathRenderer
+
+  /**
+   * Named styles local to this picture — TikZ `\tikzset` scoped to one
+   * `tikzpicture`. A name here resolves before the global registry
+   * ({@link registerStyle}) and the built-in presets, wherever a style
+   * is given: `style: 'brand'`, `style: ['brand', dashed]`,
+   * `every: { node: 'brand' }`. A recipe may name other styles.
+   *
+   * ```ts
+   * picture({ styles: { brand: { stroke: '#2563eb', strokeWidth: 2 }, soft: ['brand', 'dashed'] } })
+   * ```
+   */
+  styles?: Readonly<Record<string, StyleSpec>>
+
+  /**
+   * Arrow tips local to this picture, resolved before the global
+   * registry ({@link registerArrowTip}) — the same {@link ArrowTipDefinition}
+   * shape, keyed by the name `arrowEnd`/`arrowStart` will use.
+   */
+  arrowTips?: Readonly<Record<string, ArrowTipDefinition>>
+
+  /**
+   * Kind-scoped defaults for the whole picture — TikZ's `every node`,
+   * `every edge`, `every path`, `every label`:
+   *
+   * ```ts
+   * picture({ every: { node: { fill: '#f1f5f9' }, edge: { strokeWidth: 1.5 }, text: { fontSize: 12 } } })
+   * ```
+   *
+   * A scope may add its own; an item's own `style` wins over all of them.
+   */
+  every?: EveryOptions
 
   /**
    * Canvas-level transform applied to the entire scene at render time
@@ -253,6 +292,14 @@ export class Picture<S extends ShapeSet = {}>
     return EMPTY_STYLES
   }
 
+  private everyCache?: readonly EveryOptions[]
+  protected get inheritedEvery(): readonly EveryOptions[] {
+    if (!this.options.every) return EMPTY_EVERY
+    // Names inside `every` resolve against this picture's styles once.
+    this.everyCache ??= [this.resolveEvery(this.options.every)]
+    return this.everyCache
+  }
+
   // ── ContainerRoot (name registries) ─────────────────────────────────────
 
   registerNode(name: string, node: Node, transform: Transform | undefined): void {
@@ -280,6 +327,38 @@ export class Picture<S extends ShapeSet = {}>
     return names.length === 0 ? '<none>' : names.map((n) => `"${n}"`).join(', ')
   }
 
+  /** Resolve every name inside an `every` block against this picture's styles. */
+  resolveEvery(every: EveryOptions): EveryOptions {
+    const out: EveryOptions = {}
+    if (every.node !== undefined) out.node = this.resolveStyles(every.node)
+    if (every.edge !== undefined) out.edge = this.resolveStyles(every.edge)
+    if (every.path !== undefined) out.path = this.resolveStyles(every.path)
+    if (every.text !== undefined) out.text = every.text
+    return out
+  }
+
+  /**
+   * Flatten a style spec, resolving names against this picture's own
+   * `styles` first, then the registry and the built-in presets. A local
+   * recipe may itself name other styles (local or global).
+   */
+  resolveStyles(spec: StyleSpec | undefined): Partial<RenderStyle>[] {
+    const local = this.options.styles
+    if (!local) return styleList(spec)
+    const lookup = (name: string, depth = 0): Partial<RenderStyle> | undefined => {
+      const recipe = local[name]
+      if (recipe === undefined) return undefined
+      if (depth > 32) {
+        throw new JikzError('invalid-argument', `Picture: style "${name}" refers to itself.`)
+      }
+      return Object.assign(
+        {},
+        ...styleList(recipe, (inner) => lookup(inner, depth + 1))
+      ) as Partial<RenderStyle>
+    }
+    return styleList(spec, (name) => lookup(name))
+  }
+
   /**
    * The canvas transform for the SVG backend, or undefined when the
    * scene renders untransformed.
@@ -299,9 +378,12 @@ export class Picture<S extends ShapeSet = {}>
    * conveniences that call `renderWith(new SVGRenderer())`.
    */
   renderWith(renderer: PictureRenderer): this {
-    for (const item of this.itemList) {
-      renderItem(renderer, item, EMPTY_STYLES)
+    const cascade: Cascade = {
+      styles: EMPTY_STYLES,
+      every: this.inheritedEvery,
+      resolve: (spec) => this.resolveStyles(spec),
     }
+    for (const item of this.itemList) renderItem(renderer, item, cascade)
     return this
   }
 
@@ -334,13 +416,13 @@ export class Picture<S extends ShapeSet = {}>
     if (!viewBox) return undefined
     if (!viewBox.fit) {
       if (viewBox.width === undefined || viewBox.height === undefined) {
-        throw new Error('Picture.toSVG/mount: pass { width, height } or { fit: true }.')
+        throw new JikzError('invalid-argument', 'Picture.toSVG/mount: pass { width, height } or { fit: true }.')
       }
       return { width: viewBox.width, height: viewBox.height }
     }
     const bounds = this.contentBounds()
     if (!bounds) {
-      throw new Error('Picture: { fit: true } requires at least one item.')
+      throw new JikzError('invalid-argument', 'Picture: { fit: true } requires at least one item.')
     }
     const pad = viewBox.padding ?? 4
     let [minX, minY, maxX, maxY] = bounds
@@ -368,6 +450,7 @@ export class Picture<S extends ShapeSet = {}>
     const renderer = new SVGRenderer(undefined, undefined, {
       transform: this.canvasTransform(),
       mathRenderer: viewBox?.mathRenderer ?? this.mathRenderer,
+      arrowTips: this.options.arrowTips,
     })
     this.renderWith(renderer)
     return renderer.toSVG(this.resolveViewBox(viewBox) as { width: number; height: number })
@@ -390,13 +473,14 @@ export class Picture<S extends ShapeSet = {}>
       transform: this.canvasTransform(),
       viewportGroup: !!panZoom,
       mathRenderer: viewBox?.mathRenderer ?? this.mathRenderer,
+      arrowTips: this.options.arrowTips,
     })
     this.renderWith(renderer)
     const spec = this.resolveViewBox(viewBox)
     const svg = renderer.builder.mount(container, spec)
     if (!panZoom) return svg
     if (!spec) {
-      throw new Error(
+      throw new JikzError('invalid-argument', 
         'Picture.mount: panZoom requires a viewBox — pass { fit: true } or { width, height }.'
       )
     }
@@ -435,8 +519,37 @@ export class Picture<S extends ShapeSet = {}>
   }
 }
 
-/** Shared empty chain, so the common case allocates nothing. */
+/** Shared empty chains, so the common case allocates nothing. */
 const EMPTY_STYLES: readonly Partial<RenderStyle>[] = []
+const EMPTY_EVERY: readonly EveryOptions[] = []
+
+/**
+ * What cascades onto an item: the scope style chain and the `every`
+ * chain, outermost first, plus the picture's name resolver — an item's
+ * own `style` may name picture-local styles, which only the root knows.
+ */
+interface Cascade {
+  styles: readonly Partial<RenderStyle>[]
+  every: readonly EveryOptions[]
+  resolve: (spec: StyleSpec | undefined) => Partial<RenderStyle>[]
+}
+
+/** The `every` entries for one kind, flattened outermost first. */
+function everyStyles(
+  every: readonly EveryOptions[],
+  kind: 'node' | 'edge' | 'path'
+): Partial<RenderStyle>[] {
+  const out: Partial<RenderStyle>[] = []
+  for (const e of every) out.push(...styleList(e[kind]))
+  return out
+}
+
+/** `every.text` merged outermost first, under the item's own style. */
+function everyText(every: readonly EveryOptions[]): PictureTextOptions['style'] {
+  let merged: PictureTextOptions['style']
+  for (const e of every) if (e.text) merged = { ...merged, ...e.text }
+  return merged
+}
 
 /** Map an axis-aligned box through a transform, returning its new AABB. */
 function mapBox(
@@ -459,50 +572,82 @@ function mapBox(
 }
 
 /**
- * Dispatch one item, carrying the enclosing scope style chain.
- * Scopes recurse; a scope needing a real group opens one first.
+ * Dispatch one item, carrying the enclosing cascade. Precedence for a
+ * node or edge, weakest first: `every.<kind>` (outermost first) → scope
+ * `style` chain → the item's own style. Bare shapes get the path-mode
+ * baseline under all of that (see {@link mergePathModeIn}). Scopes
+ * recurse; a scope needing a real group opens one first.
  */
 function renderItem(
   renderer: PictureRenderer,
   item: PictureItem,
-  styles: readonly Partial<RenderStyle>[]
+  cascade: Cascade
 ): void {
   if (item.kind === 'node') {
-    renderer.renderNode(item.node, withStyles(item.options, styles))
+    renderer.renderNode(
+      item.node,
+      withStyles(item.options, [...everyStyles(cascade.every, 'node'), ...cascade.styles], cascade)
+    )
   } else if (item.kind === 'edge') {
-    renderer.renderEdge(item.edge, withStyles(item.options, styles))
+    renderer.renderEdge(
+      item.edge,
+      withStyles(item.options, [...everyStyles(cascade.every, 'edge'), ...cascade.styles], cascade)
+    )
   } else if (item.kind === 'bare') {
-    renderer.render(item.obj, mergePathModeIn(item.mode, item.options, styles))
+    renderer.render(
+      item.obj,
+      mergePathModeIn(item.mode, resolveOwn(item.options, cascade), [
+        ...everyStyles(cascade.every, 'path'),
+        ...cascade.styles,
+      ])
+    )
   } else if (item.kind === 'pen') {
     // A pen statement expands to its path + labels, in place.
-    for (const sub of item.pen.items()) renderItem(renderer, sub, styles)
+    for (const sub of item.pen.items()) renderItem(renderer, sub, cascade)
   } else if (item.kind === 'scope') {
-    renderScope(renderer, item.scope)
+    renderScope(renderer, item.scope, cascade)
   } else {
     // Picture.text is TikZ's `\node at (x,y) {text}` — centered on the
     // point unless placed directionally (options.at/distance) or the
     // caller overrides alignment. Placement is computed here so every
-    // backend gets it for free. Scope styles deliberately do NOT cascade
-    // onto text: a scope setting `fill` for its shapes would otherwise
-    // recolor every label inside it.
-    const { at: _place, distance: _dist, ...styleOpts } = item.options ?? {}
-    const textOpts: TextOptions = {
-      textAnchor: 'middle',
-      dominantBaseline: 'middle',
-      ...styleOpts,
-    }
-    renderer.renderText(item.text, textCenter(item), textOpts)
+    // backend gets it for free. Scope `style` deliberately does NOT
+    // cascade onto text: a scope setting `fill` for its shapes would
+    // otherwise recolor every label inside it. `every.text` does.
+    renderer.renderText(item.text, textCenter(item), toTextOptions(item.options, cascade.every))
   }
+}
+
+/**
+ * The backend {@link TextOptions} for a text item: the one
+ * {@link TextStyle} unpacked into the renderer's font keys, with
+ * `every.text` underneath it.
+ */
+function toTextOptions(
+  options: PictureTextOptions | undefined,
+  every: readonly EveryOptions[]
+): TextOptions {
+  const { at: _at, distance: _distance, style: own, ...rest } = options ?? {}
+  const style = { ...everyText(every), ...own }
+  const out: TextOptions = {
+    textAnchor: 'middle',
+    dominantBaseline: 'middle',
+    ...rest,
+  }
+  if (style.fontSize !== undefined) out.fontSize = style.fontSize
+  if (style.fontFamily !== undefined) out.fontFamily = style.fontFamily
+  if (style.fontWeight !== undefined) out.fontWeight = style.fontWeight
+  if (style.fill !== undefined) out.style = { fill: style.fill }
+  return out
 }
 
 // Renders a scope over any shape set; Scope<S> is invariant in S, and
 // rendering never resolves a shape name.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function renderScope(renderer: PictureRenderer, scope: Scope<any>): void {
+function renderScope(renderer: PictureRenderer, scope: Scope<any>, parent: Cascade): void {
   const grouped = scope.needsGroup
   if (grouped) {
     if (!renderer.beginGroup || !renderer.endGroup) {
-      throw new Error(
+      throw new JikzError('unsupported', 
         'Picture: this renderer cannot group, but a scope asks for ' +
           'transform/clip/opacity/class/id. Implement beginGroup/endGroup ' +
           'on the PictureRenderer, or restrict the scope to `style` (which ' +
@@ -511,19 +656,45 @@ function renderScope(renderer: PictureRenderer, scope: Scope<any>): void {
     }
     renderer.beginGroup(scope.groupOptions)
   }
-  for (const sub of scope.items) renderItem(renderer, sub, scope.styleChain)
+  const cascade: Cascade = {
+    styles: scope.styleChain,
+    every: scope.everyChain,
+    resolve: parent.resolve,
+  }
+  for (const sub of scope.items) renderItem(renderer, sub, cascade)
   if (grouped) renderer.endGroup!()
 }
 
-/** Splice the scope chain under an item's own style. */
+/**
+ * Splice the scope chain under an item's own style, and `every.text`
+ * under its `textStyle`.
+ */
 function withStyles(
   options: RenderOptions | undefined,
-  styles: readonly Partial<RenderStyle>[]
+  styles: readonly Partial<RenderStyle>[],
+  cascade: Cascade
 ): RenderOptions | undefined {
-  if (styles.length === 0) return options
-  const own = options?.style
-  const ownList = own ? (Array.isArray(own) ? own : [own as Partial<RenderStyle>]) : []
-  return { ...options, style: [...styles, ...ownList] }
+  const text = everyText(cascade.every)
+  const resolved = resolveOwn(options, cascade)
+  if (styles.length === 0 && !text) return resolved
+  const ownList = resolved?.style ? (resolved.style as Partial<RenderStyle>[]) : []
+  const out: RenderOptions = { ...resolved }
+  if (styles.length > 0) out.style = [...styles, ...ownList]
+  if (text) out.textStyle = { ...text, ...options?.textStyle }
+  return out
+}
+
+/**
+ * An item's own options with any style NAMES resolved to objects
+ * (picture-local first), so backends and `mergeStyles` only ever see
+ * objects and a local name never leaks to the global registry.
+ */
+function resolveOwn(
+  options: RenderOptions | undefined,
+  cascade: Cascade
+): RenderOptions | undefined {
+  if (options?.style === undefined) return options
+  return { ...options, style: cascade.resolve(options.style) }
 }
 
 /** Resolved render point for a text item (placement-aware). */
@@ -533,8 +704,8 @@ function textCenter(item: Extract<PictureItem, { kind: 'text' }>): Point {
   return placeText(item.at, item.text, {
     at: o.at,
     distance: o.distance,
-    fontSize: o.fontSize,
-    fontFamily: o.fontFamily,
+    fontSize: o.style?.fontSize,
+    fontFamily: o.style?.fontFamily,
   })
 }
 
@@ -570,7 +741,7 @@ function growBounds(
           (item.obj as { type?: string }).type ??
           item.obj.constructor?.name ??
           'object'
-        throw new Error(
+        throw new JikzError('unsupported', 
           `Picture: cannot auto-fit the viewBox — a drawn ${kind} has no ` +
             `\`bounds\`. Give the shape a bounds getter, or mount with an ` +
             `explicit { width, height } instead of { fit: true }.`
@@ -587,8 +758,8 @@ function growBounds(
   } else {
     const center = textCenter(item)
     const { width, height } = estimateLabelSize(item.text, {
-      fontSize: item.options?.fontSize,
-      fontFamily: item.options?.fontFamily,
+      fontSize: item.options?.style?.fontSize,
+      fontFamily: item.options?.style?.fontFamily,
     })
     add([
       center.x - width / 2,

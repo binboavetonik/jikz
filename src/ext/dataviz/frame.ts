@@ -389,11 +389,13 @@ export function axes<S extends ShapeSet>(
     pic.edge(point(x0, yBase), point(xEnd, yBase), {
       arrowStart: 'none',
       arrowEnd: 'to',
-    }, { style: axisPaint })
+      style: axisPaint,
+    })
     pic.edge(point(x0, yBase), point(x0, yTop), {
       arrowStart: 'none',
       arrowEnd: 'to',
-    }, { style: axisPaint })
+      style: axisPaint,
+    })
   } else {
     pic.draw(line(point(x0, yBase), point(xEnd, yBase)), { style: axisPaint })
     pic.draw(line(point(x0, yBase), point(x0, yTop)), { style: axisPaint })
@@ -405,7 +407,7 @@ export function axes<S extends ShapeSet>(
     pic.draw(line(point(px, yBase), point(px, yBase + tickSize)), { style: tickPaint })
     if (xo.tickLabels !== false) {
       pic.text(point(px, yBase + tickSize + fontSize * 0.9), fmtX(t), {
-        fontSize,
+        style: { fontSize },
         textAnchor: 'middle',
       })
     }
@@ -415,7 +417,7 @@ export function axes<S extends ShapeSet>(
     pic.draw(line(point(x0 - tickSize, py), point(x0, py)), { style: tickPaint })
     if (yo.tickLabels !== false) {
       pic.text(point(x0 - tickSize - 4, py), fmtY(t), {
-        fontSize,
+        style: { fontSize },
         textAnchor: 'end',
         dominantBaseline: 'middle',
       })
@@ -425,7 +427,7 @@ export function axes<S extends ShapeSet>(
   // ── Axis labels ────────────────────────────────────────────────────
   if (xo.label) {
     pic.text(point((x0 + xEnd) / 2, yBase + tickSize + fontSize + 14), xo.label, {
-      fontSize: labelFontSize,
+      style: { fontSize: labelFontSize },
       textAnchor: 'middle',
     })
   }
@@ -434,7 +436,7 @@ export function axes<S extends ShapeSet>(
     // over the tick-label column, and one tick-label height of
     // clearance is what keeps it off the topmost tick.
     pic.text(point(x0, yTop - fontSize - labelFontSize), yo.label, {
-      fontSize: labelFontSize,
+      style: { fontSize: labelFontSize },
       textAnchor: 'start',
     })
   }

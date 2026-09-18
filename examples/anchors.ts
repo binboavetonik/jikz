@@ -7,8 +7,7 @@ import { allShapes, picture, point } from 'jikz'
 
 export default function render(container: HTMLElement) {
   const pic = picture({ shapes: allShapes })
-  pic.node('N', { at: point(150, 85), shape: 'rectangle', width: 140, height: 90, text: 'N' },
-    { style: { stroke: '#334155', fill: '#f1f5f9', strokeWidth: 2 } })
+  pic.node('N', { at: point(150, 85), shape: 'rectangle', width: 140, height: 90, text: 'N', style: { stroke: '#334155', fill: '#f1f5f9', strokeWidth: 2 } })
 
   const n = pic.getNode('N')!
   // The eight compass names, plus one bare angle — numeric specs are
@@ -18,7 +17,7 @@ export default function render(container: HTMLElement) {
     const p = n.anchor(spec)
     pic.draw(p, {
       style: { stroke: '#dc2626', strokeWidth: 2 },
-      label: { text: String(spec), at: n.center.angleTo(p), options: { fontSize: 9 } },
+      label: { text: String(spec), at: n.center.angleTo(p), style: { fontSize: 9 } },
     })
   }
 

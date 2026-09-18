@@ -10,12 +10,11 @@ export default function render(container: HTMLElement) {
     const cx = margin + (i % cols) * cellW + cellW / 2
     const cy = margin + Math.floor(i / cols) * cellH + 32
 
-    pic.node(`cell${i}`, { at: point(cx, cy), shape, width: 62, height: 44 },
-      { style: { stroke: '#334155', fill: '#e0e7ff', strokeWidth: 1.5 } })
+    pic.node(`cell${i}`, { at: point(cx, cy), shape, width: 62, height: 44, style: { stroke: '#334155', fill: '#e0e7ff', strokeWidth: 1.5 } })
 
     // Label just below the shape's ACTUAL bounds (pointers/heads included)
     const bottom = pic.getNode(`cell${i}`)!.bounds[3]
-    pic.text(point(cx, bottom + 14), shape, { fontSize: 10, style: { stroke: '#475569' } })
+    pic.text(point(cx, bottom + 14), shape, { style: { fontSize: 10, fill: '#475569' } })
   })
 
   pic.mount(container, {

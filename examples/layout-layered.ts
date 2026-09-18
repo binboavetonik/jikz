@@ -4,6 +4,7 @@ export default function render(container: HTMLElement) {
   // Layered (Sugiyama) layout for DAGs: unlike tree(), a node may have
   // several parents. Ranks align into columns; `api` below has two.
   const { nodes, edges } = layered({
+    edgeOptions: { arrowEnd: 'stealth' },
     at: point(24, 24),
     grow: 'down',
     rankSep: 40,

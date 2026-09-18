@@ -4,6 +4,7 @@
  * Point-based placement lives in `./placeText`; this module adds
  * anchors (shapes) and path parameters (lines/arcs/paths).
  */
+import { JikzError } from '../core/errors'
 import { Point, point } from '../core/Point'
 import {
   isTextAnchor,
@@ -15,31 +16,12 @@ import { degToRad } from '../utils/math'
 import { Rotated } from '../geometry/Rotated'
 import { Circle } from '../geometry/Circle'
 import type { Renderable } from '../render/Renderer'
-import type { NodeLabel } from '../node/Node'
+import type { Label } from './Label'
 import {
   DEFAULT_LABEL_DISTANCE,
   DEFAULT_LABEL_FONT_SIZE,
   estimateLabelSize,
 } from './placeText'
-
-/**
- * Label spec for the draw verbs and the pen: the shared
- * {@link NodeLabel} vocabulary (anchor placement via
- * `at`/`distance`/`frame`) plus PATH-RELATIVE placement —
- * `{ pos: 0.5, offset: 8 }` is TikZ's `node[midway, above]`: the label
- * sits on the shape at parameter `pos` ∈ [0,1], pushed `offset` px to
- * the LEFT of the travel direction (matching Edge's
- * labelPos/labelOffset; negative flips sides, and arcs travel in their
- * sweep direction). Requires a t-parameterized renderable (Line, Arc,
- * Path); Circle's pointAt is angle-based — use `{ at: <angle> }`
- * there instead.
- */
-export type DrawLabel = NodeLabel & {
-  /** Path parameter t ∈ [0,1] — TikZ `pos=`. When set, `at`/`distance`/`frame` are ignored. */
-  pos?: number
-  /** Perpendicular offset, px left of travel (TikZ `auto=left`). Default: 5 (Edge's labelOffset default). */
-  offset?: number
-}
 
 /**
  * Anchorable view of a renderable: native anchors when the object has
@@ -81,16 +63,16 @@ export function asAnchorable(obj: Renderable, pointRadius = 0): Anchorable {
  * convention). Tangent comes from `tangentAt` when the shape provides
  * it (Line), else a numeric derivative over `pointAt` (Arc, Path).
  */
-export function pathLabelPoint(obj: Renderable, label: DrawLabel): Point {
+export function pathLabelPoint(obj: Renderable, label: Label): Point {
   if (obj instanceof Circle) {
-    throw new Error(
+    throw new JikzError('invalid-argument', 
       `draw label: 'pos' needs a t-parameterized path, but Circle.pointAt ` +
         `is angle-based — place with { at: <angle> } instead.`
     )
   }
   const pointAt = (obj as { pointAt?: (t: number) => Point }).pointAt
   if (typeof pointAt !== 'function') {
-    throw new Error(
+    throw new JikzError('invalid-argument', 
       `draw label: 'pos' requires a path-like renderable with pointAt ` +
         `(Line, Arc, Path) — got ${(obj as { kind?: string }).kind ?? 'unknown'}.`
     )
@@ -127,13 +109,13 @@ export function pathLabelPoint(obj: Renderable, label: DrawLabel): Point {
  */
 export function shapeLabelPoint(
   obj: Renderable,
-  label: DrawLabel,
+  label: Label,
   pointRadius = 0
 ): Point {
   if (label.pos !== undefined) return pathLabelPoint(obj, label)
   const spec = label.at ?? 'north'
   if (isTextAnchor(spec)) {
-    throw new Error(
+    throw new JikzError('invalid-argument', 
       `draw label: '${spec}' is a text anchor and cannot position a ` +
         `label — use a cardinal name, alias, angle, or 'center'.`
     )
@@ -142,10 +124,10 @@ export function shapeLabelPoint(
   const anchorable = asAnchorable(obj, pointRadius)
   if (angle === null) return anchorable.anchor('center')
 
-  const fontSize = label.options?.fontSize ?? DEFAULT_LABEL_FONT_SIZE
+  const fontSize = label.style?.fontSize ?? DEFAULT_LABEL_FONT_SIZE
   const { width, height } = estimateLabelSize(label.text, {
     fontSize,
-    fontFamily: label.options?.fontFamily,
+    fontFamily: label.style?.fontFamily,
   })
   const gap = label.distance ?? DEFAULT_LABEL_DISTANCE
 

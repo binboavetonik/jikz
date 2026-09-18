@@ -78,12 +78,15 @@ Arrowheads always inherit the edge's stroke color. Full gallery:
 ```ts
 pic.edge('input', 'transform', { arrowEnd: 'stealth', label: 'map' })
 // placement control:
-pic.edge('H', 'HH', { label: '1/2', labelPos: 0.62 })   // TikZ node[pos=0.62]
+pic.edge('H', 'HH', { label: { text: '1/2', pos: 0.62 }, })   // TikZ node[pos=0.62]
 ```
 
-`labelPos` rides the path by arc length (0.5 = midway, TikZ
-`node[midway]`); `labelOffset` pushes perpendicular. `$...$` math
-works here too: `{ label: '$\\Rightarrow$' }`.
+A label is the same `Label` type nodes and draw verbs use: `pos`
+rides the path by arc length (0.5 = midway, TikZ `node[midway]`),
+`offset` pushes perpendicular (left of travel; negative flips, TikZ
+`swap`), `style` sets its font and colour. `labels: [...]` puts
+several on one edge. `$...$` math works here too:
+`{ label: '$\\Rightarrow$' }`.
 
 ## A real diagram
 

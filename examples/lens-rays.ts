@@ -17,14 +17,14 @@ export default function render(container: HTMLElement) {
   for (const fx of [LENS_X - F, LENS_X + F]) {
     pic.draw(point(fx, AXIS), {
       style: { stroke: '#334155', strokeWidth: 2.5 },
-      label: { text: 'F', at: 'south', options: { fontSize: 10 } },
+      label: { text: 'F', at: 'south', style: { fontSize: 10 } },
     })
   }
 
   // object arrow
   const obj = point(OBJ_X, AXIS - OBJ_H)
-  pic.edge(point(OBJ_X, AXIS), obj, { arrowEnd: 'stealth' }, { style: { stroke: '#334155', strokeWidth: 2 } })
-  pic.text(obj, 'object', { at: 'north', distance: 6, fontSize: 10 })
+  pic.edge(point(OBJ_X, AXIS), obj, { arrowEnd: 'stealth', style: { stroke: '#334155', strokeWidth: 2 } })
+  pic.text(obj, 'object', { at: 'north', distance: 6, style: { fontSize: 10 } })
 
   // principal rays from the object tip
   // 1: parallel to axis, then refract through far focus
@@ -41,9 +41,8 @@ export default function render(container: HTMLElement) {
 
   // the image tip is where the refracted rays actually cross
   const imgTip = intersectLineLine(line(r1knee, r1end), line(obj, r2end)).points[0]!
-  pic.edge(point(imgTip.x, AXIS), imgTip, { arrowEnd: 'stealth' },
-    { style: { stroke: '#7c3aed', strokeWidth: 2 } })
-  pic.text(imgTip, 'image', { at: 'south', distance: 6, fontSize: 10, style: { stroke: '#7c3aed' } })
+  pic.edge(point(imgTip.x, AXIS), imgTip, { arrowEnd: 'stealth', style: { stroke: '#7c3aed', strokeWidth: 2 } })
+  pic.text(imgTip, 'image', { at: 'south', distance: 6, style: { fontSize: 10, fill: '#7c3aed' } })
 
   pic.mount(container, { fit: true, padding: 14 })
 }

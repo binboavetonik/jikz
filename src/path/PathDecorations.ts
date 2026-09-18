@@ -1,3 +1,4 @@
+import { JikzError } from '../core/errors'
 import { Point, point } from '../core/Point'
 import { degToRad } from '../utils/math'
 import { Path, path } from './Path'
@@ -568,7 +569,7 @@ export function decoratePath(
   const fn = decorationRegistry.get(type)
   if (!fn) {
     const known = registeredDecorations().map((n) => `"${n}"`).join(', ')
-    throw new Error(`Unknown decoration: "${type}" (known: ${known}).`)
+    throw new JikzError('unknown-name', `Unknown decoration: "${type}" (known: ${known}).`)
   }
   return fn(p, options)
 }

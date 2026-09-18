@@ -1,4 +1,5 @@
-import { picture, point, axes, legend } from 'jikz'
+import { picture, point } from 'jikz'
+import { axes, legend } from 'jikz/dataviz'
 
 // The chart-library staple, now on ext/dataviz: axes() owns the y
 // gridlines and nice ticks, the x ticks are categorical (format maps

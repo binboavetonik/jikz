@@ -26,16 +26,16 @@ export default function render(container: HTMLElement) {
       pic.filldraw(rect(x, y, SQ, SQ), {
         style: {
           stroke: '#e2e8f0', strokeWidth: 0.5,
-          fill: '#dc2626', 'fill-opacity': miss * 0.9,
+          fill: '#dc2626', fillOpacity: miss * 0.9,
         },
       })
     })
-    pic.text(point(M - 10, M + r * SQ + SQ / 2), String(8 - r), { fontSize: 9, textAnchor: 'end', style: { stroke: '#64748b' } })
+    pic.text(point(M - 10, M + r * SQ + SQ / 2), String(8 - r), { textAnchor: 'end', style: { fontSize: 9, fill: '#64748b' } })
   })
   'abcdefgh'.split('').forEach((f, i) => {
-    pic.text(point(M + i * SQ + SQ / 2, M + 8 * SQ + 13), f, { fontSize: 9, style: { stroke: '#64748b' } })
+    pic.text(point(M + i * SQ + SQ / 2, M + 8 * SQ + 13), f, { style: { fontSize: 9, fill: '#64748b' } })
   })
 
-  pic.text(point(M, M - 12), 'puzzle misses by square', { fontSize: 10, textAnchor: 'start' })
+  pic.text(point(M, M - 12), 'puzzle misses by square', { textAnchor: 'start', style: { fontSize: 10 } })
   pic.mount(container, { fit: true, padding: 10 })
 }

@@ -17,13 +17,12 @@ export default function render(container: HTMLElement) {
 
   const pic = picture({ shapes: allShapes })
   for (const n of t.nodes) {
-    pic.node(n.text, { at: n.center, shape: 'circle', minWidth: 36, minHeight: 36, text: n.text },
-      { style: { stroke: '#334155', fill: '#f1f5f9', strokeWidth: 1.5 }, textStyle: { fontSize: 11 } })
+    pic.node(n.text, { at: n.center, shape: 'circle', minWidth: 36, minHeight: 36, text: n.text, style: { stroke: '#334155', fill: '#f1f5f9', strokeWidth: 1.5 }, textStyle: { fontSize: 11 } })
   }
 
   const branches: [from: string, to: string][] = [['start', 'H'], ['start', 'T'], ['H', 'HH'], ['H', 'HT'], ['T', 'TH'], ['T', 'TT']]
   for (const [a, b] of branches)
-    pic.edge(a, b, { label: '1/2', labelPos: 0.62 }, { style: { stroke: '#64748b', strokeWidth: 1.2 } })
+    pic.edge(a, b, { arrowEnd: 'stealth', label: { text: '1/2', pos: 0.62 }, style: { stroke: '#64748b', strokeWidth: 1.2 } })
 
   pic.mount(container, { width: 340, height: 240 })
 }

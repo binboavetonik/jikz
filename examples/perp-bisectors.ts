@@ -26,7 +26,7 @@ export default function render(container: HTMLElement) {
   pic.draw(circle(O, O.distanceTo(A)), { style: { stroke: '#dc2626', strokeWidth: 1.5 } })
   pic.draw(O, {
     style: { stroke: '#dc2626', strokeWidth: 3 },
-    label: { text: 'O', at: 'south east', options: { fontSize: 11, style: { stroke: '#dc2626' } } },
+    label: { text: 'O', at: 'south east', style: { fontSize: 11, fill: '#dc2626' } },
   })
 
   // Vertex names point away from the centroid — one direction per
@@ -35,7 +35,7 @@ export default function render(container: HTMLElement) {
   for (const { v, name } of [{ v: A, name: 'A' }, { v: B, name: 'B' }, { v: C, name: 'C' }]) {
     pic.draw(v, {
       style: { stroke: '#111827', strokeWidth: 2.5 },
-      label: { text: name, at: G.angleTo(v), options: { fontSize: 11 } },
+      label: { text: name, at: G.angleTo(v), style: { fontSize: 11 } },
     })
   }
 

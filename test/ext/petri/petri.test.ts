@@ -260,12 +260,7 @@ describe('tokens', () => {
     for (const t of tokens(ORIGIN, 1, { size: 12, labels: ['2'] })) {
       pic.fill(circle(t.center, t.radius), { style: { fill: t.color } })
       if (t.text) {
-        pic.text(t.center, t.text, {
-          fontSize: t.fontSize,
-          textAnchor: 'middle',
-          dominantBaseline: 'middle',
-          style: { stroke: t.textColor },
-        })
+        pic.text(t.center, t.text, { textAnchor: 'middle', dominantBaseline: 'middle', style: { fontSize: t.fontSize, fill: t.textColor } })
       }
     }
     const svg = pic.toSVG({ width: 60, height: 60 })
@@ -277,7 +272,7 @@ describe('tokens', () => {
   it('draws as ordinary fills over a place', () => {
     const at = point(60, 70)
     const pic = picture({ shapes: petriShapes })
-    pic.node('p1', petri.place({ at }), { style: { stroke: '#334155', fill: '#ffffff' } })
+    pic.node('p1', { ...petri.place({ at }), style: { stroke: '#334155', fill: '#ffffff' } })
     for (const t of tokens(at, 2)) {
       pic.fill(circle(t.center, t.radius), { style: { fill: t.color } })
     }

@@ -13,11 +13,11 @@ export default function render(container: HTMLElement) {
 
   pic.draw(bracePath(point(A.x, 60), point(B.x, 60), 20), {
     style: { stroke: '#2563eb' },
-    label: { text: 'bracePath, amplitude 20', at: 'north', distance: 6, options: { fontSize: 11 } },
+    label: { text: 'bracePath, amplitude 20', at: 'north', distance: 6, style: { fontSize: 11 } },
   })
   pic.draw(bracketPath(point(A.x, 110), point(B.x, 110), 20), {
     style: { stroke: '#dc2626' },
-    label: { text: 'bracketPath, amplitude 20', at: 'south', distance: 6, options: { fontSize: 11 } },
+    label: { text: 'bracketPath, amplitude 20', at: 'south', distance: 6, style: { fontSize: 11 } },
   })
 
   pic.mount(container, { fit: true, padding: 14 })

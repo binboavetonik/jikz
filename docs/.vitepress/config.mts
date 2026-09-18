@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitepress'
 import { resolve } from 'node:path'
+import { jikzAliases } from '../../scripts/aliases'
 
 // KaTeX for the math-label example on the gallery (optional peer of the
 // library; the example reads the global the script installs).
@@ -24,7 +25,7 @@ export default defineConfig({
   // as the examples import it (`from 'jikz'`).
   vite: {
     resolve: {
-      alias: { jikz: resolve(__dirname, '../../src/index.ts') },
+      alias: jikzAliases(resolve(__dirname, '../..')),
     },
   },
   title: 'jikz',
@@ -73,6 +74,7 @@ export default defineConfig({
         text: 'Concepts',
         items: [
           { text: 'TikZ → jikz mapping', link: '/concepts/tikz-mapping' },
+          { text: 'TikZ support matrix', link: '/concepts/tikz-support' },
           { text: 'Coordinate system', link: '/concepts/coordinate-system' },
           { text: 'Two API levels', link: '/concepts/two-api-levels' },
           { text: 'ViewBox, sizing & fit', link: '/concepts/viewbox-and-fit' },

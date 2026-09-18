@@ -1,3 +1,4 @@
+import { JikzError } from '../core/errors'
 import { Point, point } from '../core/Point'
 import type { PointLike } from '../core/types'
 import { parseAnchorSpec, isTextAnchor, type AnchorSpec } from '../core/Anchor'
@@ -80,7 +81,7 @@ export function placeText(
 ): Point {
   const spec = placement.at ?? 'center'
   if (isTextAnchor(spec)) {
-    throw new Error(
+    throw new JikzError('invalid-argument', 
       `placeText: '${spec}' is a text anchor and cannot position text — ` +
         `use a cardinal name, alias, angle, or 'center'.`
     )

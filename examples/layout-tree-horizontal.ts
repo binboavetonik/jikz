@@ -5,6 +5,7 @@ export default function render(container: HTMLElement) {
   // OWN measured text — levelDistance is an edge-to-edge gap, not a fixed
   // column offset. Long labels no longer overlap the next level.
   const opening = tree({
+    edgeOptions: { arrowEnd: 'stealth' },
     at: point(24, 60),
     grow: 'right',
     levelDistance: 24,

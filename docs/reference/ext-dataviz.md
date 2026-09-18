@@ -10,7 +10,8 @@ container verbs, so it composes with any shape set. Full API:
 ## Setup
 
 ```ts
-import { chart, axes, legend, picture, point } from '@ozan.e/jikz'
+import { picture, point } from '@ozan.e/jikz'
+import { chart, axes, legend } from '@ozan.e/jikz/dataviz'
 
 const pic = picture()
 ```

@@ -12,7 +12,8 @@ Ships in the package; nothing to register. Full API:
 Places and transitions are a shape set, like every other shape family:
 
 ```ts
-import { petriShapes, petri, petriArcs, tokens, circle, picture, point } from '@ozan.e/jikz'
+import { circle, picture, point } from '@ozan.e/jikz'
+import { petriShapes, petri, petriArcs, tokens } from '@ozan.e/jikz/petri'
 
 const pic = picture({ shapes: petriShapes })
 ```
@@ -67,7 +68,7 @@ two calls, and `tokens()` hands you the dots to fill:
 
 ```ts
 const at = point(60, 70)
-pic.node('p1', petri.place({ at }), { style: { stroke: '#334155', fill: '#ffffff' } })
+pic.node('p1', { ...petri.place({ at }), style: { stroke: '#334155', fill: '#ffffff' } })
 for (const t of tokens(at, 2)) {
   pic.fill(circle(t.center, t.radius), { style: { fill: t.color } })
 }
@@ -104,12 +105,7 @@ too — `textColor` and `fontSize` carry TikZ's white `\tiny` along:
 for (const t of tokens(at, 3, { size: 12, labels: ['a', 'b', 'c'] })) {
   pic.fill(circle(t.center, t.radius), { style: { fill: t.color } })
   if (t.text) {
-    pic.text(t.center, t.text, {
-      fontSize: t.fontSize,
-      textAnchor: 'middle',
-      dominantBaseline: 'middle',
-      style: { stroke: t.textColor },   // jikz colours text from `stroke`
-    })
+    pic.text(t.center, t.text, { textAnchor: 'middle', dominantBaseline: 'middle', style: { fontSize: t.fontSize, fill: t.textColor } })
   }
 }
 ```

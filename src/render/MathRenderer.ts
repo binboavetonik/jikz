@@ -16,6 +16,7 @@
  * was uninjectable and untestable. The global is still honored as a
  * deprecated fallback (with a one-time warning) for one release.
  */
+import { warn } from '../core/errors'
 export interface MathRendererOptions {
   /** Display mode (centered, larger) */
   displayMode?: boolean
@@ -238,7 +239,7 @@ export function resolveMathRenderer(injected?: MathRenderer): MathRenderer | und
   if (globalKaTeX) {
     if (!warnedAboutGlobal) {
       warnedAboutGlobal = true
-      console.warn(
+      warn(
         'jikz: reading KaTeX from the global scope is deprecated and will be ' +
         'removed in a future release. Inject it explicitly instead: ' +
         "new SVGRenderer(undefined, undefined, { mathRenderer: katexAdapter(katex) })"

@@ -3,12 +3,40 @@
     "target": "ES2020",
     "useDefineForClassFields": true,
     "module": "ESNext",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "baseUrl": ".",
-    "paths": { "jikz": ["./src/index.ts"] },
-    "types": ["vite/client"],
+    "paths": {
+      "jikz": [
+        "./src/index.ts"
+      ],
+      "jikz/circuits": [
+        "./src/ext/circuits/index.ts"
+      ],
+      "jikz/gates": [
+        "./src/ext/gates/index.ts"
+      ],
+      "jikz/dataviz": [
+        "./src/ext/dataviz/index.ts"
+      ],
+      "jikz/petri": [
+        "./src/ext/petri/index.ts"
+      ],
+      "jikz/layout": [
+        "./src/layout/index.ts"
+      ],
+      "jikz/styles": [
+        "./src/render/presets.ts"
+      ]
+    },
+    "types": [
+      "vite/client"
+    ],
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "moduleDetection": "force",
@@ -22,5 +50,8 @@
     "declarationMap": true,
     "sourceMap": true
   },
-  "include": ["src", "examples"]
+  "include": [
+    "src",
+    "examples"
+  ]
 }

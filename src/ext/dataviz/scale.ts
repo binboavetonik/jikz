@@ -2,6 +2,7 @@
  * Scales and tick math for data visualization — the numeric core of
  * jikz's `datavisualization` analogue. Pure functions, no drawing.
  */
+import { JikzError } from '../../core/errors'
 import type { PointLike } from '../../core/types'
 
 /**
@@ -17,7 +18,7 @@ export type Scale = (v: number) => number
 export function linearScale(domain: [number, number], range: [number, number]): Scale {
   const [d0, d1] = domain
   if (d0 === d1) {
-    throw new Error(`linearScale: degenerate domain [${d0}, ${d1}].`)
+    throw new JikzError('invalid-argument', `linearScale: degenerate domain [${d0}, ${d1}].`)
   }
   const [r0, r1] = range
   const k = (r1 - r0) / (d1 - d0)

@@ -12,8 +12,9 @@ export default function render(container: HTMLElement) {
     pic.node(`end${i}`, {
       at: point(230, y), shape: 'rectangle',
       width: 0, height: 0, minWidth: 0, minHeight: 0,
-      labels: [{ text: dash, at: 'east', options: { fontSize: 10 } }],
-    }, { style: { stroke: 'none', fill: 'none' } })
+      labels: [{ text: dash, at: 'east', style: { fontSize: 10 } }],
+      style: { stroke: 'none', fill: 'none' }
+    })
   })
 
   pic.mount(container, { width: 360, height: 165 })

@@ -11,7 +11,7 @@ function bay(pic: Picture<typeof allShapes>, id: string, label: string, at: Tran
       .node(`${id}-in`, { at: point(22, 27), shape: 'circle', width: 18, height: 18 })
       .node(`${id}-out`, { at: point(68, 27), shape: 'circle', width: 18, height: 18 })
       .edge(`${id}-in`, `${id}-out`, { arrowEnd: 'stealth' })
-      .text(point(45, 12), label, { fontSize: 10, style: { fill: tint } })
+      .text(point(45, 12), label, { style: { fontSize: 10, fill: tint } })
   })
 }
 
@@ -24,8 +24,8 @@ export default function render(container: HTMLElement) {
 
   // Edges declared at picture level still reach names declared inside
   // the scopes — they resolve into picture space automatically.
-  pic.edge('a-out', 'b-in', { arrowEnd: 'stealth' }, { style: { stroke: '#94a3b8' } })
-  pic.edge('b-out', 'c-in', { arrowEnd: 'stealth' }, { style: { stroke: '#94a3b8' } })
+  pic.edge('a-out', 'b-in', { arrowEnd: 'stealth', style: { stroke: '#94a3b8' } })
+  pic.edge('b-out', 'c-in', { arrowEnd: 'stealth', style: { stroke: '#94a3b8' } })
 
   // A half-opacity group: opacity composites the scope as a unit.
   pic.scope({ transform: Transform.translation(10, 92), opacity: 0.45 }, (s) => {
@@ -35,7 +35,7 @@ export default function render(container: HTMLElement) {
       label: {
         text: 'scope({ opacity: 0.45 }) — the group fades as one',
         at: 'east',
-        options: { fontSize: 9, style: { fill: '#475569' } },
+        style: { fontSize: 9, fill: '#475569' },
       },
     })
   })

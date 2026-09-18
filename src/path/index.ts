@@ -56,6 +56,7 @@ export {
   subdividePath,
   smoothPath,
   subPath,
+  roundCorners,
   joinPaths,
   // Brace/bracket
   bracePath,

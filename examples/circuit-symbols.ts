@@ -1,4 +1,5 @@
-import { allShapes, circuit, circuitShapes, picture, point, type NodeOptions } from 'jikz'
+import { allShapes, picture, point, type NodeOptions } from 'jikz'
+import { circuit, circuitShapes } from 'jikz/circuits'
 
 export default function render(container: HTMLElement) { // once, like \usetikzlibrary{circuits.ee}
   const pic = picture({ shapes: { ...allShapes, ...circuitShapes } })
@@ -24,8 +25,8 @@ export default function render(container: HTMLElement) { // once, like \usetikzl
   cells.forEach(([options, label], i) => {
     const x = 70 + (i % 4) * 120
     const y = 45 + Math.floor(i / 4) * 85
-    pic.node('s' + i, { ...options, at: point(x, y) }, { style: sym })
-    pic.text(point(x, y + 38), label, { fontSize: 10 })
+    pic.node('s' + i, { ...options, at: point(x, y), style: sym })
+    pic.text(point(x, y + 38), label, { style: { fontSize: 10 } })
   })
 
   pic.mount(container, { width: 500, height: 280 })

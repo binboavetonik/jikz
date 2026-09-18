@@ -14,7 +14,7 @@ Every `style` option across the library resolves to this shape
 |---|---|---|
 | `stroke` | `Color` | stroke paint |
 | `strokeWidth` | `number` | px |
-| `strokeOpacity` / `'stroke-opacity'` | `number` | aliases; camelCase wins if both set |
+| `strokeOpacity` | `number` | |
 | `strokeDasharray` | `string \| number[]` | raw SVG; beats `dash` when both set |
 | `strokeDashoffset` | `number` | |
 | `strokeLinecap` | `'butt' \| 'round' \| 'square'` | |
@@ -22,12 +22,12 @@ Every `style` option across the library resolves to this shape
 | `strokeMiterlimit` | `number` | |
 | `dash` | `DashPatternName` | TikZ names: `'dashed'`, `'dotted'`, `'dashdotted'`, `'densely dashed'`, `'loosely dashed'`, `'densely dotted'`, `'loosely dotted'` — sugar for `strokeDasharray` |
 | `fill` | `Color` | |
-| `fillOpacity` / `'fill-opacity'` | `number` | aliases; camelCase wins |
+| `fillOpacity` | `number` | |
 | `fillPattern` | `PatternKind \| FillPatternSpec` | a `fillPatterns.*` tile, or `{ pattern, color, scale, … }` |
 | `gradient` | `GradientSpec` | linear/radial, multi-stop — compiles to `<defs>` |
 | `dropShadow` | `DropShadowSpec \| boolean` | SVG filter primitive |
-| `clip` | `ClipSpec` | clip path |
-| `borderRadius` / `borderRadiusX` / `borderRadiusY` | `number` | rectangles |
+| `clip` | any shape, path or node (`toSVGPath()`) | TikZ `\clip` |
+| `roundedCorners` | `number` | TikZ `rounded corners=<inset>`, on any path |
 | `doubleLine` | `DoubleLineSpec \| boolean` | TikZ `double` |
 | `opacity` | `number` | whole-element |
 
@@ -36,7 +36,7 @@ Every `style` option across the library resolves to this shape
 `style` accepts an array of partials; **later entries win**:
 
 ```ts
-import { thick, dashed, red } from 'jikz'
+import { thick, dashed, red } from 'jikz/styles'
 
 pic.draw(e, { style: [thick, dashed, red] })
 pic.draw(e, { style: [thick, { stroke: '#2563eb' }] })   // override
@@ -57,7 +57,8 @@ the frozen preset object — so one registration serves both the typed
 array form and the string form:
 
 ```ts
-import { dashed, parseStyleString, registerStyle, thick } from '@ozan.e/jikz'
+import { parseStyleString, registerStyle } from '@ozan.e/jikz'
+import { dashed, thick } from '@ozan.e/jikz/styles'
 
 const wire = registerStyle('wire', [thick, { stroke: '#0f172a' }])
 const hot  = registerStyle('hot wire', ['wire', { stroke: '#dc2626' }])
@@ -69,18 +70,19 @@ pic.draw(e, { style: parseStyleString('hot wire, dashed') })  // string
 
 A recipe may reference other registered names, so styles compose the
 way TikZ's do; re-registering a name replaces it. `hasStyle(name)` and
-`registeredStyleNames()` introspect the table, and an unknown name in
-a string warns once and is ignored rather than throwing — check with
-`hasStyle` if you need it to be fatal.
+`registeredStyleNames()` introspect the table. An unknown name throws
+a `JikzError` (`code: 'unknown-name'`) whose message lists the names
+that exist — a typo never renders as a silently-default line.
 
-Note that `style` itself never takes a bare name: it takes a partial
-or an array of partials. `parseStyleString` is the bridge from names
-to that, which keeps `RenderStyle` free of string lookups at render
-time. Unlike shapes and fill patterns — which became plain values in
-0.7.0 — arrow tips, decorations and styles stay registries on purpose:
-their tables are small and nearly every picture touches them, so the
-ceremony would cost more than the bytes (CONTRIBUTING records that
-split).
+`style` takes names directly: `style: 'brand'`, `style: ['brand',
+'dashed', { stroke }]`. A name resolves against the picture's own
+`styles` (`picture({ styles })`) first, then the registry, then the
+built-in presets. `parseStyleString` is the bridge from a comma
+string (`'thick, dashed, red'`) to a resolved `RenderStyle`. Unlike
+shapes and fill patterns — which became plain values in 0.7.0 — arrow
+tips, decorations and styles keep a global registry as a convenience;
+since 0.9 a picture can carry its own `styles` and `arrowTips`, which
+resolve first, so nothing forces two libraries to share one table.
 
 ## Fill patterns
 

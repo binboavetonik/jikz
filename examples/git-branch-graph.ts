@@ -25,16 +25,16 @@ export default function render(container: HTMLElement) {
   const f1 = dot(C(180, 90)), f2 = dot(C(240, 90))
 
   const link = { style: { stroke: '#64748b', strokeWidth: 1.5 } }
-  pic.edge(m1, m2, {}, link)
-  pic.edge(m2, m3, {}, link)
-  pic.edge(m3, m4, {}, link)
-  pic.edge(m2, f1, { out: 315, in: 180 }, { style: { stroke: '#7c3aed', strokeWidth: 1.5 } })
-  pic.edge(f1, f2, {}, { style: { stroke: '#7c3aed', strokeWidth: 1.5 } })
-  pic.edge(f2, m3, { out: 0, in: 45 }, { style: { stroke: '#7c3aed', strokeWidth: 1.5 } })
+  pic.edge(m1, m2, { arrowEnd: 'stealth', ...link })
+  pic.edge(m2, m3, { arrowEnd: 'stealth', ...link })
+  pic.edge(m3, m4, { arrowEnd: 'stealth', ...link })
+  pic.edge(m2, f1, { arrowEnd: 'stealth', out: 315, in: 180, style: { stroke: '#7c3aed', strokeWidth: 1.5 } })
+  pic.edge(f1, f2, { arrowEnd: 'stealth', style: { stroke: '#7c3aed', strokeWidth: 1.5 } })
+  pic.edge(f2, m3, { arrowEnd: 'stealth', out: 0, in: 45, style: { stroke: '#7c3aed', strokeWidth: 1.5 } })
 
-  pic.text(C(40, 185), 'main', { fontSize: 11 })
-  pic.text(C(210, 65), 'feature/login', { fontSize: 11, style: { stroke: '#7c3aed' } })
-  pic.text(m4.center, 'HEAD', { at: 'south east', distance: 8, fontSize: 10, style: { stroke: '#64748b' } })
+  pic.text(C(40, 185), 'main', { style: { fontSize: 11 } })
+  pic.text(C(210, 65), 'feature/login', { style: { fontSize: 11, fill: '#7c3aed' } })
+  pic.text(m4.center, 'HEAD', { at: 'south east', distance: 8, style: { fontSize: 10, fill: '#64748b' } })
 
   pic.mount(container, { fit: true, padding: 12 })
 }

@@ -26,6 +26,7 @@
  * The result shape mirrors {@link LayeredResult}: `{ nodes, edges,
  * getNode, toRenderables, bounds }`.
  */
+import { JikzError } from '../core/errors'
 import { Point, point } from '../core/Point'
 import type { PointLike } from '../core/types'
 import { Node, type NodeOptions } from '../node/Node'
@@ -277,7 +278,7 @@ class GraphBuilderImpl implements GraphBuilder {
 
   node(name: string, options?: Omit<NodeOptions, 'at'>): GraphBuilder {
     if (this._nodes.has(name)) {
-      throw new Error(`graph layout: duplicate node name "${name}"`)
+      throw new JikzError('duplicate-name', `graph layout: duplicate node name "${name}"`)
     }
     this._nodes.set(name, { name, options })
     return this

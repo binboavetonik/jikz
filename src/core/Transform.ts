@@ -1,3 +1,4 @@
+import { JikzError } from './errors'
 import type { Matrix } from './types'
 import { degToRad } from '../utils/math'
 import { Point } from './Point'
@@ -113,7 +114,7 @@ export class Transform {
     const det = a * d - b * c
 
     if (det === 0) {
-      throw new Error('Transform is not invertible (determinant is zero)')
+      throw new JikzError('invalid-argument', 'Transform is not invertible (determinant is zero)')
     }
 
     const invDet = 1 / det

@@ -12,6 +12,8 @@ Start here — each page is short and load-bearing:
 1. [**TikZ → jikz mapping**](concepts/tikz-mapping.md) — the
    translation table. If you know TikZ, this is your five-minute
    onboarding.
+1. [**TikZ support matrix**](concepts/tikz-support.md) — what carries
+   over, what is partial, what is not there, area by area.
 2. [**Coordinate system**](concepts/coordinate-system.md) — SVG screen
    space: y down, clockwise angles, 270° = north. Porting rules for
    math-convention code.

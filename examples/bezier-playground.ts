@@ -17,7 +17,7 @@ export default function render(container: HTMLElement) {
     .moveTo(A).lineTo(point(160, 30)).lineTo(B)
   pic.draw(point(160, 30), {
     style: { stroke: '#2563eb', strokeWidth: 2.5 },
-    label: { text: 'quadratic — 1 control point', at: 'north', options: { fontSize: 10, style: { stroke: '#2563eb' } } },
+    label: { text: 'quadratic — 1 control point', at: 'north', style: { fontSize: 10, fill: '#2563eb' } },
   })
 
   // cubic: two control points, ends aim up and down
@@ -28,7 +28,7 @@ export default function render(container: HTMLElement) {
     .moveTo(280, 240).lineTo(230, 120)
   pic.draw(point(100, 320), {
     style: { stroke: '#dc2626', strokeWidth: 2.5 },
-    label: { text: 'cubic — 2 control points, independent ends', at: 'south', options: { fontSize: 10, style: { stroke: '#dc2626' } } },
+    label: { text: 'cubic — 2 control points, independent ends', at: 'south', style: { fontSize: 10, fill: '#dc2626' } },
   })
   pic.draw(point(230, 120), { style: { stroke: '#dc2626', strokeWidth: 2.5 } })
 

@@ -165,7 +165,7 @@ describe('pen path geometry', () => {
 describe('pen labels', () => {
   it('at-labels hang on the current pen position via placeText', () => {
     const pic = picture()
-    pic.pen().moveTo(50, 50).label('A', { at: 'south east', distance: 4, options: { fontSize: 12 } })
+    pic.pen().moveTo(50, 50).label('A', { at: 'south east', distance: 4, style: { fontSize: 12 } })
     const xy = textXY(pic.toSVG({ width: 100, height: 100 }), 'A')
     const expected = placeText(point(50, 50), 'A', {
       at: 'south east',
@@ -266,9 +266,9 @@ describe('pen labels', () => {
 describe('pen in the picture', () => {
   it('expands at render time, in registration order', () => {
     const pic = picture()
-    pic.text(point(0, 0), 'before', { fontSize: 10 })
+    pic.text(point(0, 0), 'before', { style: { fontSize: 10 } })
     const pen = pic.pen()
-    pic.text(point(0, 0), 'after', { fontSize: 10 })
+    pic.text(point(0, 0), 'after', { style: { fontSize: 10 } })
     // mutate the pen AFTER registering other items — expansion is lazy
     pen.moveTo(0, 0).lineTo(50, 0).label('mid', { pos: 1 })
     const svg = pic.toSVG({ width: 100, height: 50 })
@@ -286,7 +286,7 @@ describe('pen in the picture', () => {
     pic.pen()
       .moveTo(-50, 0)
       .lineTo(50, 0)
-      .label('E', { at: 'east', distance: 4, options: { fontSize: 12 } })
+      .label('E', { at: 'east', distance: 4, style: { fontSize: 12 } })
     const svg = pic.toSVG({ fit: true, padding: 0 })
     expect(svg).toMatch(/viewBox="-5\d/)
     expect(svg).not.toContain('matrix(')

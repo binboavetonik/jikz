@@ -17,8 +17,8 @@ export default function render(container: HTMLElement) {
   const DOMAIN: [number, number] = [-0.5, 4.4]
 
   // axes
-  pic.edge(point(20, yBase), point(360, yBase), { arrowEnd: 'stealth' }, { style: { stroke: '#334155' } })
-  pic.edge(point(xOff, 235), point(xOff, 20), { arrowEnd: 'stealth' }, { style: { stroke: '#334155' } })
+  pic.edge(point(20, yBase), point(360, yBase), { arrowEnd: 'stealth', style: { stroke: '#334155' } })
+  pic.edge(point(xOff, 235), point(xOff, 20), { arrowEnd: 'stealth', style: { stroke: '#334155' } })
 
   // f (solid) and f' (dashed) — plot() doesn't flip y, so pass -f
   pic.draw(plot((x) => -f(x), { domain: DOMAIN, xScale, yScale, xOffset: xOff, yOffset: yBase }),
@@ -34,16 +34,16 @@ export default function render(container: HTMLElement) {
     { style: { stroke: '#dc2626', strokeWidth: 1.5 } })
   pic.filldraw(circle(P, 3.5), {
     style: { stroke: '#dc2626', fill: '#dc2626' },
-    label: { text: "$f'(3.5)$", at: 'north west', options: { fontSize: 11, style: { stroke: '#dc2626' } } },
+    label: { text: "$f'(3.5)$", at: 'north west', style: { fontSize: 11, fill: '#dc2626' } },
   })
 
   // Curve names sit at the end of their own curve, derived from the
   // same functions — they follow when the domain or scale changes.
   const end = DOMAIN[1]
   pic.text(point(xOff + end * xScale, yBase - f(end) * yScale), '$f$',
-    { at: 'east', distance: 5, fontSize: 12, style: { stroke: '#2563eb' } })
+    { at: 'east', distance: 5, style: { fontSize: 12, fill: '#2563eb' } })
   pic.text(point(xOff + end * xScale, yBase - df(end) * yScale), "$f'$",
-    { at: 'east', distance: 5, fontSize: 12, style: { stroke: '#94a3b8' } })
+    { at: 'east', distance: 5, style: { fontSize: 12, fill: '#94a3b8' } })
 
   pic.mount(container, { fit: true, padding: 14 })
 }

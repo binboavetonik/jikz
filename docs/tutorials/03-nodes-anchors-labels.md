@@ -61,7 +61,7 @@ pic.node('A', {
   labelDistance: 8,   // TikZ label distance=8 — default for all labels
   labels: [
     { text: '$\\alpha$', at: 'north' },                        // KaTeX math
-    { text: 'rim', at: 'south east', options: { fontSize: 9 } },
+    { text: 'rim', at: 'south east', style: { fontSize: 9 } },
     { text: 'far', at: 'east', distance: 18 },                 // per-label override
   ],
 })

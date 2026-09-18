@@ -18,12 +18,12 @@ export default function render(container: HTMLElement) {
   for (const { p, name } of [{ p: P1, name: 'P1' }, { p: P2, name: 'P2' }, { p: P3, name: 'P3' }]) {
     pic.draw(p, {
       style: { stroke: '#dc2626', strokeWidth: 3 },
-      label: { text: name, at: c.center.angleTo(p), options: { fontSize: 11 } },
+      label: { text: name, at: c.center.angleTo(p), style: { fontSize: 11 } },
     })
   }
   pic.draw(c.center, {
     style: { stroke: '#111827', strokeWidth: 2.5 },
-    label: { text: 'O', at: 'south east', options: { fontSize: 11 } },
+    label: { text: 'O', at: 'south east', style: { fontSize: 11 } },
   })
 
   pic.mount(container, { fit: true, padding: 14 })

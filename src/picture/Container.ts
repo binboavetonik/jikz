@@ -1,3 +1,4 @@
+import { JikzError } from '../core/errors'
 import { Point, point } from '../core/Point'
 import type { ShapeOptions } from '../geometry/Shape'
 import type { ShapeKind, ShapeSet } from '../geometry/ShapeKind'
@@ -13,23 +14,39 @@ import {
 import { Edge, type EdgeOptions } from '../node/Edge'
 import { Pen, type PenOptions } from './Pen'
 import { pointMarkerRadius } from '../render/Renderer'
-import type { Renderable, RenderOptions, TextOptions } from '../render/Renderer'
+import type { Renderable, RenderOptions } from '../render/Renderer'
 import { mergeStyles, styleList } from '../render/StyleMapper'
 import type { ClipSpec, RenderStyle, StyleSpec } from '../render/StyleMapper'
 import { resolveShading, type ShadingOptions } from '../render/Shadings'
-import { shapeLabelPoint, type DrawLabel } from '../text/shapeLabels'
-import type { TextPlacement } from '../text/placeText'
+import { shapeLabelPoint } from '../text/shapeLabels'
+import { labelList, type Label, type LabelSpec, type TextStyle } from '../text/Label'
+import type { SVGAnimation } from '../render/Renderer'
+import { calculateRelativePosition, type PositionDirection } from '../node/Positioning'
 
 /**
- * Options for {@link ItemContainer.text}: renderer {@link TextOptions}
- * plus TikZ-style placement relative to the reference point —
- * `pic.text(p, 'h', { at: 'north east', distance: 6 })` is
- * `\node[above right] at (p) {h}`. Placement keys are consumed here and
- * never reach the renderer.
+ * Options for {@link ItemContainer.text} — `\node at (p) {text}`
+ * without a shape. `at`/`distance` place the text relative to the
+ * point (`pic.text(p, 'h', { at: 'north east', distance: 6 })` is
+ * `\node[above right] at (p) {h}`), `style` is the one
+ * {@link TextStyle} every label uses, and the rest reach the backend
+ * unchanged.
  */
-export interface PictureTextOptions extends TextOptions, TextPlacement {}
-
-export type { DrawLabel }
+export interface PictureTextOptions {
+  /** Direction from the point to the text. Default: centred on it. */
+  at?: AnchorSpec
+  /** Gap between the point and the text's border along `at`, px. */
+  distance?: number
+  /** Colour and font. Absent, text follows the pen. */
+  style?: TextStyle
+  /** Horizontal alignment on the point (default `'middle'`). */
+  textAnchor?: 'start' | 'middle' | 'end'
+  /** Vertical alignment on the point (default `'middle'`). */
+  dominantBaseline?: 'auto' | 'middle' | 'hanging' | 'alphabetic'
+  className?: string
+  id?: string
+  attributes?: Record<string, string | number>
+  animate?: SVGAnimation | SVGAnimation[]
+}
 
 /**
  * Options for the draw verbs (`draw`/`fill`/`filldraw`/`path`):
@@ -40,10 +57,87 @@ export type { DrawLabel }
  * free; the keys never reach the renderer.
  */
 export interface DrawOptions extends RenderOptions {
-  /** Single-label shorthand: a plain string or a full {@link DrawLabel}. */
-  label?: string | DrawLabel
+  /** Single-label shorthand: a plain string or a full {@link Label}. */
+  label?: LabelSpec
   /** Multiple labels — TikZ allows several nodes per path statement. */
-  labels?: readonly DrawLabel[]
+  labels?: readonly Label[]
+}
+
+/**
+ * Kind-scoped defaults — TikZ's `every node`, `every edge`, `every
+ * path` and `every label`. They sit under a scope's `style` and above
+ * the path-mode baseline, so `every: { edge: dashed }` dashes every
+ * edge and an edge's own `style` still wins.
+ */
+export interface EveryOptions {
+  /** Applied to every node's shape. */
+  node?: StyleSpec
+  /** Applied to every edge. */
+  edge?: StyleSpec
+  /** Applied to every bare shape and pen statement. */
+  path?: StyleSpec
+  /** Applied to every label, node text and bare text. */
+  text?: TextStyle
+}
+
+/**
+ * Relative placement — TikZ's positioning library, `right=of A`. One
+ * of the eight direction keys names the reference (a node or
+ * coordinate name, an {@link Anchorable}, or a point); `distance` is
+ * the border-to-border gap along that direction (TikZ `node
+ * distance`). The node's `at` is ignored when one is set.
+ */
+export interface PlacementOptions {
+  rightOf?: PictureEndpoint
+  leftOf?: PictureEndpoint
+  above?: PictureEndpoint
+  below?: PictureEndpoint
+  aboveLeft?: PictureEndpoint
+  aboveRight?: PictureEndpoint
+  belowLeft?: PictureEndpoint
+  belowRight?: PictureEndpoint
+  /** Gap along the placement direction, px. Default: 10. */
+  distance?: number
+}
+
+const PLACEMENT_KEYS: Record<keyof Omit<PlacementOptions, 'distance'>, PositionDirection> = {
+  rightOf: 'right',
+  leftOf: 'left',
+  above: 'above',
+  below: 'below',
+  aboveLeft: 'above left',
+  aboveRight: 'above right',
+  belowLeft: 'below left',
+  belowRight: 'below right',
+}
+
+/** The render keys a node or edge call carries alongside its geometry. */
+const RENDER_KEYS = ['style', 'textStyle', 'className', 'id', 'attributes', 'animate'] as const
+
+/**
+ * Split one option bag into what the geometry constructor takes and
+ * what the renderer takes. `undefined` when nothing render-related was
+ * given, so items built without any stay exactly as before.
+ */
+function splitRender<T extends RenderOptions>(
+  options: T
+): { rest: Omit<T, keyof RenderOptions>; render: RenderOptions | undefined } {
+  const rest: Record<string, unknown> = { ...(options as Record<string, unknown>) }
+  const render: Record<string, unknown> = {}
+  let any = false
+  for (const k of RENDER_KEYS) {
+    if (k in rest) {
+      if (rest[k] !== undefined) {
+        render[k] = rest[k]
+        any = true
+      }
+      delete rest[k]
+    }
+  }
+  return {
+    rest: rest as Omit<T, keyof RenderOptions>,
+    render: any ? (render as RenderOptions) : undefined,
+  }
 }
 
 /**
@@ -176,6 +270,8 @@ export type PictureItem =
 export interface ScopeOptions {
   /** Styles inherited by nodes, edges and bare shapes in this scope. */
   style?: StyleSpec
+  /** Kind-scoped defaults for this scope — see {@link EveryOptions}. */
+  every?: EveryOptions
   /**
    * Transform applied to the whole scope. Geometry inside stays in the
    * scope's own coordinates; the backend wraps it in a transform group,
@@ -218,6 +314,10 @@ export interface ContainerRoot {
   knownNames(): string
   /** The shape set string shape names resolve against, if any. */
   shapeSet(): ShapeSet | undefined
+  /** Flatten a style spec, picture-local names first. */
+  resolveStyles(spec: StyleSpec | undefined): Partial<RenderStyle>[]
+  /** Resolve the names inside an `every` block. */
+  resolveEvery(every: EveryOptions): EveryOptions
 }
 
 /**
@@ -274,7 +374,11 @@ export type NodeOptionsFor<S extends ShapeSet, K> = Omit<
     : K extends ShapeKind<infer O>
       ? O
       : Record<string, unknown>
-}
+} & RenderOptions &
+  PlacementOptions
+
+/** What {@link ItemContainer.edge} takes: the edge's keys and its render keys, one bag. */
+export type PictureEdgeOptions = EdgeOptions & RenderOptions
 
 export abstract class ItemContainer<S extends ShapeSet = {}> {
   protected readonly itemList: PictureItem[] = []
@@ -304,7 +408,7 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
       const known = Object.keys(this.shapes ?? {})
         .map((n) => `"${n}"`)
         .join(', ')
-      throw new Error(
+      throw new JikzError('unknown-name', 
         `Picture: unknown shape "${name}" ` +
           `(shapes in scope: ${known || 'none'}). Pass the shape set to ` +
           `picture({ shapes }), or hand the shape value to node() directly.`
@@ -322,6 +426,29 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
 
   /** Style chain from the root down to (and including) this container. */
   protected abstract get inheritedStyles(): readonly Partial<RenderStyle>[]
+
+  /** `every` defaults from the root down to (and including) this container. */
+  protected abstract get inheritedEvery(): readonly EveryOptions[]
+
+  /** `every.text` in force here, outermost first, merged. */
+  protected everyText(): TextStyle | undefined {
+    let merged: TextStyle | undefined
+    for (const e of this.inheritedEvery) if (e.text) merged = { ...merged, ...e.text }
+    return merged
+  }
+
+  /**
+   * A label with its effective text style: the label default size,
+   * then `every.text`, then the label's own `style`. Resolved once, at
+   * insertion, so placement (which measures the text) and rendering
+   * agree on the font.
+   */
+  labelStyle(label: Label): Label {
+    return {
+      ...label,
+      style: { fontSize: DEFAULT_LABEL_FONT_SIZE, ...this.everyText(), ...label.style },
+    }
+  }
 
   /**
    * Open a nested scope — TikZ's `\begin{scope}[…] … \end{scope}`.
@@ -350,7 +477,10 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
     const s = new Scope<S>(
       this.registry,
       accumulated,
-      [...this.inheritedStyles, ...styleList(options.style)],
+      [...this.inheritedStyles, ...this.registry.resolveStyles(options.style)],
+      options.every
+        ? [...this.inheritedEvery, this.registry.resolveEvery(options.every)]
+        : this.inheritedEvery,
       { ...options, transform: local, scale: undefined }
     )
     this.itemList.push({ kind: 'scope', scope: s })
@@ -360,47 +490,80 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
 
   /**
    * Add a named node. Throws on duplicate name — names are global to
-   * the picture, so a scope cannot shadow an outer name.
-   * Any `name` in the supplied options is ignored — the registry name
-   * is authoritative.
+   * the picture, so a scope cannot shadow an outer name. Any `name` in
+   * the supplied options is ignored — the registry name is
+   * authoritative.
+   *
+   * One option bag, as in TikZ: the node's geometry (`at`, `shape`,
+   * `text`, `width`, …), its paint (`style`, `textStyle`, `className`,
+   * `id`, `animate`) and its placement (`rightOf: 'A'`, … — see
+   * {@link PlacementOptions}) all go together.
    */
   node<K extends (keyof S & string) | ShapeSpec = ShapeSpec>(
     name: string,
-    options: NodeOptionsFor<S, K> = {},
-    renderOptions?: RenderOptions
+    options: NodeOptionsFor<S, K> = {} as NodeOptionsFor<S, K>
   ): this {
     if (this.registry.hasName(name)) {
-      throw new Error(
+      throw new JikzError('duplicate-name', 
         `Picture: node name "${name}" already exists in this picture.`
       )
     }
+    const { rest, render } = splitRender(options)
+    const {
+      rightOf, leftOf, above, below, aboveLeft, aboveRight, belowLeft, belowRight,
+      distance,
+      ...nodeOpts
+    } = rest
+    const placement = { rightOf, leftOf, above, below, aboveLeft, aboveRight, belowLeft, belowRight }
     // Resolve a string name against the set in scope; a kind or an
     // instance passes straight through, and an absent shape stays
     // absent so Node applies its own default.
-    const spec = options.shape
+    const spec = nodeOpts.shape
     const shape = typeof spec === 'string' ? this.resolveShape(spec) : spec
-    const n = new Node({
-      ...options,
+    let n = new Node({
+      ...nodeOpts,
       ...(shape ? { shape } : {}),
       name,
     } as NodeOptions)
-    this.registry.registerNode(name, n, this.ownTransform)
-    this.itemList.push({ kind: 'node', node: n, name, options: renderOptions })
 
-    // Desugar TikZ-style labels into bare text items, painted right
-    // after their node. They flow through the PictureRenderer.renderText
-    // seam, so every backend supports labels (and KaTeX) for free.
-    // Placement is resolved once, here — labels don't track later
-    // mutations of the node.
-    for (const label of n.labels) {
+    // TikZ `right=of A`: measure the node first, then put it where the
+    // reference and the border-to-border gap say.
+    for (const key of Object.keys(PLACEMENT_KEYS) as (keyof typeof PLACEMENT_KEYS)[]) {
+      const ref = placement[key]
+      if (ref === undefined) continue
+      const at = calculateRelativePosition(
+        this.resolveEndpoint(ref),
+        PLACEMENT_KEYS[key],
+        { distance },
+        { width: n.width, height: n.height }
+      )
+      n = n.moveTo(at)
+      break
+    }
+
+    this.registry.registerNode(name, n, this.ownTransform)
+    this.itemList.push({ kind: 'node', node: n, name, options: render })
+    this.pushLabels(n)
+    return this
+  }
+
+  /**
+   * Desugar a node's TikZ-style labels into bare text items, painted
+   * right after it. They flow through the PictureRenderer.renderText
+   * seam, so every backend supports labels (and math) for free.
+   * Placement is resolved once, here — labels don't track later
+   * mutations of the node.
+   */
+  private pushLabels(n: Node): void {
+    for (const raw of n.labels) {
+      const label = this.labelStyle(raw)
       this.itemList.push({
         kind: 'text',
         at: n.labelPoint(label),
         text: label.text,
-        options: { fontSize: DEFAULT_LABEL_FONT_SIZE, ...label.options },
+        options: { style: label.style },
       })
     }
-    return this
   }
 
   /**
@@ -431,7 +594,7 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
       if (item.kind === 'node') {
         if (item.name) {
           if (this.registry.hasName(item.name)) {
-            throw new Error(
+            throw new JikzError('duplicate-name', 
               `Picture: node name "${item.name}" already exists in this picture.`
             )
           }
@@ -443,14 +606,7 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
           name: item.name,
           options: options.nodes,
         })
-        for (const label of item.labels) {
-          this.itemList.push({
-            kind: 'text',
-            at: item.labelPoint(label),
-            text: label.text,
-            options: { fontSize: DEFAULT_LABEL_FONT_SIZE, ...label.options },
-          })
-        }
+        this.pushLabels(item)
       } else {
         this.itemList.push({ kind: 'edge', edge: item, options: options.edges })
       }
@@ -468,13 +624,13 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
   edge(
     from: PictureEndpoint,
     to: PictureEndpoint,
-    options: EdgeOptions = {},
-    renderOptions?: RenderOptions
+    options: PictureEdgeOptions = {}
   ): this {
     const fromEnd = this.resolveEndpoint(from)
     const toEnd = this.resolveEndpoint(to)
-    const e = new Edge(fromEnd, toEnd, options)
-    this.itemList.push({ kind: 'edge', edge: e, options: renderOptions })
+    const { rest, render } = splitRender(options)
+    const e = new Edge(fromEnd, toEnd, rest)
+    this.itemList.push({ kind: 'edge', edge: e, options: render })
     return this
   }
 
@@ -492,26 +648,24 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
       mode,
       options: options ? renderOptions : undefined,
     })
-    const allLabels: DrawLabel[] = [
-      ...(typeof label === 'string' ? [{ text: label }] : label ? [label] : []),
-      ...(labels ?? []),
-    ]
+    const allLabels = labelList(label, labels)
     // A bare Point paints as a disc whose radius follows the stroke
     // width, so labels on one anchor to that disc rather than to the
     // mathematical point underneath it.
     const radius =
       obj instanceof Point
         ? pointMarkerRadius(
-            mergeStyles(...this.inheritedStyles, ...styleList(options?.style))
+            mergeStyles(...this.inheritedStyles, ...this.registry.resolveStyles(options?.style))
               .strokeWidth
           )
         : 0
-    for (const l of allLabels) {
+    for (const raw of allLabels) {
+      const l = this.labelStyle(raw)
       this.itemList.push({
         kind: 'text',
         at: shapeLabelPoint(obj, l, radius),
         text: l.text,
-        options: { fontSize: DEFAULT_LABEL_FONT_SIZE, ...l.options },
+        options: { style: l.style },
       })
     }
     return this
@@ -524,7 +678,7 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
    */
   coordinate(name: string, at: PointLike): this {
     if (this.registry.hasName(name)) {
-      throw new Error(`Picture: name "${name}" already exists in this picture.`)
+      throw new JikzError('duplicate-name', `Picture: name "${name}" already exists in this picture.`)
     }
     this.registry.registerCoordinate(name, point(at.x, at.y), this.ownTransform)
     return this
@@ -616,7 +770,9 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
    * without a shape.
    */
   text(at: PointLike, text: string, options?: PictureTextOptions): this {
-    this.itemList.push({ kind: 'text', at: point(at.x, at.y), text, options })
+    const every = this.everyText()
+    const merged = every ? { ...options, style: { ...every, ...options?.style } } : options
+    this.itemList.push({ kind: 'text', at: point(at.x, at.y), text, options: merged })
     return this
   }
 
@@ -652,7 +808,7 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
       const local = this.relativeTo(coord.transform)
       return local ? local.apply(coord.at) : coord.at
     }
-    throw new Error(
+    throw new JikzError('unknown-name', 
       `Picture: unknown node "${parsed.name}" (known: ${this.registry.knownNames()}).`
     )
   }
@@ -691,7 +847,7 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
       const local = this.relativeTo(coord.transform)
       return local ? local.apply(coord.at) : coord.at
     }
-    throw new Error(
+    throw new JikzError('unknown-name', 
       `Picture: unknown node "${parsed.name}" (known: ${this.registry.knownNames()}).`
     )
   }
@@ -714,11 +870,13 @@ export class Scope<S extends ShapeSet = {}> extends ItemContainer<S> {
   }
 
   protected readonly inheritedStyles: readonly Partial<RenderStyle>[]
+  protected readonly inheritedEvery: readonly EveryOptions[]
 
   constructor(
     root: ContainerRoot,
     accumulated: Transform | undefined,
     styles: readonly Partial<RenderStyle>[],
+    every: readonly EveryOptions[],
     /** This scope's own options; `transform` is local, not accumulated. */
     readonly options: ScopeOptions
   ) {
@@ -726,11 +884,17 @@ export class Scope<S extends ShapeSet = {}> extends ItemContainer<S> {
     this.registry = root
     this.ownTransform = accumulated
     this.inheritedStyles = styles
+    this.inheritedEvery = every
   }
 
   /** Styles in force inside this scope, outermost first. */
   get styleChain(): readonly Partial<RenderStyle>[] {
     return this.inheritedStyles
+  }
+
+  /** `every` defaults in force inside this scope, outermost first. */
+  get everyChain(): readonly EveryOptions[] {
+    return this.inheritedEvery
   }
 
   /** The group properties the backend puts on the wrapping element. */

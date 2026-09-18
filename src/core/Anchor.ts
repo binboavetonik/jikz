@@ -1,3 +1,4 @@
+import { JikzError } from './errors'
 import { Point, point } from './Point'
 import type { PointLike } from './types'
 import { normalizeAngle, degToRad } from '../utils/math'
@@ -95,7 +96,7 @@ const ANCHOR_ALIASES: Record<string, CardinalAnchor> = {
  * Strict by design: a typo'd anchor must fail loudly, not silently
  * render a plausible-looking wrong diagram.
  */
-export class AnchorError extends Error {
+export class AnchorError extends JikzError {
   /** The spec that failed to parse. */
   readonly spec: AnchorSpec
 
@@ -104,6 +105,7 @@ export class AnchorError extends Error {
 
   constructor(spec: AnchorSpec, known: readonly string[] = []) {
     super(
+      'unknown-anchor',
       `Unknown anchor: ${JSON.stringify(spec)}. Expected a cardinal name ` +
         `('north', 'south east', …), an alias ('n', 'ne', 'c', …), a ` +
         `numeric angle (30 or '30deg'), or 'center'.` +

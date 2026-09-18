@@ -1,3 +1,4 @@
+import { JikzError } from '../core/errors'
 import { point } from '../core/Point'
 import type { PointLike } from '../core/types'
 import { basicShapes } from '../geometry/shapes/basic'
@@ -381,7 +382,7 @@ class LayeredBuilderImpl implements LayeredBuilder {
 
   node(name: string, options?: Omit<NodeOptions, 'at'>): LayeredBuilder {
     if (this._vertices.has(name)) {
-      throw new Error(`layered layout: duplicate node name "${name}"`)
+      throw new JikzError('duplicate-name', `layered layout: duplicate node name "${name}"`)
     }
     this._vertices.set(name, {
       name,
@@ -403,10 +404,10 @@ class LayeredBuilderImpl implements LayeredBuilder {
     options?: ClusterOptions,
   ): LayeredBuilder {
     if (this._clusters.some((c) => c.name === name)) {
-      throw new Error(`layered layout: duplicate cluster name "${name}"`)
+      throw new JikzError('duplicate-name', `layered layout: duplicate cluster name "${name}"`)
     }
     if (this._vertices.has(name)) {
-      throw new Error(
+      throw new JikzError('unknown-name', 
         `layered layout: cluster name "${name}" collides with a node of the same name`,
       )
     }
@@ -414,7 +415,7 @@ class LayeredBuilderImpl implements LayeredBuilder {
       const isNode = this._vertices.has(m)
       const isCluster = this._clusters.some((c) => c.name === m)
       if (!isNode && !isCluster) {
-        throw new Error(
+        throw new JikzError('unknown-name', 
           `layered layout: cluster "${name}" references unknown node or cluster "${m}" ` +
             '(a nested cluster must be declared before the one that contains it)',
         )
@@ -423,7 +424,7 @@ class LayeredBuilderImpl implements LayeredBuilder {
       // well-defined box, and two parents would make nesting a DAG.
       const owner = this._clusters.find((c) => c.members.includes(m))
       if (owner) {
-        throw new Error(
+        throw new JikzError('layout', 
           `layered layout: "${m}" is already in cluster "${owner.name}" ` +
             '(a node or cluster may sit in only one cluster)',
         )
@@ -449,19 +450,19 @@ class LayeredBuilderImpl implements LayeredBuilder {
     options?: { minLength?: number; weight?: number; loop?: LoopDirection },
   ): LayeredBuilder {
     if (from === to) {
-      throw new Error(`layered layout: cluster "${from}" cannot edge to itself`)
+      throw new JikzError('unknown-name', `layered layout: cluster "${from}" cannot edge to itself`)
     }
     for (const [name, isCluster, other] of [
       [from, fromIsCluster, to],
       [to, toIsCluster, from],
     ] as const) {
       if (!isCluster && !this._vertices.has(name)) {
-        throw new Error(`layered layout: edge references unknown node "${name}"`)
+        throw new JikzError('unknown-name', `layered layout: edge references unknown node "${name}"`)
       }
       // An edge from a box to something already inside it has no
       // direction that means anything.
       if (isCluster && this.clusterNodes(name).includes(other)) {
-        throw new Error(
+        throw new JikzError('layout', 
           `layered layout: edge between cluster "${name}" and "${other}", ` +
             'which is inside it',
         )
@@ -470,7 +471,7 @@ class LayeredBuilderImpl implements LayeredBuilder {
         const nested =
           this.clusterPath(name).includes(other) || this.clusterPath(other).includes(name)
         if (nested) {
-          throw new Error(
+          throw new JikzError('layout', 
             `layered layout: edge between nested clusters "${from}" and "${to}"`,
           )
         }
@@ -482,7 +483,7 @@ class LayeredBuilderImpl implements LayeredBuilder {
     const fromVertex = this._vertices.get(fromName)!
     const toVertex = this._vertices.get(toName)!
     if (fromVertex === toVertex) {
-      throw new Error(
+      throw new JikzError('layout', 
         `layered layout: edge "${from}" → "${to}" resolves to a single node`,
       )
     }
@@ -579,7 +580,7 @@ class LayeredBuilderImpl implements LayeredBuilder {
     const fromVertex = this._vertices.get(from)
     const toVertex = this._vertices.get(to)
     if (!fromVertex || !toVertex) {
-      throw new Error(
+      throw new JikzError('unknown-name', 
         `layered layout: edge references unknown node "${!fromVertex ? from : to}"`,
       )
     }

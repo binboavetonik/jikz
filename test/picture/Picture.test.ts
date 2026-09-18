@@ -114,14 +114,14 @@ describe('Picture', () => {
       // a bend — so the label answers to textStyle, exactly as a node's
       // own text does. Without one it follows the pen.
       const styled = mk()
-        .edge('A', 'B', { label: 'hi' }, { style: { stroke: '#00ff00', fill: '#ff0000' }, textStyle: { fill: '#0000ff' } })
+        .edge('A', 'B', { label: 'hi', style: { stroke: '#00ff00', fill: '#ff0000' }, textStyle: { fill: '#0000ff' } })
         .toSVG({ width: 140, height: 60 })
       const text = styled.slice(styled.indexOf('<text'))
       expect(text).toContain('#0000ff')
       expect(text).not.toContain('#ff0000')
 
       const penned = mk()
-        .edge('A', 'B', { label: 'hi' }, { style: { stroke: '#00ff00', fill: '#ff0000' } })
+        .edge('A', 'B', { label: 'hi', style: { stroke: '#00ff00', fill: '#ff0000' } })
         .toSVG({ width: 140, height: 60 })
       const pennedText = penned.slice(penned.indexOf('<text'))
       expect(pennedText).toContain('#00ff00')
@@ -130,7 +130,7 @@ describe('Picture', () => {
 
     it('takes the rest of textStyle on an edge label too', () => {
       const svg = mk()
-        .edge('A', 'B', { label: 'hi' }, { textStyle: { fontSize: 22, fontWeight: 'bold', fontFamily: 'serif' } })
+        .edge('A', 'B', { label: 'hi', textStyle: { fontSize: 22, fontWeight: 'bold', fontFamily: 'serif' } })
         .toSVG({ width: 140, height: 60 })
       const text = svg.slice(svg.indexOf('<text'))
       expect(text).toContain('font-size="22"')
@@ -196,7 +196,7 @@ describe('Picture', () => {
       expect(filled).toContain('fill="#ff0000"')
 
       const penned = picture({ shapes: SHAPES })
-        .text(point(50, 30), 'hello', { style: { stroke: '#00ff00' } })
+        .text(point(50, 30), 'hello', { style: { fill: '#00ff00' } })
         .toSVG({ width: 100, height: 60 })
       expect(penned).toContain('fill="#00ff00"')
 
@@ -207,11 +207,12 @@ describe('Picture', () => {
       expect(bare).not.toContain('fill="none"')
     })
 
-    it('text() takes the last fill when the style is a list', () => {
+    it('text() takes an explicit fill from its TextStyle', () => {
       const svg = picture({ shapes: SHAPES })
-        .text(point(50, 30), 'hello', { style: [{ fill: '#ff0000' }, { fill: '#0000ff' }] })
+        .text(point(50, 30), 'hello', { style: { fill: '#0000ff', fontSize: 11 } })
         .toSVG({ width: 100, height: 60 })
       expect(svg).toContain('fill="#0000ff"')
+      expect(svg).toContain('font-size="11"')
     })
 
     it('records bare renderables in insertion order', () => {
@@ -334,8 +335,8 @@ describe('Picture', () => {
             shape: SHAPES['circle'],
             width: 40,
             height: 40,
-          },
-          { style: { stroke: '#ff00ff' } }
+            style: { stroke: '#ff00ff' }
+          }
         )
         .toSVG({ width: 100, height: 100 })
 

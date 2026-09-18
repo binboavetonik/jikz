@@ -28,7 +28,7 @@ export default function render(container: HTMLElement) {
 
   pic.draw(I, {
     style: { stroke: '#dc2626', strokeWidth: 3 },
-    label: { text: 'I', at: 'north east', distance: 6, options: { fontSize: 11, style: { stroke: '#dc2626' } } },
+    label: { text: 'I', at: 'north east', distance: 6, style: { fontSize: 11, fill: '#dc2626' } },
   })
 
   pic.mount(container, { fit: true, padding: 14 })

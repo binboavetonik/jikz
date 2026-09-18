@@ -1,10 +1,11 @@
 import { defineConfig } from 'vitest/config'
-import { resolve } from 'path'
+import { jikzAliases } from './scripts/aliases'
 
 export default defineConfig({
   resolve: {
-    // Examples import from 'jikz'; in tests that means the live source.
-    alias: { jikz: resolve(__dirname, 'src/index.ts') },
+    // Examples import from 'jikz' and its subpaths; in tests that means
+    // the live source.
+    alias: jikzAliases(__dirname),
   },
   test: {
     globals: true,

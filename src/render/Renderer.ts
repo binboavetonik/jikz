@@ -16,6 +16,7 @@ import type { Parabola } from '../geometry/Parabola'
 import type { Hyperbola } from '../geometry/Hyperbola'
 import type { StyleSpec } from './StyleMapper'
 import type { LayerName } from './Layer'
+import type { TextStyle } from '../text/Label'
 
 /**
  * Renderable types. Any geometry {@link Shape} is renderable — types
@@ -50,14 +51,10 @@ export interface RenderOptions {
   style?: StyleSpec
 
   /**
-   * Text style overrides for nodes
+   * Style for the text a node or edge carries (its own text and, on an
+   * edge, its labels' fallback) — TikZ `text=`/`font=`.
    */
-  textStyle?: {
-    fill?: string
-    fontSize?: number
-    fontFamily?: string
-    fontWeight?: string
-  }
+  textStyle?: TextStyle
 
   /**
    * CSS class to apply

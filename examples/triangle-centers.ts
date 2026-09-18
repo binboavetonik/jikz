@@ -23,15 +23,15 @@ export default function render(container: HTMLElement) {
   const text = { fontSize: 10 }
   pic.draw(tri.centroid, {
     style: { stroke: '#dc2626', strokeWidth: 2.5 },
-    label: { text: 'centroid', at: 'north west', options: { ...text, style: { stroke: '#dc2626' } } },
+    label: { text: 'centroid', at: 'north west', style: { ...text, fill: '#dc2626' } },
   })
   pic.draw(tri.circumcenter, {
     style: { stroke: '#7c3aed', strokeWidth: 2.5 },
-    label: { text: 'circumcenter', at: 'south east', options: { ...text, style: { stroke: '#7c3aed' } } },
+    label: { text: 'circumcenter', at: 'south east', style: { ...text, fill: '#7c3aed' } },
   })
 
   for (const [V, at, name] of [[A, 'south west', 'A'], [B, 'south east', 'B'], [C, 'north', 'C']] as const) {
-    pic.draw(V, { style: { stroke: '#334155', strokeWidth: 2 }, label: { text: name, at, options: text } })
+    pic.draw(V, { style: { stroke: '#334155', strokeWidth: 2 }, label: { text: name, at, style: text } })
   }
 
   pic.mount(container, { fit: true, padding: 14 })

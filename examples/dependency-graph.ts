@@ -6,6 +6,7 @@ export default function render(container: HTMLElement) {
   // points), and the network-simplex coordinate pass keeps that long
   // edge straight instead of zig-zagging.
   const { nodes, edges } = layered({
+    edgeOptions: { arrowEnd: 'stealth' },
     at: point(24, 16),
     grow: 'down',
     rankSep: 28,

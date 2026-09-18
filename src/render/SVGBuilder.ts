@@ -14,6 +14,7 @@
  * methods unchanged.
  */
 
+import { JikzError } from '../core/errors'
 import type { SVGAnimation } from './Renderer'
 
 export type Attrs = Record<string, unknown>
@@ -365,7 +366,7 @@ export class SVGBuilder extends SVGElement {
     viewBox?: ViewBoxSpec
   ): globalThis.SVGElement {
     if (typeof document === 'undefined') {
-      throw new Error(
+      throw new JikzError('unsupported', 
         'SVGBuilder.mount requires a DOM (document) — use toSVG() in Node.'
       )
     }
