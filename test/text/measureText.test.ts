@@ -165,16 +165,13 @@ describe('Node text auto-sizing (Stage 6)', () => {
     expect(n.height).toBe(30)
   })
 
-  it('explicit textWidth/textHeight override measurement', () => {
-    const n = node({
-      text: 'Hello',
-      shape: SHAPES['rectangle'],
-      textWidth: 100,
-      textHeight: 50,
-      innerSep: 4,
-    })
-    expect(n.width).toBe(108)
-    expect(n.height).toBe(58)
+  it('textWidth wraps the text and sizes the node to the wrapped block', () => {
+    const one = node({ text: 'one two three four', shape: SHAPES['rectangle'], innerSep: 4 })
+    const wrapped = node({ text: 'one two three four', shape: SHAPES['rectangle'], innerSep: 4, textWidth: 60 })
+    expect(wrapped.lines.length).toBeGreaterThan(1)
+    expect(wrapped.width).toBe(68) // the wrap width plus inner sep
+    expect(wrapped.height).toBeGreaterThan(one.height)
+    expect(wrapped.lines.join(' ')).toBe('one two three four')
   })
 
   it('explicit width/height skip measurement entirely', () => {

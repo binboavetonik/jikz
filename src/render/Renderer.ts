@@ -14,7 +14,8 @@ import type { Edge } from '../node/Edge'
 import type { Plot } from '../geometry/Plot'
 import type { Parabola } from '../geometry/Parabola'
 import type { Hyperbola } from '../geometry/Hyperbola'
-import type { StyleSpec } from './StyleMapper'
+import type { StyleSpec, RenderStyle, SVGAttributes } from './StyleMapper'
+import type { SVGBuilder, SVGElement } from './SVGBuilder'
 import type { LayerName } from './Layer'
 import type { TextStyle } from '../text/Label'
 
@@ -23,7 +24,50 @@ import type { TextStyle } from '../text/Label'
  * without a dedicated render method (Triangle, Parabola, Hyperbola,
  * Plot, complex shapes, …) fall back to path rendering via toSVGPath().
  */
+/** Axis-aligned bounds `[minX, minY, maxX, maxY]`. */
+export type Bounds = readonly [number, number, number, number]
+
+/**
+ * Anything with an outline and bounds renders as a path with the
+ * caller's style — the structural floor of the renderable seam. An
+ * extension needs no registration and no core type to be drawable.
+ */
+export interface CustomRenderable {
+  readonly bounds: Bounds
+  toSVGPath(): string
+}
+
+/** What a {@link Paintable} receives: where to draw, and with what. */
+export interface PaintContext {
+  /** The group the item paints into (its children are the item). */
+  target: SVGBuilder
+  /** The resolved style, defaults included. */
+  style: RenderStyle
+  /** `style` as SVG attributes, with patterns, gradients and clips as defs. */
+  attrs: SVGAttributes
+  /** The caller's options, for `textStyle` and the like. */
+  options?: RenderOptions
+  /** The renderer, for text, math and nested renderables. */
+  renderer: Renderer<SVGElement, SVGBuilder>
+}
+
+/**
+ * A renderable that paints itself — the seam for split paint (marks on
+ * a path, tokens in a place): several fills, several strokes, text.
+ * Ships as one object; core calls `paint` when present.
+ */
+export interface Paintable {
+  readonly bounds: Bounds
+  paint(ctx: PaintContext): void
+}
+
+export function isPaintable(obj: unknown): obj is Paintable {
+  return typeof obj === 'object' && obj !== null && typeof (obj as Paintable).paint === 'function'
+}
+
 export type Renderable =
+  | Paintable
+  | CustomRenderable
   | Point
   | Path
   | MarkedPath
@@ -70,6 +114,18 @@ export interface RenderOptions {
    * Custom attributes
    */
   attributes?: Record<string, string | number>
+
+  /**
+   * TikZ `preaction`: paint the same outline again BEFORE the item,
+   * once per entry, with only what the entry says (a glow, a halo, a
+   * shadow). Each entry is a style over the invisible `path` baseline,
+   * so `{ stroke: '#fde68a', strokeWidth: 8 }` draws a halo and nothing
+   * else.
+   */
+  preactions?: readonly StyleSpec[]
+
+  /** TikZ `postaction`: like {@link preactions}, painted AFTER the item. */
+  postactions?: readonly StyleSpec[]
 
   /**
    * SMIL animation(s) emitted as `<animate>`/`<animateTransform>` children
@@ -143,6 +199,9 @@ export interface TextOptions extends RenderOptions {
    * Dominant baseline (vertical alignment)
    */
   dominantBaseline?: 'auto' | 'middle' | 'hanging' | 'alphabetic'
+
+  /** Rotate the text about its position, degrees clockwise (TikZ `sloped`, `rotate`). */
+  rotate?: number
 }
 
 /**

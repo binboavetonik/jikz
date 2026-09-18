@@ -78,6 +78,8 @@ picture(options?: {
   styles?: Record<string, StyleSpec>   // per-picture \tikzset: names for `style`
   every?: { node?, edge?, path?: StyleSpec; text?: TextStyle }   // every node / every edge / …
   arrowTips?: Record<string, ArrowTipDefinition>   // tips local to this picture
+  frame?: 'screen' | 'math'   // the frame statements are written in (default screen)
+  unit?: number               // px per coordinate unit — cm(1) for TikZ's default
   mathRenderer?: MathRenderer   // katexAdapter(katex) / mathjaxAdapter(MathJax)
   transform?: Transform   // canvas transform — maps the whole scene
   scale?: number          // uniform canvas scale (composes with transform)
@@ -114,6 +116,7 @@ is TikZ's `node[right]{x}` inside the statement.
 | `pic.node(name, options)` | register + paint a node — geometry, `style`/`textStyle`, `labels`, and `rightOf: 'A'` placement in one bag |
 | `pic.edge(from, to, options)` | boundary-aware edge by name/anchor/point; `label`/`labels`, `style` in the same bag |
 | `pic.coordinate(name, at)` | name a raw point (TikZ `\coordinate`) |
+| `pic.point(x, y)`, `pic.length(v)` | a frame coordinate / length as screen px |
 | `pic.add(result, { nodes?, edges? })` | take a layout result (or a list of nodes/edges) whole; named nodes register |
 | `pic.getNode(name)` | look up (returns `Node \| undefined`) |
 | `pic.pen(options?)` | start a fluent path statement |

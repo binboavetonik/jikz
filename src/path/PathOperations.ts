@@ -523,6 +523,35 @@ function segmentsOfSubpath(p: Path, start: Point): PathSegment[] {
 }
 
 /**
+ * Trim a path at its ends — TikZ `shorten <`/`shorten >`. The first
+ * point moves `start` px into the first segment and the last point
+ * `end` px back along the last one (along the final control leg for
+ * a curve). Closed paths are returned as they are.
+ */
+export function shortenPath(p: Path, start: number, end: number): Path {
+  if (p.isEmpty || p.isClosed || (start <= 0 && end <= 0)) return p
+  const segs = p.segments.map((s) => ({ ...s, points: [...s.points] }))
+  const first = segs.findIndex((s) => s.type !== 'M')
+  if (first < 1) return p
+  if (start > 0) {
+    const m = segs[first - 1]!
+    const from = m.points[0]!
+    const towards = segs[first]!.points[0]!
+    m.points[0] = from.towardByDistance(towards, Math.min(start, from.distanceTo(towards)))
+  }
+  if (end > 0) {
+    const last = segs[segs.length - 1]!
+    const endPt = last.points[last.points.length - 1]!
+    const prev =
+      last.points.length > 1
+        ? last.points[last.points.length - 2]!
+        : (segs[segs.length - 2]?.points.slice(-1)[0] ?? endPt)
+    last.points[last.points.length - 1] = endPt.towardByDistance(prev, Math.min(end, endPt.distanceTo(prev)))
+  }
+  return new Path(segs)
+}
+
+/**
  * Extract a portion of a path
  */
 export function subPath(p: Path, startT: number, endT: number): Path {

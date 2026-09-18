@@ -80,15 +80,25 @@ export function pathLabelPoint(obj: Renderable, label: Label): Point {
   const t = label.pos ?? 0.5
   const offset = label.offset ?? 5
   const p = pointAt.call(obj, t)
-  const tangentAt = (obj as { tangentAt?: (t: number) => number }).tangentAt
-  const tangent =
-    typeof tangentAt === 'function'
-      ? tangentAt.call(obj, t)
-      : pointAt
-          .call(obj, Math.max(0, t - 1e-3))
-          .angleTo(pointAt.call(obj, Math.min(1, t + 1e-3)))
+  const tangent = pathTangentAngle(obj, t)
   const rad = degToRad(tangent - 90)
   return point(p.x + offset * Math.cos(rad), p.y + offset * Math.sin(rad))
+}
+
+/**
+ * The travel direction of a path-like renderable at parameter `t`,
+ * degrees, screen convention — from `tangentAt` when the shape has it
+ * (Line, Edge), else a numeric derivative over `pointAt`.
+ */
+export function pathTangentAngle(obj: Renderable, t: number): number {
+  const pointAt = (obj as { pointAt?: (t: number) => Point }).pointAt
+  if (typeof pointAt !== 'function') {
+    throw new JikzError('invalid-argument', `tangent: needs a path-like renderable with pointAt.`)
+  }
+  const tangentAt = (obj as { tangentAt?: (t: number) => number }).tangentAt
+  return typeof tangentAt === 'function'
+    ? tangentAt.call(obj, t)
+    : pointAt.call(obj, Math.max(0, t - 1e-3)).angleTo(pointAt.call(obj, Math.min(1, t + 1e-3)))
 }
 
 /**

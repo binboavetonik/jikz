@@ -57,6 +57,7 @@ export {
   smoothPath,
   subPath,
   roundCorners,
+  shortenPath,
   joinPaths,
   // Brace/bracket
   bracePath,

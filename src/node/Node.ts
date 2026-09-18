@@ -14,7 +14,8 @@ import { degToRad } from '../utils/math'
 import { nodeRight, nodeLeft, nodeAbove, nodeBelow } from './Positioning'
 import type { PointLike } from '../core/types'
 import { parseAnchorSpec, isTextAnchor, type AnchorSpec, type Anchorable, type TextAnchor } from '../core/Anchor'
-import type { Label } from '../text/Label'
+import type { Label, Pin, TextStyle } from '../text/Label'
+import { wrapText } from '../text/wrapText'
 import type { Shape, ShapeOptions } from '../geometry/Shape'
 import { Rotated } from '../geometry/Rotated'
 
@@ -96,13 +97,27 @@ export interface NodeOptions<S extends ShapeSpec = ShapeSpec> {
   innerSep?: number
   outerSep?: number
   /**
-   * Explicit text dimensions for auto-sizing. When omitted (and no
-   * width/height given), the node measures its own text via
-   * {@link measureText} — canvas-accurate in the browser, font-metrics
-   * approximation in Node. Supply these to pin exact dimensions.
+   * Wrap the text to this width, px — TikZ `text width`. Lines break
+   * at spaces; `\n` still forces a break. The node then sizes to the
+   * wrapped block (unless `width`/`height` are given).
    */
   textWidth?: number
-  textHeight?: number
+  /**
+   * Horizontal alignment of a multi-line text block — TikZ `align=`.
+   * Default `'center'`.
+   */
+  align?: 'left' | 'center' | 'right'
+  /**
+   * Font and colour of the node's text — TikZ `font=`, `text=`. Used
+   * for measuring (auto-size, text anchors) as well as painting, so a
+   * `fontSize: 20` node is sized for 20 px text.
+   */
+  textStyle?: TextStyle
+  /**
+   * Pins — TikZ `pin=<angle>:<text>`: labels with a connecting line
+   * from the node's border. See {@link Pin}.
+   */
+  pins?: readonly Pin[]
   /**
    * Rotate the node `angle` degrees (clockwise on screen, matching SVG's
    * `rotate()`) around its center. Rotation is geometric: anchors,
@@ -181,9 +196,18 @@ export class Node implements Anchorable {
    * `rotate` (coordinate transform) vs `rotate` + `transform shape`.
    */
   readonly rotateText: boolean
-  /** Explicit text dimensions from options, if supplied (see {@link NodeOptions.textWidth}). */
+  /** Wrap width, when given (see {@link NodeOptions.textWidth}). */
   readonly textWidth?: number
-  readonly textHeight?: number
+  /** Text lines as laid out: `\n` breaks plus wrapping to `textWidth`. */
+  readonly lines: readonly string[]
+  /** Horizontal alignment of the text block. */
+  readonly align: 'left' | 'center' | 'right'
+  /** The node's own text style, if given. */
+  readonly textStyle?: TextStyle
+  /** Pins (labels with a connecting line). */
+  readonly pins: readonly Pin[]
+  /** Measured size of the text block, px (0×0 when there is no text). */
+  readonly textBlock: { readonly width: number; readonly height: number }
 
   constructor(options: NodeOptions = {}) {
     const opts = { ...DEFAULT_NODE_OPTIONS, ...options }
@@ -197,7 +221,21 @@ export class Node implements Anchorable {
     this.rotate = opts.rotate
     this.rotateText = opts.rotateText
     this.textWidth = options.textWidth
-    this.textHeight = options.textHeight
+    this.align = options.align ?? 'center'
+    this.textStyle = options.textStyle
+    this.pins = options.pins ?? []
+    const font = {
+      fontSize: options.textStyle?.fontSize,
+      fontFamily: options.textStyle?.fontFamily,
+      fontWeight:
+        options.textStyle?.fontWeight === undefined ? undefined : String(options.textStyle.fontWeight),
+    }
+    this.lines = this.text
+      ? options.textWidth !== undefined
+        ? wrapText(this.text, options.textWidth, font)
+        : this.text.split('\n')
+      : []
+    this.textBlock = this.text ? measureText(this.lines.join('\n'), font) : { width: 0, height: 0 }
 
     let shape: Shape
 
@@ -218,12 +256,12 @@ export class Node implements Anchorable {
 
       const textAutoSize = kind.textAutoSize
       if ((width === 0 || height === 0) && this.text && textAutoSize) {
-        const measured = measureText(this.text)
+        const measured = this.textBlock
         if (width === 0) {
           width = (options.textWidth ?? measured.width) + 2 * opts.innerSep
         }
         if (height === 0) {
-          height = (options.textHeight ?? measured.height) + 2 * opts.innerSep
+          height = measured.height + 2 * opts.innerSep
         }
       }
 
@@ -300,7 +338,7 @@ export class Node implements Anchorable {
 
   // Typographic ratios for text anchors (typical sans-serif metrics).
   // measureText returns only extents, so ascent/x-height are derived
-  // from the effective em (textHeight / (lines × LINE_HEIGHT)).
+  // from the effective em (block height / (lines × LINE_HEIGHT)).
   private static readonly TEXT_ASCENT_RATIO = 0.8
   private static readonly TEXT_X_HEIGHT_RATIO = 0.5
 
@@ -327,9 +365,8 @@ export class Node implements Anchorable {
       return c
     }
 
-    const lines = this.text.split('\n').length
-    const measured = measureText(this.text)
-    const textH = this.textHeight ?? measured.height
+    const lines = this.lines.length
+    const textH = this.textBlock.height
     const em = textH / (lines * LINE_HEIGHT)
 
     const baselineY =
@@ -572,7 +609,9 @@ export class Node implements Anchorable {
       rotate: this.rotate,
       rotateText: this.rotateText,
       textWidth: this.textWidth,
-      textHeight: this.textHeight,
+      align: this.align,
+      textStyle: this.textStyle,
+      pins: [...this.pins],
       labels: [...this.labels],
       labelDistance: this.labelDistance,
     })
@@ -592,7 +631,9 @@ export class Node implements Anchorable {
       rotate: this.rotate,
       rotateText: this.rotateText,
       textWidth: this.textWidth,
-      textHeight: this.textHeight,
+      align: this.align,
+      textStyle: this.textStyle,
+      pins: [...this.pins],
       labels: [...this.labels],
       labelDistance: this.labelDistance,
     })

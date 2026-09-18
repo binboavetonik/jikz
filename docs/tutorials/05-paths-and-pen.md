@@ -49,6 +49,26 @@ pic.pen({ style: { stroke: '#0f172a', strokeWidth: 1.6 } })
 Endpoints accept points, `[x, y]` tuples, or **names**:
 `.moveTo('P').vhTo('Q')` is `\draw (P) |- (Q)`.
 
+## TikZ's path operations
+
+The pen speaks the whole TikZ path vocabulary, not only `--`:
+
+```ts
+pic.pen()
+  .moveTo(0, 0).rectangle(40, 20)                 // rectangle (corner) — pen parks at the corner
+  .moveTo(80, 10).circle(8)                       // circle (r) — pen stays put
+  .moveTo(120, 10).arc({ start: 0, end: 180, radius: 10 })   // arc[start angle, end angle, radius]
+  .moveTo(0, 40).grid(60, 70, { step: 10 })       // grid[step]
+  .moveTo(80, 70).parabola(point(120, 40), { bend: point(100, 30) })
+  .moveTo(140, 70).sin(point(160, 40)).cos(point(180, 70))
+  .lineTo(rel(20, 0))                             // ++(20, 0)
+  .node('end', { shape: 'circle', text: 'e' })    // a real named node at the pen
+```
+
+In a `frame: 'math'` picture the same calls take TikZ's numbers as
+they are — `arc({ start: 0, end: 90, radius: 1 })` sweeps
+counter-clockwise, `rel(1, 0)` steps one unit right.
+
 ## Labels: position vs segment
 
 Two placement modes, matching TikZ's two node placements:
@@ -78,6 +98,13 @@ pic.pen({ style: { stroke: '#2563eb' } })
 `push(options)` splits the statement: subsequent segments compile to a
 new path whose options inherit and override. One statement, mixed
 dashed/solid legs.
+
+## Shortening and sloped labels
+
+`pic.pen({ shortenStart, shortenEnd })` trims the statement's first
+and last segments (TikZ `shorten <`/`shorten >`); a `pos` label with
+`sloped: true` lies along the segment it rides, flipped where it
+would read upside down.
 
 ## Fill mode
 

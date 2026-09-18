@@ -86,6 +86,12 @@ const meta: DemoMeta[] = [
     description: "TikZ-style path verbs on raw geometry. `filldraw` strokes and fills; `draw` strokes only. No renderer methods in sight — the picture is its own compile target.",
   },
   {
+    id: "tikz-frame",
+    category: "geometry-math",
+    title: "A TikZ figure, line for line — the math frame",
+    description: "picture({ frame: 'math', unit: cm(1) }) takes TikZ's own numbers: y up, counter-clockwise angles, centimetres. The pen's TikZ operations do the rest — grid, circle, arc[start angle, end angle, radius], ++(0,-0.5) as rel(0, -0.5) — plus a pin, a sloped midway label, xcolor mixing (gray!40) and a sized Stealth tip. Compare the six \\draw lines in the comment with the six statements.",
+  },
+  {
     id: "points-tikz",
     category: "geometry-math",
     title: "Points & TikZ operators",

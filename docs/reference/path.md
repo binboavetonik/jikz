@@ -75,11 +75,28 @@ Center↔endpoint parameterization conversions (`centerToEndpoint`,
 
 ## The pen (`pic.pen()`)
 
+Verbs: `moveTo`, `lineTo`/`to` (with `out`/`in`/`bend`), `hvTo`,
+`vhTo`, `curveTo`, `smoothCurveTo`, `quadraticTo`, `through`, `bendTo`,
+`arcTo`/`circularArcTo` (SVG endpoint form), `close`; TikZ's
+operations `rectangle`, `circle`, `ellipse`, `arc({ start, end |
+delta, radius | xRadius, yRadius })`, `grid`, `parabola`, `sin`,
+`cos`; `label`, `node` (a real named node), `coordinate`, `push`.
+Points are `PointLike`, a name (`'A.north'`) or `rel(dx, dy)`.
+Options: `mode`, `style`, `shortenStart`, `shortenEnd`.
+
 Covered in [tutorial 5](../tutorials/05-paths-and-pen.md). Summary:
 one statement compiles to one path per style run; `label({ at })` hangs
 on the pen position, `label({ pos, offset })` rides the last segment;
 `coordinate(name)` names the position; `push(options)` restyles
 mid-statement.
+
+## Routers (`src/node/routers.ts`)
+
+`edge(a, b, { route })` takes an `EdgeRouter`, `(from, to, edge) =>
+Path`, in place of the built-in routing — TikZ's `to path`.
+`straightRouter`, `orthogonalRouter({ first })` and `busRouter({ x |
+y })` are exported; arrows, labels (`pos`), bounds and `shorten*`
+follow the routed path.
 
 ## rotatePath
 

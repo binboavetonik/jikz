@@ -15,6 +15,10 @@ model, not on a scene graph.
   (`allShapes` adds 14 kB).
 - **Runs anywhere.** `toSVG()` works in Node, workers, and SSR with no
   DOM; `mount()` attaches a live tree in the browser.
+- **Write it in TikZ's frame.** `picture({ frame: 'math', unit: cm(1) })`
+  takes y-up, counter-clockwise coordinates in centimetres, and the pen
+  speaks TikZ's path operations — `arc`, `rectangle`, `circle`, `grid`,
+  `rel(dx, dy)` — so a `\draw` ports line for line.
 - **TikZ semantics.** Named nodes with boundary-aware edges, compass
   anchors, `\path`/`\draw`/`\fill`/`\filldraw` verbs, one option list
   per statement, `every node`/`every edge` defaults, `right=of A`
@@ -165,6 +169,11 @@ pic.pen({ style: { stroke: '#0f172a', strokeWidth: 1.6 } })
   style system and builder substrate.
 
 ## Conventions (read this once)
+
+Or skip them: `picture({ frame: 'math', unit: cm(1) })` writes the
+picture in TikZ's frame (y up, counter-clockwise, `A.90` = top, one
+unit = 1 cm) and maps it to screen space at insertion. The rules below
+describe the default screen frame, and what every geometry object holds.
 
 - **Coordinates are SVG screen space**: units are pixels, **y grows
   downward**, origin at the top-left.

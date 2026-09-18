@@ -112,6 +112,8 @@ export {
   DEFAULT_LABEL_FONT_SIZE,
 } from './Node'
 export type { Label, TextStyle, NodeOptions } from './Node'
+export type { Pin } from '../text/Label'
+export { DEFAULT_PIN_DISTANCE, DEFAULT_PIN_EDGE_STYLE, readableAngle } from '../text/Label'
 
 // Edge
 export {
@@ -125,7 +127,7 @@ export {
   bendRight,
   loopEdge,
 } from './Edge'
-export type { ArrowTip, EdgeRouting, EdgeAnchorSpec, EdgeOptions } from './Edge'
+export type { ArrowTip, ArrowTipSpec, ArrowSpec, EdgeRouting, EdgeAnchorSpec, EdgeOptions } from './Edge'
 
 // Positioning (TikZ positioning library style)
 export {
@@ -146,3 +148,7 @@ export {
   nodeCircle,
 } from './Positioning'
 export type { PositionDirection, PositionOptions } from './Positioning'
+
+// Routers (TikZ `to path` as functions)
+export { straightRouter, orthogonalRouter, busRouter } from './routers'
+export type { EdgeRouter } from './routers'

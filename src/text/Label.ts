@@ -10,6 +10,7 @@
  * `every.text`.
  */
 import type { AnchorSpec } from '../core/Anchor'
+import type { RenderStyle, StyleSpec } from '../render/StyleMapper'
 
 /** How a piece of text is set. TikZ: `text=`, `font=`. */
 export interface TextStyle {
@@ -56,6 +57,38 @@ export interface Label {
   offset?: number
   /** This label's text style. */
   style?: TextStyle
+  /**
+   * Riding placement: rotate the text along the path's tangent (TikZ
+   * `sloped`), flipped where needed so it never reads upside down.
+   */
+  sloped?: boolean
+}
+
+/**
+ * A pin — TikZ `pin=<angle>:<text>`: a {@link Label} placed like a
+ * label (default gap 12 px, TikZ `pin distance`) plus a thin line from
+ * the node's border to the text (TikZ `pin edge`, default `help lines`).
+ */
+export interface Pin extends Label {
+  /** Style of the connecting line; merged over the default thin grey. */
+  edge?: StyleSpec
+}
+
+/** Default gap between a node's border and a pin's text, px. */
+export const DEFAULT_PIN_DISTANCE = 12
+
+/** TikZ `every pin edge` — `help lines`. */
+export const DEFAULT_PIN_EDGE_STYLE: Readonly<Partial<RenderStyle>> = Object.freeze({
+  stroke: '#9ca3af',
+  strokeWidth: 0.6,
+})
+
+/** The angle text should be rotated by to lie along `tangent`, kept readable. */
+export function readableAngle(tangent: number): number {
+  let a = ((tangent % 360) + 360) % 360
+  if (a > 90 && a < 270) a -= 180
+  if (a >= 270) a -= 360
+  return a
 }
 
 /** A label, or just its text. */
