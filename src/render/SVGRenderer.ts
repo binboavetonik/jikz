@@ -1,6 +1,7 @@
 import { JikzError, warn } from '../core/errors'
 import { Point } from '../core/Point'
 import { LINE_HEIGHT } from '../text/measureText'
+import { readableAngle } from '../text/Label'
 import type { Transform } from '../core/Transform'
 import { PANZOOM_VIEWPORT_CLASS } from './PanZoom'
 import { Path } from '../path/Path'
@@ -17,7 +18,7 @@ import { Rotated } from '../geometry/Rotated'
 import { Plot } from '../geometry/Plot'
 import { plotMarkPath, plotMarkFilled } from '../geometry/PlotMark'
 import { Node } from '../node/Node'
-import { Edge } from '../node/Edge'
+import { Edge, type ArrowTipSpec } from '../node/Edge'
 import {
   Renderer,
   Renderable,
@@ -35,6 +36,7 @@ import {
   isPolygon,
   isNode,
   isEdge,
+  isPaintable,
 } from './Renderer'
 import {
   RenderStyle,
@@ -219,30 +221,88 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
    * Start and end markers are separate defs (pre-mirrored artwork,
    * orient=auto) to avoid auto-start-reverse renderer bugs.
    */
-  private ensureMarker(arrowType: string, color: string, position: 'start' | 'end' = 'end'): string | null {
-    const kind = resolveArrowTipKind(arrowType)
-    const shape = this.arrowTips?.[kind] ?? getArrowTip(kind)
-    if (!shape) return null
+  private ensureMarker(
+    tips: readonly ArrowTipSpec[],
+    color: string,
+    position: 'start' | 'end',
+    strokeWidth: number
+  ): string | null {
+    const resolved = tips
+      .map((t) => {
+        const kind = resolveArrowTipKind(t.tip)
+        const shape = this.arrowTips?.[kind] ?? getArrowTip(kind)
+        return shape ? { spec: t, kind, shape } : null
+      })
+      .filter((t): t is NonNullable<typeof t> => t !== null)
+    if (resolved.length === 0) return null
 
-    const art = shape[position]
-    const id = `arrow-${kind}${position === 'start' ? '-start' : ''}-${colorKey(color)}`
+    const n = resolved.length
+    const first = resolved[0]!.spec
+    // Size: stroke-relative by default (6 stroke widths per tip); absolute
+    // px when `length`/`width` are given.
+    const absolute = first.length !== undefined || first.width !== undefined
+    const scale = first.scale ?? 1
+    const slotPx = absolute ? (first.length ?? first.width!) : 6 * scale * strokeWidth
+    const heightPx = absolute ? (first.width ?? first.length!) : 6 * scale * strokeWidth
+    const unitsPerPx = 10 / slotPx
+
+    // `arrow-<kind>[-start]-<color>` for the plain single tip, exactly
+    // as before; parameters append to the key so each variant gets its
+    // own def.
+    const kinds = resolved
+      .map((r) => `${r.kind}${r.spec.reversed ? '~r' : ''}${r.spec.open ? '~o' : ''}`)
+      .join('+')
+    const extras = [
+      absolute ? `${slotPx}x${heightPx}` : scale !== 1 ? `s${scale}` : '',
+      first.sep ? `sep${first.sep}` : '',
+      resolved.some((r) => r.spec.fill || r.spec.color)
+        ? resolved
+            .map((r) => (r.spec.fill ? colorKey(r.spec.fill) : '') + (r.spec.color ? colorKey(r.spec.color) : ''))
+            .join('_')
+        : '',
+    ]
+      .filter(Boolean)
+      .map((e) => `-${e}`)
+      .join('')
+    const id = `arrow-${kinds}${position === 'start' ? '-start' : ''}-${colorKey(color)}${extras}`
+
     return this.defsManager.ensure(id, (defs) => {
-      const artwork: Record<string, unknown> = shape.filled
-        ? { fill: color }
-        : { fill: 'none', stroke: color, 'stroke-width': shape.strokeWidth ?? 1.5 }
+      // Tip 0 sits at the path end, later tips behind it. End artwork
+      // points +x, so tip i occupies slot (n-1-i); start artwork points
+      // −x and tip i occupies slot i.
+      const slotOf = (i: number) => (position === 'end' ? n - 1 - i : i)
+      const art0 = resolved[0]!.shape[first.reversed ? (position === 'end' ? 'start' : 'end') : position]
+      const sepUnits = (first.sep ?? 0) * unitsPerPx
+      const refX = slotOf(0) * 10 + art0.refX + (position === 'end' ? sepUnits : -sepUnits)
 
-      defs
-        .marker(10, 10, (add) => {
-          add.path(art.d).attr(artwork)
+      const marker = defs
+        .marker(10 * n, 10, (add) => {
+          resolved.forEach(({ spec, shape }, i) => {
+            const art = shape[spec.reversed ? (position === 'end' ? 'start' : 'end') : position]
+            const tipColor = spec.color ?? color
+            const artwork: Record<string, unknown> =
+              shape.filled && !spec.open
+                ? { fill: spec.fill ?? tipColor, ...(spec.fill ? { stroke: tipColor, 'stroke-width': 1 } : {}) }
+                : { fill: 'none', stroke: tipColor, 'stroke-width': shape.strokeWidth ?? 1.5 }
+            const slot = slotOf(i)
+            const el = add.path(art.d).attr(artwork)
+            if (slot !== 0) el.attr({ transform: `translate(${slot * 10} 0)` })
+          })
         })
         .attr({
           id,
-          refX: art.refX,
+          refX,
           refY: 5,
-          markerWidth: 6,
-          markerHeight: 6,
+          markerWidth: absolute ? slotPx * n : 6 * scale * n,
+          markerHeight: absolute ? heightPx : 6 * scale,
           orient: 'auto',
         })
+      if (absolute) {
+        marker.attr({ markerUnits: 'userSpaceOnUse' })
+        if (first.length !== undefined && first.width !== undefined) {
+          marker.attr({ preserveAspectRatio: 'none' })
+        }
+      }
     })
   }
 
@@ -770,7 +830,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
     // already rotated in absolute coordinates via toSVGPath, so it
     // must stay OUTSIDE this subgroup).
     if (node.text) {
-      const textOpts = options?.textStyle ?? {}
+      const textOpts = { ...node.textStyle, ...options?.textStyle }
       const textStyleAttrs = {
         'font-family': textOpts.fontFamily ?? 'sans-serif',
         'font-size': textOpts.fontSize ?? 14,
@@ -789,10 +849,17 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
       if (this.isLaTeX(node.text)) {
         this.renderLaTeX(node.text, node.center, textTarget)
       } else {
-        textTarget.text(node.text)
-          .center(node.center.x, node.center.y)
-          .font(textStyleAttrs)
-          .lines(node.text, textStyleAttrs['font-size'] * LINE_HEIGHT)
+        const content = node.lines.join('\n')
+        const el = textTarget.text(content).center(node.center.x, node.center.y).font(textStyleAttrs)
+        // TikZ `align=left/right`: anchor the lines on the block's edge.
+        if (node.align !== 'center' && node.lines.length > 1) {
+          const half = node.textBlock.width / 2
+          el.attr({
+            'text-anchor': node.align === 'left' ? 'start' : 'end',
+            x: node.align === 'left' ? node.center.x - half : node.center.x + half,
+          })
+        }
+        el.lines(content, textStyleAttrs['font-size'] * LINE_HEIGHT)
       }
     }
 
@@ -810,16 +877,17 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
     // per-color variant and we reference that.
     const markerColor = style.stroke ?? '#000000'
     const pathAttrs: Record<string, unknown> = { ...attrs }
+    const strokeWidth = style.strokeWidth ?? 1
 
-    if (edge.arrowEnd !== 'none') {
-      const marker = this.ensureMarker(edge.arrowEnd, markerColor)
+    if (edge.endTips.length > 0) {
+      const marker = this.ensureMarker(edge.endTips, markerColor, 'end', strokeWidth)
       if (marker) {
         pathAttrs['marker-end'] = marker
       }
     }
 
-    if (edge.arrowStart !== 'none') {
-      const marker = this.ensureMarker(edge.arrowStart, markerColor, 'start')
+    if (edge.startTips.length > 0) {
+      const marker = this.ensureMarker(edge.startTips, markerColor, 'start', strokeWidth)
       if (marker) {
         pathAttrs['marker-start'] = marker
       }
@@ -849,10 +917,11 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
       // Only when asked: `normal` is the SVG default, and emitting it
       // would add a redundant attribute to every edge label ever drawn.
       if (textOpts.fontWeight !== undefined) font['font-weight'] = textOpts.fontWeight
-      g.text(label.text)
-        .center(at.x, at.y)
-        .font(font)
-        .lines(label.text, (font['font-size'] as number) * LINE_HEIGHT)
+      const el = g.text(label.text).center(at.x, at.y).font(font)
+      if (label.sloped) {
+        el.attr({ transform: `rotate(${readableAngle(edge.tangentAt(label.pos ?? 0.5))} ${at.x} ${at.y})` })
+      }
+      el.lines(label.text, (font['font-size'] as number) * LINE_HEIGHT)
     }
 
     return this.applyOptions(g, options)
@@ -886,6 +955,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
       .attr({
         'text-anchor': options?.textAnchor ?? 'start',
         'dominant-baseline': options?.dominantBaseline ?? 'auto',
+        ...(options?.rotate ? { transform: `rotate(${options.rotate} ${position.x} ${position.y})` } : {}),
       })
       .lines(text, (options?.fontSize ?? 14) * LINE_HEIGHT)
 
@@ -1130,6 +1200,18 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
     }
     if (isEdge(obj)) {
       return this.renderEdge(obj, options)
+    }
+    if (isPaintable(obj)) {
+      const style = this.getStyle(options)
+      const g = this.getTarget().group()
+      obj.paint({
+        target: g,
+        style,
+        attrs: this.resolveStyleAttributes(style),
+        options,
+        renderer: this,
+      })
+      return this.applyOptions(g, options)
     }
     if (isShapeLike(obj)) {
       return this.renderShape(obj, options)

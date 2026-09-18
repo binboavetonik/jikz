@@ -57,6 +57,36 @@ ports a Beamer TikZ slide line-for-line using exactly these rules.
 - **Labels**: `pic.text(p, 'h', { at: 'north' })` places above —
   compass names are safe everywhere.
 
+## The math frame
+
+Since 0.9 a picture can be *written* in TikZ's frame:
+
+```ts
+import { picture, cm, point, polar, rel } from '@ozan.e/jikz'
+
+const pic = picture({ frame: 'math', unit: cm(1) })
+pic.pen().moveTo(0, 0).lineTo(2, 1).arc({ start: 0, end: 90, radius: 1 })
+pic.node('A', { at: polar(60, 2), text: 'A' })
+pic.edge('A.90', point(0, 3))          // A.90 is the top
+```
+
+Every coordinate, angle and numeric anchor that enters through a
+picture verb — `node`, `edge`, `coordinate`, `text`, `draw`, the pen —
+is mapped **once, at insertion**: y is negated, coordinates are
+multiplied by `unit`, angles are negated. The geometry the picture
+holds is screen space as always, so nothing in rendering changes:
+text stays upright, stroke widths and font sizes stay px, and
+`resolve()` returns screen px (`pic.point(x, y)` maps a frame
+coordinate by hand, `pic.length(v)` a coordinate length).
+
+Two rules follow. Lengths given as *options* — `width`, `innerSep`,
+`distance`, `strokeWidth` — are px, not units, as TikZ keeps `line
+width` and `inner sep` in absolute units. And a geometry object handed
+to `draw()` is mapped too (`circle(point(1, 1), 0.5)` becomes a circle
+of radius `0.5 × unit` at the mapped centre): points, lines, circles,
+rectangles, polygons, arcs, ellipses and paths map; plots and node
+shapes do not, and say so.
+
 ## The escape hatch
 
 If your data lives in math coordinates (plots, physics), either negate

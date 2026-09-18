@@ -12,11 +12,16 @@ export {
   isPolygon,
   isNode,
   isEdge,
+  isPaintable,
 } from './Renderer'
 
 export type {
   Renderer,
   Renderable,
+  Bounds,
+  CustomRenderable,
+  Paintable,
+  PaintContext,
   RenderOptions,
   TextOptions,
   GroupOptions,

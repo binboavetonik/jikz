@@ -16,17 +16,17 @@ Legend: ✅ supported · 🟡 partial (note says what is missing) ·
 | TikZ | jikz | |
 |---|---|---|
 | `(x,y)` canvas coordinates | `point(x, y)` — px, y down | ✅ |
-| `(θ:r)` polar | `polar(θ, r)` — clockwise angles, so TikZ's θ is `-θ` here | 🟡 convention |
-| `(A)`, `(A.north)`, `(A.30)` | `'A'`, `'A.north'`, `'A.30'` — numeric anchors are screen angles (`270` = top) | 🟡 convention |
+| `(θ:r)` polar | `polar(θ, r)` — in a `frame: 'math'` picture exactly TikZ's; in the default screen frame θ is clockwise | ✅ |
+| `(A)`, `(A.north)`, `(A.30)` | `'A'`, `'A.north'`, `'A.30'` — numeric anchors follow the picture's frame (`A.90` is the top in `frame: 'math'`) | ✅ |
 | `($(A)!0.5!(B)$)`, `!2cm!`, `!(P)!` projection | `A.toward(B, 0.5)`, `A.towardByDistance(B, 20)`, `P.project(A, B)` | ✅ |
 | `!θ:` rotation modifier | `p.rotateAround(c, θ)` | ✅ |
 | `(A \|- B)`, `(A -\| B)` | `A.horAt(B)`, `A.verAt(B)` | ✅ |
-| `++(dx,dy)` / `+(dx,dy)` relative | `p.add(dx, dy)`; on the pen `lineBy(dx, dy)` only | 🟡 pen verbs, Phase 2 |
+| `++(dx,dy)` relative | `rel(dx, dy)` as the point of any pen verb; `+(dx,dy)` (no pen move) is `pen.position.add(…)` | ✅ |
 | `\coordinate (P) at …` | `pic.coordinate('P', p)`; mid-path `pen.coordinate('P')` | ✅ |
 | `xyz`, `canvas polar`, `node cs`, `intersection cs`, `tangent cs` | intersections via `intersect*()` functions; the rest have no analogue | 🟡 |
-| lengths `1cm`, `10pt` | pixels only | ❌ Phase 2 |
-| colours `blue!30!white` | CSS colours only; no mixing | ❌ Phase 2 |
-| a `frame: 'math'` picture (y up, counter-clockwise, `A.90` = top) | — | ❌ Phase 2, the item that removes both 🟡 rows above |
+| lengths `1cm`, `10pt` | `cm(1)`, `pt(10)`, `length('3mm')`; `picture({ unit: cm(1) })` for coordinates | ✅ |
+| colours `blue!30!white` | `color('blue!30!white')`, `mix(a, b, t)`, `defineColor`, the 19 xcolor names | ✅ |
+| y up, counter-clockwise, `A.90` = top | `picture({ frame: 'math', unit })` — mapped at insertion; geometry stays screen space | ✅ |
 
 ## Paths and the pen
 
@@ -36,10 +36,10 @@ Legend: ✅ supported · 🟡 partial (note says what is missing) ·
 | `(a) -- (b)`, `-\|`, `\|-`, `-- cycle` | `pen.lineTo`, `hvTo`, `vhTo`, `close()` | ✅ |
 | `.. controls (c) and (d) ..` | `pen.curveTo(c, d, end)` (`quadraticTo`, `smoothCurveTo` too) | ✅ |
 | `to[out=, in=, bend left=, looseness=]` | `pen.to(p, { out, in, bend, looseness })`; `Path.to` the same | ✅ |
-| `node[…]{x}` on a path | `pen.label('x', { at \| pos, offset })` — text only, not a shape | 🟡 named/shaped mid-path nodes, Phase 2 |
+| `node[…]{x}` on a path | `pen.label('x', { at \| pos, offset })` for text; `pen.node('n', { pos, shape, … })` for a real named node | ✅ |
 | `coordinate (P)` on a path | `pen.coordinate('P')` | ✅ |
 | `[opts]` mid-path | `pen.push({ style })` | ✅ |
-| `rectangle`, `circle`, `ellipse`, `arc[start angle, end angle, radius]`, `grid`, `parabola`, `sin`, `cos` | draw the shape (`rect()`, `circle()`, `arc()`, `parabola()`) as its own statement; the pen has only the SVG endpoint `arcTo` | 🟡 pen verbs, Phase 2 |
+| `rectangle`, `circle`, `ellipse`, `arc[start angle, end angle, radius]`, `grid`, `parabola`, `sin`, `cos` | `pen.rectangle()`, `.circle()`, `.ellipse()`, `.arc({ start, end, radius })`, `.grid()`, `.parabola()`, `.sin()`, `.cos()` | ✅ |
 | `plot` | `plot()`, `plotParametric()`, `plotPolar()`, `plotFromPoints()` with `marks` | ✅ as shapes |
 | `svg "…"` | `pathFromSVG(d)` | ✅ |
 | `pic`, `let`, `foreach` | functions returning items; JS loops; `let` is a variable | ✅ by construction |
@@ -55,12 +55,13 @@ Legend: ✅ supported · 🟡 partial (note says what is missing) ·
 | auto-size to text | omit `width`/`height` | ✅ |
 | `anchor=`, `at=` | `anchor`, `at` | ✅ |
 | `rotate=` | `rotate` | ✅ |
-| `transform shape` | fused with `rotate`; `rotateText: false` keeps text upright | 🟡 Phase 2 |
+| `transform shape` | a node's `rotate` always rotates the node, as TikZ; scope transforms rotate nodes too (TikZ needs `transform shape` for that); `rotateText: false` keeps text upright | 🟡 no way to keep nodes unrotated in a transformed scope |
 | `label=<angle>:<text>`, `label distance`, `every label` | `labels: [{ text, at, distance, style }]`, `labelDistance`, `every.text` | ✅ |
-| `pin=` (label with a connecting line) | — | ❌ Phase 2 |
-| `text width`, `align`, `\\` line breaks | `\n` line breaks; no wrapping or alignment keys | 🟡 Phase 2 |
+| `pin=` (label with a connecting line) | `pins: [{ text, at, edge }]` | ✅ |
+| `text width`, `align`, `\\` line breaks | `textWidth` (wraps), `align`, `\n` | ✅ |
 | `font=`, `text=` | `textStyle: { fontSize, fontFamily, fontWeight, fill }` | ✅ |
-| `alias`, `name prefix` | — | ❌ |
+| `alias` | `alias: 'x'` or a list | ✅ |
+| `name prefix` | — | ❌ |
 | multipart nodes (`\nodepart`) | `rectangleSplit`, `circleSplit` shapes; one text | 🟡 |
 | `right=of A`, `node distance` (positioning) | `pic.node('B', { rightOf: 'A', distance: 40 })` and the seven other directions | ✅ |
 | `fit=(a)(b)` | `rectFit(points)` | 🟡 takes points, not nodes |
@@ -71,13 +72,13 @@ Legend: ✅ supported · 🟡 partial (note says what is missing) ·
 |---|---|---|
 | `\draw (A) -- (B)` (border to border) | `pic.edge('A', 'B')` — no tip by default, as TikZ | ✅ |
 | `\draw[->]`, `<-`, `<->` | `arrowEnd: '->'` / `'<-'` / `'<->'`, or `'stealth'`, `'latex'`, `'to'`, `'\|'`, `'\|\|'`, `'*'`, `'o'`, `'square'`, `'diamond'`, `'roundCap'` | ✅ 10 tips |
-| `{Stealth[length=3mm, open]}`, `>>` | tips are names only; no per-use size or multiplicity | ❌ Phase 2 |
+| `{Stealth[length=3mm, open]}`, `>>` | `arrowEnd: { tip: 'stealth', length: 12, open: true }`, `['stealth', 'stealth']`; `width`, `scale`, `fill`, `color`, `reversed`, `sep` | ✅ |
 | `bend left=`, `out=`/`in=`, `looseness=` | `bendAngle`, `out`/`in`, `looseness` | ✅ |
 | `loop above` … | `loop: 'above'` | ✅ |
 | `node[midway, above]{x}` on an edge, several of them | `label: { text, pos, offset, style }`, `labels: [...]` | ✅ |
-| `sloped` labels | — | ❌ Phase 2 |
-| `shorten <`, `shorten >` | `shortenStart`, `shortenEnd` (edges only) | 🟡 |
-| custom `to path` | routing is `straight` / `-\|` / `\|-` / `bezier` + `bendPoints` | 🟡 Phase 2 routers |
+| `sloped` labels | `label: { text, pos, sloped: true }` on edges, pens and draw verbs | ✅ |
+| `shorten <`, `shorten >` | `shortenStart`, `shortenEnd` on edges and pen statements | ✅ |
+| custom `to path` | `route: (from, to) => Path`; `straightRouter`, `orthogonalRouter()`, `busRouter()` | ✅ |
 
 ## Styles and keys
 
@@ -95,7 +96,11 @@ Legend: ✅ supported · 🟡 partial (note says what is missing) ·
 | `shade`, `left color`, `ball color`, `shading angle` | `pic.shade(shape, { leftColor, … })`; `gradient` specs | ✅ |
 | `drop shadow` | `dropShadow` | ✅ |
 | `\clip` | `style: { clip: shape }` on an item, `clip` on a scope | ✅ |
-| `preaction`/`postaction`, `path picture`, `use as bounding box`, `even odd rule`, `blend mode`, fadings | — | ❌ Phase 2 (fadings: ext roadmap) |
+| `preaction`/`postaction` | `preactions: [style]`, `postactions: [style]` on any item | ✅ |
+| `path picture` | `pathPicture: (inside) => …` on a draw verb, clipped, between fill and stroke | ✅ |
+| `use as bounding box` | `useAsBoundingBox: true` | ✅ |
+| `even odd rule` | `fillRule: 'evenodd'` | ✅ |
+| `blend mode`, fadings | — | ❌ fadings: ext roadmap |
 | unknown key | a `JikzError` with code `unknown-name` listing what is known | ✅ |
 
 ## Scopes and transformations

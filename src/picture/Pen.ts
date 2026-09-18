@@ -39,15 +39,18 @@
  */
 import { JikzError } from '../core/errors'
 import { Point, point } from '../core/Point'
+import { degToRad } from '../utils/math'
 import type { PointLike } from '../core/types'
 import { Path, path } from '../path/Path'
+import { shortenPath } from '../path/PathOperations'
 import { bezierControlPoints, type BezierRouteOptions } from '../path/bezier'
 import {
   placeText,
   DEFAULT_LABEL_FONT_SIZE,
 } from '../text/placeText'
-import { pathLabelPoint } from '../text/shapeLabels'
-import type { Label } from '../text/Label'
+import { pathLabelPoint, pathTangentAngle } from '../text/shapeLabels'
+import { readableAngle, type Label } from '../text/Label'
+import { Frame, isRelative, type RelativePoint } from './Frame'
 import type { RenderOptions } from '../render/Renderer'
 import type { StyleSpec } from '../render/StyleMapper'
 import type { PathMode, PictureItem, PictureTextOptions } from './Picture'
@@ -59,6 +62,10 @@ import type { PathMode, PictureItem, PictureTextOptions } from './Picture'
  */
 export interface PenOptions extends RenderOptions {
   mode?: PathMode
+  /** Trim the statement's first segment by this many px (TikZ `shorten <`). */
+  shortenStart?: number
+  /** Trim the statement's last segment by this many px (TikZ `shorten >`). */
+  shortenEnd?: number
 }
 
 /**
@@ -75,12 +82,49 @@ export type ToOptions = BezierRouteOptions
 export interface PenHost {
   coordinate(name: string, at: PointLike): unknown
   resolve(spec: string): Point
+  /** The frame the pen's coordinates are written in. */
+  readonly frame?: Frame
   /** A label with the container's `every.text` and the label default folded in. */
   labelStyle?(label: Label): Label
+  /** Register a named node (the pen's `node` verb). */
+  node?(name: string, options: Record<string, unknown>): unknown
 }
 
-/** A point or a named reference — `"A"`, `"A.north"`, `"A.45"`. */
-export type PenPoint = PointLike | string
+/** Keys of the pen's `arc` — TikZ `arc[start angle, end angle, radius]`. */
+export interface PenArcOptions {
+  /** Start angle, degrees, in the picture's frame. Default 0. */
+  start?: number
+  /** End angle; give `end` or `delta`. */
+  end?: number
+  /** Angle swept from `start`; give `end` or `delta`. */
+  delta?: number
+  /** Radius, in coordinate units. */
+  radius?: number
+  /** Elliptical radii, in coordinate units (override `radius`). */
+  xRadius?: number
+  yRadius?: number
+}
+
+/** Keys of the pen's `grid` — TikZ `grid[step, xstep, ystep]`. */
+export interface PenGridOptions {
+  /** Grid step in coordinate units (default 1). */
+  step?: number
+  xstep?: number
+  ystep?: number
+}
+
+/** Keys of the pen's `circle`/`ellipse`, in coordinate units. */
+export interface PenCircleOptions {
+  radius?: number
+  xRadius?: number
+  yRadius?: number
+}
+
+/**
+ * A point, a named reference — `"A"`, `"A.north"`, `"A.45"` — or a
+ * relative step `rel(dx, dy)` (TikZ `++(dx, dy)`) from the pen.
+ */
+export type PenPoint = PointLike | string | RelativePoint
 
 /**
  * One styling run of a pen statement: segments appended between
@@ -184,7 +228,15 @@ export class Pen {
     }
 
     const from = this.requirePen('to')
-    const [c1, c2] = bezierControlPoints(from, end, options)
+    const frame = this.frame
+    const routed = frame.identity
+      ? options
+      : {
+          ...options,
+          ...(options.out !== undefined ? { out: frame.angle(options.out) } : {}),
+          ...(options.in !== undefined ? { in: frame.angle(options.in) } : {}),
+        }
+    const [c1, c2] = bezierControlPoints(from, end, routed)
     return this.apply('curveTo', (p) => p.curveTo(c1, c2, end))
   }
 
@@ -266,13 +318,19 @@ export class Pen {
     end: PenPoint
   ): this {
     const e = this.pt(end)
-    return this.apply('arcTo', (p) => p.arcTo(rx, ry, rotation, largeArc, sweep, e))
+    const f = this.frame
+    return this.apply('arcTo', (p) =>
+      p.arcTo(f.length(rx), f.length(ry), f.angle(rotation), largeArc, f.flipsY ? !sweep : sweep, e)
+    )
   }
 
   /** Circular endpoint arc — {@link arcTo} with `rx = ry = radius`. */
   circularArcTo(radius: number, largeArc: boolean, sweep: boolean, end: PenPoint): this {
     const e = this.pt(end)
-    return this.apply('circularArcTo', (p) => p.circularArcTo(radius, largeArc, sweep, e))
+    const f = this.frame
+    return this.apply('circularArcTo', (p) =>
+      p.circularArcTo(f.length(radius), largeArc, f.flipsY ? !sweep : sweep, e)
+    )
   }
 
   /** Smooth curve through an intermediate point (TikZ `..` looseness). */
@@ -286,6 +344,183 @@ export class Pen {
   bendTo(end: PenPoint, angle: number): this {
     const e = this.pt(end)
     return this.apply('bendTo', (p) => p.bendTo(e, angle))
+  }
+
+  /**
+   * TikZ `rectangle (corner)`: the axis-aligned rectangle with the pen
+   * position and `corner` as opposite corners, as its own closed
+   * subpath. The pen moves to `corner`, as in TikZ.
+   */
+  rectangle(corner: PenPoint): this
+  rectangle(x: number, y: number): this
+  rectangle(a: PenPoint | number, b?: number): this {
+    const from = this.requirePen('rectangle')
+    const c = this.pt(a, b)
+    return this.subpath(
+      'rectangle',
+      (p) => p.lineTo({ x: c.x, y: from.y }).lineTo(c).lineTo({ x: from.x, y: c.y }).close().moveTo(c),
+      c
+    )
+  }
+
+  /**
+   * TikZ `circle[radius]` / `circle (r)`: a circle centred on the pen
+   * position, as its own subpath; the pen stays put. Radii are in
+   * coordinate units.
+   */
+  circle(radius: number): this
+  circle(options: PenCircleOptions): this
+  circle(a: number | PenCircleOptions): this {
+    const o = typeof a === 'number' ? { radius: a } : a
+    const rx = this.frame.length(o.xRadius ?? o.radius ?? 1)
+    const ry = this.frame.length(o.yRadius ?? o.radius ?? 1)
+    const c = this.requirePen('circle')
+    return this.subpath(
+      'circle',
+      (p) =>
+        p
+          .moveTo({ x: c.x + rx, y: c.y })
+          .arcTo(rx, ry, 0, false, true, { x: c.x - rx, y: c.y })
+          .arcTo(rx, ry, 0, false, true, { x: c.x + rx, y: c.y })
+          .close()
+          .moveTo(c),
+      c
+    )
+  }
+
+  /** TikZ `ellipse[x radius, y radius]` / `ellipse (a and b)` — see {@link circle}. */
+  ellipse(xRadius: number, yRadius: number): this {
+    return this.circle({ xRadius, yRadius })
+  }
+
+  /**
+   * TikZ `arc[start angle=…, end angle=…, radius=…]`: the arc of the
+   * circle (or ellipse) on which the pen position sits at `start`,
+   * swept to `end` (or by `delta`). Angles are frame angles — in a
+   * `frame: 'math'` picture, counter-clockwise from east, as in TikZ.
+   * The pen moves to the arc's end.
+   */
+  arc(options: PenArcOptions): this
+  arc(start: number, end: number, radius: number): this
+  arc(a: PenArcOptions | number, b?: number, c?: number): this {
+    const o: PenArcOptions = typeof a === 'number' ? { start: a, end: b, radius: c } : a
+    const from = this.requirePen('arc')
+    const f = this.frame
+    const rx = f.length(o.xRadius ?? o.radius ?? 1)
+    const ry = f.length(o.yRadius ?? o.radius ?? 1)
+    const start = o.start ?? 0
+    const end = o.end ?? (o.delta !== undefined ? start + o.delta : start + 90)
+    // Screen angles from here on.
+    const s = f.angle(start)
+    const e = f.angle(end)
+    const sr = degToRad(s)
+    const er = degToRad(e)
+    const snap = (v: number) => Math.round(v * 1e9) / 1e9 // cos(90°) is 6e-17, not 0
+    const center = { x: from.x - rx * Math.cos(sr), y: from.y - ry * Math.sin(sr) }
+    const to = point(snap(center.x + rx * Math.cos(er)), snap(center.y + ry * Math.sin(er)))
+    const sweep = e > s // increasing screen angle is clockwise = SVG sweep 1
+    const largeArc = Math.abs(e - s) > 180
+    return this.apply('arc', (p) => p.arcTo(rx, ry, 0, largeArc, sweep, to))
+  }
+
+  /**
+   * TikZ `grid[step] (corner)`: grid lines every `step` coordinate
+   * units over the box between the pen position and `corner`. The pen
+   * moves to `corner`.
+   */
+  grid(corner: PenPoint, options?: PenGridOptions): this
+  grid(x: number, y: number, options?: PenGridOptions): this
+  grid(a: PenPoint | number, b?: number | PenGridOptions, c?: PenGridOptions): this {
+    const from = this.requirePen('grid')
+    const o = (typeof a === 'number' ? c : (b as PenGridOptions | undefined)) ?? {}
+    const to = typeof a === 'number' ? this.pt(a, typeof b === 'number' ? b : 0) : this.pt(a as PenPoint)
+    const f = this.frame
+    const xs = f.length(o.xstep ?? o.step ?? 1)
+    const ys = f.length(o.ystep ?? o.step ?? 1)
+    const x0 = Math.min(from.x, to.x)
+    const x1 = Math.max(from.x, to.x)
+    const y0 = Math.min(from.y, to.y)
+    const y1 = Math.max(from.y, to.y)
+    const eps = 1e-9
+    return this.subpath(
+      'grid',
+      (p) => {
+        let q = p
+        for (let x = x0; x <= x1 + eps; x += xs) q = q.moveTo({ x, y: y0 }).lineTo({ x, y: y1 })
+        for (let y = y0; y <= y1 + eps; y += ys) q = q.moveTo({ x: x0, y }).lineTo({ x: x1, y })
+        return q.moveTo(to)
+      },
+      to
+    )
+  }
+
+  /**
+   * TikZ `parabola[bend=(b)] (end)`: a parabola from the pen position
+   * to `end`. With no bend the vertex is the pen position; with one,
+   * the curve passes through the vertex `bend` on its way. Exact —
+   * each half is one quadratic Bézier.
+   */
+  parabola(end: PenPoint, options: { bend?: PenPoint } = {}): this {
+    const from = this.requirePen('parabola')
+    const e = this.pt(end)
+    if (options.bend === undefined) {
+      return this.apply('parabola', (p) => p.quadraticTo({ x: (from.x + e.x) / 2, y: from.y }, e))
+    }
+    const v = this.pt(options.bend)
+    return this.apply('parabola', (p) =>
+      p.quadraticTo({ x: (from.x + v.x) / 2, y: v.y }, v).quadraticTo({ x: (e.x + v.x) / 2, y: v.y }, e)
+    )
+  }
+
+  /**
+   * TikZ `sin (end)`: a quarter sine wave from the pen to `end`,
+   * scaled into that box — level at the pen, steepest at the end. One
+   * cubic Bézier, within 0.2% of the true curve.
+   */
+  sin(end: PenPoint): this {
+    const from = this.requirePen('sin')
+    const e = this.pt(end)
+    const dx = e.x - from.x
+    const dy = e.y - from.y
+    return this.apply('sin', (p) =>
+      p.curveTo({ x: from.x + 0.36 * dx, y: from.y + 0.5655 * dy }, { x: from.x + 0.64 * dx, y: e.y }, e)
+    )
+  }
+
+  /** TikZ `cos (end)`: a quarter cosine wave — level at the pen, steepest at `end`. */
+  cos(end: PenPoint): this {
+    const from = this.requirePen('cos')
+    const e = this.pt(end)
+    const dx = e.x - from.x
+    const dy = e.y - from.y
+    return this.apply('cos', (p) =>
+      p.curveTo({ x: from.x + 0.36 * dx, y: from.y }, { x: from.x + 0.64 * dx, y: from.y + 0.5655 * dy }, e)
+    )
+  }
+
+  /**
+   * TikZ `node[…] (name) {text}` on a path: a real, named node placed
+   * at the pen position — or riding the operation just drawn with
+   * `pos` — taking the same options as `pic.node()`. The pen does not
+   * move; the node paints after the path, as in TikZ.
+   */
+  node(name: string, options: Record<string, unknown> & { pos?: number; offset?: number } = {}): this {
+    if (!this.host?.node) {
+      throw new JikzError('invalid-argument', 'pen.node(): needs a picture — create pens via pic.pen().')
+    }
+    const { pos, offset, ...rest } = options
+    let at: Point
+    if (pos !== undefined) {
+      if (!this.lastOp) {
+        throw new JikzError('invalid-argument', `pen.node(): 'pos' rides the segment just drawn — none yet.`)
+      }
+      at = pathLabelPoint(this.lastOp, { text: '', pos, offset: offset ?? 0 })
+    } else {
+      at = this.requirePen('node')
+    }
+    // The host maps `at` through the frame; hand it a frame coordinate.
+    this.host.node(name, { ...rest, at: this.frame.unmap(at) })
+    return this
   }
 
   /**
@@ -389,7 +624,16 @@ export class Pen {
         fontFamily: label.style?.fontFamily,
       })
     }
-    this.texts.push({ at, text, options: { style: label.style } })
+    this.texts.push({
+      at,
+      text,
+      options: {
+        style: label.style,
+        ...(label.sloped && label.pos !== undefined && this.lastOp
+          ? { rotate: readableAngle(pathTangentAngle(this.lastOp, label.pos)) }
+          : {}),
+      },
+    })
     return this
   }
 
@@ -401,12 +645,23 @@ export class Pen {
    */
   items(): PictureItem[] {
     const items: PictureItem[] = []
+    const drawn = this.runs.filter((r) => r.builder.segments.some((s) => s.type !== 'M'))
     for (const run of this.runs) {
       if (!run.builder.segments.some((s) => s.type !== 'M')) continue
-      const { mode, ...renderOptions } = run.options
+      const { mode, shortenStart, shortenEnd, ...renderOptions } = run.options
+      // A verb that parks the pen (`rectangle`, `circle`, `grid`) leaves
+      // a trailing move; it draws nothing, so it is not emitted.
+      const segs = run.builder.segments
+      let end = segs.length
+      while (end > 0 && segs[end - 1]!.type === 'M') end--
+      let obj = end === segs.length ? run.builder : new Path(segs.slice(0, end))
+      // `shorten <` applies to the statement's first run, `shorten >` to its last.
+      const trimStart = run === drawn[0] ? (shortenStart ?? 0) : 0
+      const trimEnd = run === drawn[drawn.length - 1] ? (shortenEnd ?? 0) : 0
+      if (trimStart > 0 || trimEnd > 0) obj = shortenPath(obj, trimStart, trimEnd)
       items.push({
         kind: 'bare',
-        obj: run.builder,
+        obj,
         mode: mode ?? 'draw',
         options: renderOptions,
       })
@@ -437,6 +692,18 @@ export class Pen {
     return this
   }
 
+  /**
+   * Run a verb that draws its own closed subpath and leaves the pen at
+   * `after` (TikZ `rectangle`, `circle`, `grid`): like {@link apply},
+   * but the pen position is set explicitly rather than read back from
+   * the builder.
+   */
+  private subpath(verb: string, draw: (p: Path) => Path, after: Point): this {
+    this.apply(verb, draw)
+    this.penPoint = after
+    return this
+  }
+
   private requirePen(verb: string): Point {
     if (!this.penPoint) {
       throw new JikzError('no-pen-position', `pen.${verb}(): no pen position yet — start with moveTo.`)
@@ -444,7 +711,12 @@ export class Pen {
     return this.penPoint
   }
 
-  /** Resolve a point argument: literal PointLike, x/y pair, or name. */
+  /** The frame this pen's coordinates are written in. */
+  private get frame(): Frame {
+    return this.host?.frame ?? Frame.SCREEN
+  }
+
+  /** Resolve a point argument: literal PointLike, x/y pair, relative step, or name. */
   private pt(a: PenPoint | number, b?: number): Point {
     if (typeof a === 'string') {
       if (!this.host) {
@@ -454,7 +726,11 @@ export class Pen {
       }
       return this.host.resolve(a)
     }
-    return typeof a === 'number' ? point(a, b ?? 0) : point(a.x, a.y)
+    if (isRelative(a)) {
+      const from = this.requirePen('relative coordinate')
+      return from.add(this.frame.vector(a.dx, a.dy))
+    }
+    return this.frame.point(typeof a === 'number' ? { x: a, y: b ?? 0 } : a)
   }
 }
 

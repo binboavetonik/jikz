@@ -1,5 +1,5 @@
 import { JikzError } from '../core/errors'
-import { Point, point } from '../core/Point'
+import { Point } from '../core/Point'
 import type { ShapeOptions } from '../geometry/Shape'
 import type { ShapeKind, ShapeSet } from '../geometry/ShapeKind'
 import type { PointLike } from '../core/types'
@@ -19,9 +19,21 @@ import { mergeStyles, styleList } from '../render/StyleMapper'
 import type { ClipSpec, RenderStyle, StyleSpec } from '../render/StyleMapper'
 import { resolveShading, type ShadingOptions } from '../render/Shadings'
 import { shapeLabelPoint } from '../text/shapeLabels'
-import { labelList, type Label, type LabelSpec, type TextStyle } from '../text/Label'
+import {
+  labelList,
+  readableAngle,
+  DEFAULT_PIN_DISTANCE,
+  DEFAULT_PIN_EDGE_STYLE,
+  type Label,
+  type LabelSpec,
+  type TextStyle,
+} from '../text/Label'
+import { estimateLabelSize } from '../text/placeText'
+import { Line } from '../geometry/Line'
+import { pathTangentAngle } from '../text/shapeLabels'
 import type { SVGAnimation } from '../render/Renderer'
 import { calculateRelativePosition, type PositionDirection } from '../node/Positioning'
+import type { Frame } from './Frame'
 
 /**
  * Options for {@link ItemContainer.text} — `\node at (p) {text}`
@@ -42,6 +54,8 @@ export interface PictureTextOptions {
   textAnchor?: 'start' | 'middle' | 'end'
   /** Vertical alignment on the point (default `'middle'`). */
   dominantBaseline?: 'auto' | 'middle' | 'hanging' | 'alphabetic'
+  /** Rotate the text about its point, degrees clockwise. */
+  rotate?: number
   className?: string
   id?: string
   attributes?: Record<string, string | number>
@@ -61,6 +75,18 @@ export interface DrawOptions extends RenderOptions {
   label?: LabelSpec
   /** Multiple labels — TikZ allows several nodes per path statement. */
   labels?: readonly Label[]
+  /**
+   * TikZ `path picture`: draw inside the shape. The callback gets a
+   * scope clipped to the shape's outline; it paints after the fill and
+   * before the stroke, exactly as TikZ orders it.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  pathPicture?: (inside: Scope<any>) => void
+  /**
+   * TikZ `use as bounding box`: when set on any item, `{ fit: true }`
+   * sizes the viewBox from the flagged items only.
+   */
+  useAsBoundingBox?: boolean
 }
 
 /**
@@ -78,6 +104,12 @@ export interface EveryOptions {
   path?: StyleSpec
   /** Applied to every label, node text and bare text. */
   text?: TextStyle
+}
+
+/** Extra names for a node — TikZ `alias=`. */
+export interface AliasOptions {
+  /** One or more additional names this node answers to. */
+  alias?: string | readonly string[]
 }
 
 /**
@@ -112,7 +144,16 @@ const PLACEMENT_KEYS: Record<keyof Omit<PlacementOptions, 'distance'>, PositionD
 }
 
 /** The render keys a node or edge call carries alongside its geometry. */
-const RENDER_KEYS = ['style', 'textStyle', 'className', 'id', 'attributes', 'animate'] as const
+const RENDER_KEYS = [
+  'style',
+  'textStyle',
+  'className',
+  'id',
+  'attributes',
+  'animate',
+  'preactions',
+  'postactions',
+] as const
 
 /**
  * Split one option bag into what the geometry constructor takes and
@@ -250,7 +291,17 @@ export interface AddOptions {
 export type PictureItem =
   | { kind: 'node'; node: Node; name: string; options?: RenderOptions }
   | { kind: 'edge'; edge: Edge; options?: RenderOptions }
-  | { kind: 'bare'; obj: Renderable; mode: PathMode; options?: RenderOptions }
+  | {
+      kind: 'bare'
+      obj: Renderable
+      mode: PathMode
+      options?: RenderOptions
+      /** A `pathPicture` scope, painted between fill and stroke. */
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      inside?: Scope<any>
+      /** Flagged by `useAsBoundingBox`. */
+      boundingBox?: boolean
+    }
   | { kind: 'text'; at: Point; text: string; options?: PictureTextOptions }
   | { kind: 'pen'; pen: Pen }
   // A picture holds scopes over any shape set, and Scope<S> is
@@ -314,6 +365,8 @@ export interface ContainerRoot {
   knownNames(): string
   /** The shape set string shape names resolve against, if any. */
   shapeSet(): ShapeSet | undefined
+  /** The coordinate frame statements are written in. */
+  readonly frame: Frame
   /** Flatten a style spec, picture-local names first. */
   resolveStyles(spec: StyleSpec | undefined): Partial<RenderStyle>[]
   /** Resolve the names inside an `every` block. */
@@ -375,7 +428,8 @@ export type NodeOptionsFor<S extends ShapeSet, K> = Omit<
       ? O
       : Record<string, unknown>
 } & RenderOptions &
-  PlacementOptions
+  PlacementOptions &
+  AliasOptions
 
 /** What {@link ItemContainer.edge} takes: the edge's keys and its render keys, one bag. */
 export type PictureEdgeOptions = EdgeOptions & RenderOptions
@@ -430,6 +484,28 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
   /** `every` defaults from the root down to (and including) this container. */
   protected abstract get inheritedEvery(): readonly EveryOptions[]
 
+  /** The frame this container's statements are written in (the picture's). */
+  get frame(): Frame {
+    return this.registry.frame
+  }
+
+  /**
+   * A coordinate written in this picture's frame, as screen px — for
+   * building geometry (`circle(pic.point(1, 2), pic.length(0.5))`) or
+   * reading positions back in a `frame: 'math'` picture. Identity in
+   * the default frame.
+   */
+  point(p: PointLike): Point
+  point(x: number, y: number): Point
+  point(a: PointLike | number, b?: number): Point {
+    return this.frame.point(typeof a === 'number' ? { x: a, y: b ?? 0 } : a)
+  }
+
+  /** A length in this picture's coordinate units, as px (`unit` applied). */
+  length(v: number): number {
+    return this.frame.length(v)
+  }
+
   /** `every.text` in force here, outermost first, merged. */
   protected everyText(): TextStyle | undefined {
     let merged: TextStyle | undefined
@@ -469,12 +545,20 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
    * ```
    */
   scope(options: ScopeOptions, build: (scope: Scope<S>) => void): this {
+    const s = this.makeScope(options)
+    this.itemList.push({ kind: 'scope', scope: s })
+    build(s)
+    return this
+  }
+
+  /** A scope nested in this container, not yet added to the item list. */
+  private makeScope(options: ScopeOptions): Scope<S> {
     const local = composeTransform(options.transform, options.scale)
     const accumulated =
       local && this.ownTransform
         ? this.ownTransform.compose(local)
         : (local ?? this.ownTransform)
-    const s = new Scope<S>(
+    return new Scope<S>(
       this.registry,
       accumulated,
       [...this.inheritedStyles, ...this.registry.resolveStyles(options.style)],
@@ -483,9 +567,6 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
         : this.inheritedEvery,
       { ...options, transform: local, scale: undefined }
     )
-    this.itemList.push({ kind: 'scope', scope: s })
-    build(s)
-    return this
   }
 
   /**
@@ -512,16 +593,34 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
     const {
       rightOf, leftOf, above, below, aboveLeft, aboveRight, belowLeft, belowRight,
       distance,
+      alias,
       ...nodeOpts
     } = rest
+    // The node measures with its own text style; the renderer paints with it too.
+    if (options.textStyle) (nodeOpts as NodeOptions).textStyle = options.textStyle
     const placement = { rightOf, leftOf, above, below, aboveLeft, aboveRight, belowLeft, belowRight }
     // Resolve a string name against the set in scope; a kind or an
     // instance passes straight through, and an absent shape stays
     // absent so Node applies its own default.
     const spec = nodeOpts.shape
     const shape = typeof spec === 'string' ? this.resolveShape(spec) : spec
+    const frame = this.frame
+    const framed = frame.identity
+      ? nodeOpts
+      : {
+          ...nodeOpts,
+          ...(nodeOpts.at ? { at: frame.point(nodeOpts.at) } : {}),
+          ...(nodeOpts.rotate !== undefined ? { rotate: frame.angle(nodeOpts.rotate) } : {}),
+          ...(nodeOpts.anchor !== undefined ? { anchor: frame.anchor(nodeOpts.anchor) } : {}),
+          ...(nodeOpts.labels
+            ? { labels: nodeOpts.labels.map((l) => (l.at === undefined ? l : { ...l, at: frame.anchor(l.at) })) }
+            : {}),
+          ...(nodeOpts.pins
+            ? { pins: nodeOpts.pins.map((l) => (l.at === undefined ? l : { ...l, at: frame.anchor(l.at) })) }
+            : {}),
+        }
     let n = new Node({
-      ...nodeOpts,
+      ...framed,
       ...(shape ? { shape } : {}),
       name,
     } as NodeOptions)
@@ -542,6 +641,12 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
     }
 
     this.registry.registerNode(name, n, this.ownTransform)
+    for (const extra of alias === undefined ? [] : typeof alias === 'string' ? [alias] : alias) {
+      if (this.registry.hasName(extra)) {
+        throw new JikzError('duplicate-name', `Picture: alias "${extra}" already exists in this picture.`)
+      }
+      this.registry.registerNode(extra, n, this.ownTransform)
+    }
     this.itemList.push({ kind: 'node', node: n, name, options: render })
     this.pushLabels(n)
     return this
@@ -563,6 +668,33 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
         text: label.text,
         options: { style: label.style },
       })
+    }
+    // A pin is a label plus a thin line from the border to the text's
+    // near edge (TikZ `pin`, `every pin edge = help lines`).
+    for (const raw of n.pins) {
+      const pin = this.labelStyle({ ...raw, distance: raw.distance ?? DEFAULT_PIN_DISTANCE })
+      const at = n.labelPoint(pin)
+      const spec = pin.at ?? 'north'
+      const border = n.anchor(spec)
+      const dir = at.sub(border)
+      const len = dir.length
+      if (len > 0) {
+        const { width, height } = estimateLabelSize(pin.text, {
+          fontSize: pin.style?.fontSize,
+          fontFamily: pin.style?.fontFamily,
+        })
+        const dx = dir.x / len
+        const dy = dir.y / len
+        const halfAlongRay = (Math.abs(dx) * width + Math.abs(dy) * height) / 2
+        const end = at.sub(dir.scale(Math.min(halfAlongRay, len) / len))
+        this.itemList.push({
+          kind: 'bare',
+          obj: new Line(border, end),
+          mode: 'draw',
+          options: { style: [DEFAULT_PIN_EDGE_STYLE, ...this.registry.resolveStyles(raw.edge)] },
+        })
+      }
+      this.itemList.push({ kind: 'text', at, text: pin.text, options: { style: pin.style } })
     }
   }
 
@@ -629,7 +761,22 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
     const fromEnd = this.resolveEndpoint(from)
     const toEnd = this.resolveEndpoint(to)
     const { rest, render } = splitRender(options)
-    const e = new Edge(fromEnd, toEnd, rest)
+    const frame = this.frame
+    const framed: EdgeOptions = frame.identity
+      ? rest
+      : {
+          ...rest,
+          ...(rest.out !== undefined ? { out: frame.angle(rest.out) } : {}),
+          ...(rest.in !== undefined ? { in: frame.angle(rest.in) } : {}),
+          ...(rest.fromAnchor !== undefined && rest.fromAnchor !== 'auto'
+            ? { fromAnchor: frame.anchor(rest.fromAnchor) }
+            : {}),
+          ...(rest.toAnchor !== undefined && rest.toAnchor !== 'auto'
+            ? { toAnchor: frame.anchor(rest.toAnchor) }
+            : {}),
+          ...(rest.bendPoints ? { bendPoints: rest.bendPoints.map((b) => frame.point(b)) } : {}),
+        }
+    const e = new Edge(fromEnd, toEnd, framed)
     this.itemList.push({ kind: 'edge', edge: e, options: render })
     return this
   }
@@ -640,13 +787,25 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
    * node labels, resolved once at call time (labels don't track later
    * mutations of the shape).
    */
-  private bare(obj: Renderable, mode: PathMode, options?: DrawOptions): this {
-    const { label, labels, ...renderOptions } = options ?? {}
+  private bare(raw: Renderable, mode: PathMode, options?: DrawOptions): this {
+    const { label, labels, pathPicture, useAsBoundingBox, ...renderOptions } = options ?? {}
+    const frame = this.frame
+    const obj = frame.renderable(raw)
+    let inside: Scope<S> | undefined
+    if (pathPicture) {
+      if (typeof (obj as { toSVGPath?: unknown }).toSVGPath !== 'function') {
+        throw new JikzError('invalid-argument', 'pathPicture: the shape needs an outline (toSVGPath) to clip to.')
+      }
+      inside = this.makeScope({ clip: obj as { toSVGPath(): string } })
+      pathPicture(inside)
+    }
     this.itemList.push({
       kind: 'bare',
       obj,
       mode,
       options: options ? renderOptions : undefined,
+      ...(inside ? { inside } : {}),
+      ...(useAsBoundingBox ? { boundingBox: true } : {}),
     })
     const allLabels = labelList(label, labels)
     // A bare Point paints as a disc whose radius follows the stroke
@@ -659,13 +818,20 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
               .strokeWidth
           )
         : 0
-    for (const raw of allLabels) {
-      const l = this.labelStyle(raw)
+    for (const rawLabel of allLabels) {
+      const l = this.labelStyle(
+        rawLabel.at === undefined ? rawLabel : { ...rawLabel, at: frame.anchor(rawLabel.at) }
+      )
       this.itemList.push({
         kind: 'text',
         at: shapeLabelPoint(obj, l, radius),
         text: l.text,
-        options: { style: l.style },
+        options: {
+          style: l.style,
+          ...(l.sloped && l.pos !== undefined
+            ? { rotate: readableAngle(pathTangentAngle(obj, l.pos)) }
+            : {}),
+        },
       })
     }
     return this
@@ -680,7 +846,7 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
     if (this.registry.hasName(name)) {
       throw new JikzError('duplicate-name', `Picture: name "${name}" already exists in this picture.`)
     }
-    this.registry.registerCoordinate(name, point(at.x, at.y), this.ownTransform)
+    this.registry.registerCoordinate(name, this.frame.point(at), this.ownTransform)
     return this
   }
 
@@ -771,8 +937,11 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
    */
   text(at: PointLike, text: string, options?: PictureTextOptions): this {
     const every = this.everyText()
-    const merged = every ? { ...options, style: { ...every, ...options?.style } } : options
-    this.itemList.push({ kind: 'text', at: point(at.x, at.y), text, options: merged })
+    let merged = every ? { ...options, style: { ...every, ...options?.style } } : options
+    if (merged?.at !== undefined && !this.frame.identity) {
+      merged = { ...merged, at: this.frame.anchor(merged.at) }
+    }
+    this.itemList.push({ kind: 'text', at: this.frame.point(at), text, options: merged })
     return this
   }
 
@@ -799,7 +968,7 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
       const p =
         parsed.anchor === undefined
           ? entry.node.center
-          : entry.node.anchor(parsed.anchor)
+          : entry.node.anchor(this.frame.anchorString(parsed.anchor))
       return local ? local.apply(p) : p
     }
     const coord = this.registry.lookupCoordinate(parsed.name)
@@ -828,7 +997,11 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
   }
 
   protected resolveEndpoint(spec: PictureEndpoint): PointLike | Anchorable {
-    if (typeof spec !== 'string') return spec
+    if (typeof spec !== 'string') {
+      // A raw point is written in the frame; an Anchorable is geometry
+      // already (its anchors are screen space).
+      return 'anchor' in spec ? spec : this.frame.point(spec)
+    }
     const parsed = parseSpec(spec)
     const entry = this.registry.lookupNode(parsed.name)
     if (entry) {
@@ -839,7 +1012,7 @@ export abstract class ItemContainer<S extends ShapeSet = {}> {
         return local ? new TransformedAnchorable(entry.node, local) : entry.node
       }
       // Explicit anchor → resolve now to a fixed point.
-      const p = entry.node.anchor(parsed.anchor)
+      const p = entry.node.anchor(this.frame.anchorString(parsed.anchor))
       return local ? local.apply(p) : p
     }
     const coord = this.registry.lookupCoordinate(parsed.name)

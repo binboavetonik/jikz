@@ -29,9 +29,13 @@ import {
   type Scope,
 } from './Container'
 import { styleList } from '../render/StyleMapper'
+import { pathFromSVG } from '../path/svgPath'
+import { Frame, type FrameOptions } from './Frame'
 
 // Re-exported so `import { PathMode } from 'jikz'` keeps working after
 // the container/scope split.
+export { Frame, rel, isRelative } from './Frame'
+export type { FrameOptions, FrameName, RelativePoint } from './Frame'
 export {
   PATH_MODE_STYLE,
   mergePathMode,
@@ -118,7 +122,7 @@ export interface MountOptions extends PictureViewBox {
 /**
  * Options for a {@link Picture}.
  */
-export interface PictureOptions<S extends ShapeSet = {}> {
+export interface PictureOptions<S extends ShapeSet = {}> extends FrameOptions {
   /**
    * Shape kinds this picture resolves string shape names against —
    * `picture({ shapes: allShapes })` for the whole catalogue, or just
@@ -253,6 +257,12 @@ export class Picture<S extends ShapeSet = {}>
     { at: Point; transform: Transform | undefined }
   >()
   private readonly options: PictureOptions<S>
+  private readonly pictureFrame: Frame
+
+  /** The frame statements are written in — see {@link Frame}. */
+  override get frame(): Frame {
+    return this.pictureFrame
+  }
 
   /** This picture's math renderer, if it was given one. */
   private get mathRenderer(): MathRenderer | undefined {
@@ -262,6 +272,7 @@ export class Picture<S extends ShapeSet = {}>
   constructor(options: PictureOptions<S> = {}) {
     super()
     this.options = options
+    this.pictureFrame = Frame.of(options)
   }
 
   // ── ItemContainer wiring ────────────────────────────────────────────────
@@ -406,8 +417,10 @@ export class Picture<S extends ShapeSet = {}>
       maxX = Math.max(maxX, b[2])
       maxY = Math.max(maxY, b[3])
     }
+    // TikZ `use as bounding box`: flagged items, if any, are the box.
+    const flagged = hasBoundingBoxItems(this.itemList)
     for (const item of this.itemList) {
-      growBounds(item, grow, undefined)
+      growBounds(item, grow, undefined, flagged)
     }
     return minX === Infinity ? undefined : [minX, minY, maxX, maxY]
   }
@@ -584,23 +597,36 @@ function renderItem(
   cascade: Cascade
 ): void {
   if (item.kind === 'node') {
+    actions(renderer, item.node.shape, item.options?.preactions, cascade)
     renderer.renderNode(
       item.node,
       withStyles(item.options, [...everyStyles(cascade.every, 'node'), ...cascade.styles], cascade)
     )
+    actions(renderer, item.node.shape, item.options?.postactions, cascade)
   } else if (item.kind === 'edge') {
+    const outline = pathFromSVG(item.edge.toSVGPath())
+    actions(renderer, outline, item.options?.preactions, cascade)
     renderer.renderEdge(
       item.edge,
       withStyles(item.options, [...everyStyles(cascade.every, 'edge'), ...cascade.styles], cascade)
     )
+    actions(renderer, outline, item.options?.postactions, cascade)
   } else if (item.kind === 'bare') {
-    renderer.render(
-      item.obj,
-      mergePathModeIn(item.mode, resolveOwn(item.options, cascade), [
-        ...everyStyles(cascade.every, 'path'),
-        ...cascade.styles,
-      ])
-    )
+    const merged = mergePathModeIn(item.mode, resolveOwn(item.options, cascade), [
+      ...everyStyles(cascade.every, 'path'),
+      ...cascade.styles,
+    ])
+    actions(renderer, item.obj, item.options?.preactions, cascade)
+    if (item.inside) {
+      // TikZ order: fill → path picture → stroke.
+      const style = merged.style as Partial<RenderStyle>
+      renderer.render(item.obj, { ...merged, style: { ...style, stroke: 'none' } })
+      renderScope(renderer, item.inside, cascade)
+      renderer.render(item.obj, { ...merged, style: { ...style, fill: 'none' } })
+    } else {
+      renderer.render(item.obj, merged)
+    }
+    actions(renderer, item.obj, item.options?.postactions, cascade)
   } else if (item.kind === 'pen') {
     // A pen statement expands to its path + labels, in place.
     for (const sub of item.pen.items()) renderItem(renderer, sub, cascade)
@@ -614,6 +640,24 @@ function renderItem(
     // cascade onto text: a scope setting `fill` for its shapes would
     // otherwise recolor every label inside it. `every.text` does.
     renderer.renderText(item.text, textCenter(item), toTextOptions(item.options, cascade.every))
+  }
+}
+
+/**
+ * TikZ `preaction`/`postaction`: paint `outline` once per entry with
+ * only what the entry says — over the invisible `path` baseline, so
+ * nothing paints unless the action asks for it. Scope styles are
+ * spliced under it, as for any path.
+ */
+function actions(
+  renderer: PictureRenderer,
+  outline: Renderable,
+  list: readonly StyleSpec[] | undefined,
+  cascade: Cascade
+): void {
+  if (!list) return
+  for (const action of list) {
+    renderer.render(outline, mergePathModeIn('path', { style: cascade.resolve(action) }, cascade.styles))
   }
 }
 
@@ -713,14 +757,27 @@ function textCenter(item: Extract<PictureItem, { kind: 'text' }>): Point {
  * Grow `grow` by an item's bounds, mapped through the accumulated scope
  * transform so the picture-space box is correct inside nested scopes.
  */
+function hasBoundingBoxItems(items: readonly PictureItem[]): boolean {
+  return items.some(
+    (i) =>
+      (i.kind === 'bare' && i.boundingBox === true) ||
+      (i.kind === 'scope' && hasBoundingBoxItems(i.scope.items)) ||
+      (i.kind === 'pen' && hasBoundingBoxItems(i.pen.items()))
+  )
+}
+
 function growBounds(
   item: PictureItem,
   grow: (b: readonly [number, number, number, number]) => void,
-  transform: Transform | undefined
+  transform: Transform | undefined,
+  onlyFlagged = false
 ): void {
   const add = (b: readonly [number, number, number, number]) =>
     grow(transform ? mapBox(b, transform) : b)
 
+  if (onlyFlagged && item.kind !== 'scope' && item.kind !== 'pen' && !(item.kind === 'bare' && item.boundingBox)) {
+    return
+  }
   if (item.kind === 'node') {
     add(item.node.bounds)
   } else if (item.kind === 'edge') {
@@ -750,11 +807,11 @@ function growBounds(
       add(b)
     }
   } else if (item.kind === 'pen') {
-    for (const sub of item.pen.items()) growBounds(sub, grow, transform)
+    for (const sub of item.pen.items()) growBounds(sub, grow, transform, onlyFlagged)
   } else if (item.kind === 'scope') {
     const local = item.scope.options.transform
     const next = local && transform ? transform.compose(local) : (local ?? transform)
-    for (const sub of item.scope.items) growBounds(sub, grow, next)
+    for (const sub of item.scope.items) growBounds(sub, grow, next, onlyFlagged)
   } else {
     const center = textCenter(item)
     const { width, height } = estimateLabelSize(item.text, {

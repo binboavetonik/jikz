@@ -20,6 +20,10 @@ text-bearing shape. Full API details: <a href="../api/index.html" target="_blank
 | `rightOf` / `leftOf` / `above` / `below` / `aboveLeft` / … + `distance` | `PlacementOptions` | TikZ `right=of A` (through `pic.node`) |
 | `labelDistance` | `number` | default gap for all labels (TikZ `label distance`) |
 | `rotate` | `number` | degrees; the anchor compass rotates with the shape |
+| `textWidth` / `align` | `number` / `'left' \| 'center' \| 'right'` | wrap width (TikZ `text width`) and block alignment |
+| `textStyle` | `TextStyle` | font and colour of the node's text — used for measuring too |
+| `pins` | `Pin[]` | TikZ `pin=`: a label with a line to the border; `edge` styles the line |
+| `alias` | `string \| string[]` | extra names (through `pic.node`) |
 | `anchor` | `AnchorSpec` | place the node *by* this anchor (TikZ `at + anchor=`) |
 
 Factories: `node(opts)`, `rectNode`, `circleNode`, `ellipseNode`,

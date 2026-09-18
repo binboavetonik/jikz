@@ -4,6 +4,9 @@ import { degToRad, EPSILON } from '../utils/math'
 import type { AnchorSpec, Anchorable } from '../core/Anchor'
 import { bezierControlPoints } from '../path/bezier'
 import { labelList, type Label, type LabelSpec } from '../text/Label'
+import type { Path } from '../path/Path'
+import { shortenPath } from '../path/PathOperations'
+import type { EdgeRouter } from './routers'
 
 /**
  * Arrow tip styles. The named members are the built-ins; any name
@@ -30,6 +33,39 @@ export type ArrowTip =
   | 'roundCap'   // Filled round cap (TikZ `Round Cap`)
   | 'doubleBar'  // Double bar (TikZ `||`)
   | (string & {})
+
+/**
+ * A parameterised arrow tip — TikZ `arrows.meta`'s `Stealth[length=3mm,
+ * open]`. Sizes are px; unset, a tip is 6 stroke-widths long and wide
+ * (the classic marker). `reversed` points the tip backwards; `sep`
+ * pulls it back along the path.
+ */
+export interface ArrowTipSpec {
+  tip: ArrowTip
+  /** Tip length along the path, px (sets absolute size). */
+  length?: number
+  /** Tip width across the path, px. Defaults to `length` when only that is given. */
+  width?: number
+  /** Multiply the default (stroke-relative) size. Ignored when `length`/`width` are set. */
+  scale?: number
+  /** Draw the outline only (TikZ `open`). */
+  open?: boolean
+  /** Fill colour for a filled tip (TikZ `fill=`); default: the edge stroke. */
+  fill?: string
+  /** Colour for the whole tip (TikZ `color=`); default: the edge stroke. */
+  color?: string
+  /** Point the tip the other way (TikZ `reversed`). */
+  reversed?: boolean
+  /** Gap between the tip and the path end, px (TikZ `sep`). */
+  sep?: number
+}
+
+/**
+ * What `arrowEnd`/`arrowStart` accept: a tip name, a {@link ArrowTipSpec},
+ * or several of either — `['stealth', 'stealth']` is TikZ's `>>`, the
+ * first entry sitting at the very end.
+ */
+export type ArrowSpec = ArrowTip | ArrowTipSpec | ReadonlyArray<ArrowTip | ArrowTipSpec>
 
 /**
  * Edge path routing styles
@@ -100,19 +136,28 @@ export interface EdgeOptions {
   toAnchor?: EdgeAnchorSpec
 
   /**
-   * Arrow tip at the start
+   * Arrow tip(s) at the start — a name, an {@link ArrowTipSpec}, or a list.
    */
-  arrowStart?: ArrowTip
+  arrowStart?: ArrowSpec
 
   /**
-   * Arrow tip at the end
+   * Arrow tip(s) at the end — `'stealth'`, `'->'`, `{ tip: 'stealth',
+   * length: 12, open: true }`, or `['stealth', 'stealth']` for TikZ `>>`.
    */
-  arrowEnd?: ArrowTip
+  arrowEnd?: ArrowSpec
 
   /**
    * Path routing style
    */
   routing?: EdgeRouting
+
+  /**
+   * A router function — TikZ `to path` — building the path this edge
+   * draws from its resolved endpoints (`straightRouter`,
+   * `orthogonalRouter()`, `busRouter()`, or your own). Overrides
+   * `routing`, `bendPoints` and the curve keys.
+   */
+  route?: EdgeRouter
 
   /**
    * Intermediate points for a polyline path (`straight` routing only).
@@ -213,8 +258,8 @@ export interface EdgeOptions {
 const DEFAULT_EDGE_OPTIONS = {
   fromAnchor: 'auto' as EdgeAnchorSpec,
   toAnchor: 'auto' as EdgeAnchorSpec,
-  arrowStart: 'none' as ArrowTip,
-  arrowEnd: 'none' as ArrowTip,
+  arrowStart: 'none' as ArrowSpec,
+  arrowEnd: 'none' as ArrowSpec,
   routing: 'straight' as EdgeRouting,
   bendAngle: 0,
   loop: undefined as LoopDirection | undefined,
@@ -259,9 +304,9 @@ function isSameEndpoint(
  * result to its readonly fields once.
  */
 function normalizeArrowTips(
-  arrowStart: ArrowTip,
-  arrowEnd: ArrowTip
-): { start: ArrowTip; end: ArrowTip } {
+  arrowStart: ArrowSpec,
+  arrowEnd: ArrowSpec
+): { start: ArrowTipSpec[]; end: ArrowTipSpec[] } {
   let start = arrowStart
   let end = arrowEnd
   for (const [key, value] of [
@@ -278,7 +323,19 @@ function normalizeArrowTips(
       end = 'to'
     }
   }
-  return { start, end }
+  return { start: toTipSpecs(start), end: toTipSpecs(end) }
+}
+
+/** Flatten an {@link ArrowSpec} to its tips, dropping `'none'`. */
+function toTipSpecs(spec: ArrowSpec): ArrowTipSpec[] {
+  const list = Array.isArray(spec) ? spec : [spec as ArrowTip | ArrowTipSpec]
+  const out: ArrowTipSpec[] = []
+  for (const entry of list) {
+    const tip: ArrowTipSpec = typeof entry === 'string' ? { tip: entry } : (entry as ArrowTipSpec)
+    if (tip.tip === 'none') continue
+    out.push(tip)
+  }
+  return out
 }
 
 /**
@@ -290,8 +347,16 @@ export class Edge {
   readonly to: Point
   readonly fromAnchor: EdgeAnchorSpec
   readonly toAnchor: EdgeAnchorSpec
+  /** Name of the first tip at the start, or `'none'` — see {@link startTips}. */
   readonly arrowStart: ArrowTip
+  /** Name of the first tip at the end, or `'none'` — see {@link endTips}. */
   readonly arrowEnd: ArrowTip
+  /** Every tip at the start, outermost first (empty = none). */
+  readonly startTips: readonly ArrowTipSpec[]
+  /** Every tip at the end, outermost first (empty = none). */
+  readonly endTips: readonly ArrowTipSpec[]
+  /** The routed path when a `route` function was given. */
+  readonly routePath?: Path
   readonly routing: EdgeRouting
   readonly bendAngle: number
   readonly outAngle?: number
@@ -374,8 +439,10 @@ export class Edge {
     }
 
     const tips = normalizeArrowTips(opts.arrowStart, opts.arrowEnd)
-    this.arrowStart = tips.start
-    this.arrowEnd = tips.end
+    this.startTips = tips.start
+    this.endTips = tips.end
+    this.arrowStart = tips.start[0]?.tip ?? 'none'
+    this.arrowEnd = tips.end[0]?.tip ?? 'none'
     // out/in/bendAngle imply bezier routing — otherwise the curve
     // options would be silently ignored and the edge render straight.
     this.routing =
@@ -391,6 +458,13 @@ export class Edge {
     this.shortenStart = opts.shortenStart
     this.shortenEnd = opts.shortenEnd
     this.labels = labelList(opts.label, opts.labels)
+    if (opts.route) {
+      const routed = opts.route(this.from, this.to, this)
+      this.routePath =
+        this.shortenStart > 0 || this.shortenEnd > 0
+          ? shortenPath(routed, this.shortenStart, this.shortenEnd)
+          : routed
+    }
   }
 
   /**
@@ -469,6 +543,7 @@ export class Edge {
    * never too small. Stroke width and arrow tips are not included.
    */
   get bounds(): [number, number, number, number] {
+    if (this.routePath) return this.routePath.bounds
     const pts: Point[] = [this.from, this.to, ...this.bendPoints]
     if (this.routing === 'bezier') pts.push(...this.controlPoints)
     let minX = Infinity
@@ -510,6 +585,7 @@ export class Edge {
    * Get point at parameter t along the path (0 = start, 1 = end)
    */
   pointAt(t: number): Point {
+    if (this.routePath) return this.routePath.pointAt(t)
     switch (this.routing) {
       case 'horizontal-vertical': {
         // -| path: horizontal first, then vertical
@@ -614,6 +690,7 @@ export class Edge {
    * Get waypoints for the path (for non-bezier routing)
    */
   get waypoints(): Point[] {
+    if (this.routePath) return this.routePath.allPoints
     switch (this.routing) {
       case 'horizontal-vertical':
         return [this.start, point(this.end.x, this.start.y), this.end]
@@ -637,6 +714,7 @@ export class Edge {
    * Generate SVG path data
    */
   toSVGPath(): string {
+    if (this.routePath) return this.routePath.toSVGPath()
     switch (this.routing) {
       case 'horizontal-vertical': {
         const corner = point(this.end.x, this.start.y)

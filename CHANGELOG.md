@@ -22,6 +22,7 @@ own examples, tests and docs, and the table below is what it does.
 | `pen.label('x', { options: { fontSize } })` | `pen.label('x', { style: { fontSize } })` |
 | `pic.text(p, 'x', { fontSize: 10, style: { stroke: c } })` | `pic.text(p, 'x', { style: { fontSize: 10, fill: c } })` |
 | `NodeLabel`, `DrawLabel` types | `Label`; `TextStyle` for `textStyle`/`label.style`/`text().style` |
+| `textWidth`/`textHeight` as measurement overrides | `textWidth` is TikZ `text width` (wrapping); pin a size with `width`/`height` |
 | `'fill-opacity'`, `'stroke-opacity'` keys | `fillOpacity`, `strokeOpacity` |
 | `borderRadius` (rectangles only) | `roundedCorners` (any path) |
 | `clip: { shape: 'circle', cx, cy, r }` | `clip: circle(point(cx, cy), r)` — any shape, path or node |
@@ -61,7 +62,59 @@ own examples, tests and docs, and the table below is what it does.
   `wire` and forty other short names no longer sit in the root
   namespace.
 
-### Added
+### Added — TikZ semantics (Phase 2)
+
+- **The math frame.** `picture({ frame: 'math', unit: cm(1) })`
+  writes a picture in TikZ's frame — y up, counter-clockwise angles,
+  `A.90` the top, coordinates in centimetres — and maps every point,
+  angle and numeric anchor to screen space once, at insertion. The
+  geometry a picture holds, and what `resolve()` returns, stay screen
+  px; rendering does not change, so text stays upright and stroke
+  widths stay absolute. Lengths given as options (`width`, `innerSep`,
+  `distance`) are px, as TikZ keeps `line width` absolute. Geometry
+  objects handed to `draw()` map too (points, lines, circles,
+  rectangles, polygons, arcs, ellipses, paths); plots and node shapes
+  say they cannot. `pic.point(x, y)` and `pic.length(v)` map by hand.
+  `polar(θ, r)` reads as TikZ's `(θ:r)` in a math-frame picture.
+- **The pen's TikZ path operations.** `rectangle(corner)`,
+  `circle(r)`/`ellipse(a, b)`, `arc({ start, end | delta, radius |
+  xRadius, yRadius })` in TikZ's center form, `grid(corner, { step
+  })`, `parabola(end, { bend })`, `sin(end)`, `cos(end)`, and
+  `node(name, options)` — a real named node at the pen (or at `pos`).
+  `rel(dx, dy)` is `++(dx, dy)` as the point of any verb. The pen also
+  takes `shortenStart`/`shortenEnd` (TikZ `shorten <`/`>`).
+- **Arrow tips take parameters.** `arrowEnd: { tip, length, width,
+  scale, open, fill, color, reversed, sep }` (TikZ `arrows.meta`
+  keys), and a list for several tips per end (`['stealth', 'stealth']`
+  is `>>`). A plain name renders the classic marker byte for byte.
+  `Edge.endTips`/`startTips` carry the full specs.
+- **Node text keys.** `textWidth` wraps (TikZ `text width`), `align`
+  aligns the block, `textStyle` on the node is used for *measuring* as
+  well as painting — a `fontSize: 28` node is sized for 28 px text.
+  `pins` (TikZ `pin`: a label with a thin line to the border, styled
+  by `edge`), `alias` (extra names), and `sloped` labels on edges,
+  pens and draw verbs, kept readable.
+- **Path actions.** `preactions`/`postactions` (TikZ
+  `preaction`/`postaction`: the outline painted again with only what
+  each entry says — halos, glows), `pathPicture` (TikZ `path picture`:
+  a clipped scope painted between fill and stroke), `useAsBoundingBox`
+  (fit sizes from the flagged items), `fillRule: 'evenodd'`.
+- **Edge routers.** `edge(a, b, { route })` takes a `(from, to) =>
+  Path` — TikZ's `to path` as a function; `straightRouter`,
+  `orthogonalRouter({ first })` and `busRouter({ x | y })` ship.
+  Arrows, `pos` labels, bounds and `shorten*` follow the routed path.
+- **Lengths and colours.** `cm()`, `mm()`, `inch()`, `pt()` (TeX's),
+  `bp()`, `length('2cm')`; `color('blue!30!black')`, `mix()`,
+  `defineColor()`, the 19 xcolor base names.
+- **The renderable seam is open.** Anything with `toSVGPath()` and
+  `bounds` draws with the caller's style and fits (`CustomRenderable`);
+  a `Paintable` with `paint(ctx)` paints itself — several fills,
+  strokes and text — with the resolved style, its attributes and the
+  renderer in hand. No registration, no core type.
+- The gallery gains `tikz-frame`: six `\draw` lines ported line for
+  line.
+
+### Added — the vocabulary (Phase 1)
 
 - **Style names anywhere a style goes.** `style: ['thick', 'dashed',
   { stroke }]`, `style: 'brand'`, scope `style: 'hot'`,

@@ -4,17 +4,22 @@ You already know the mental model — this page is the translation
 table. Every jikz snippet below is real, tested code (mirrored from
 `examples/`, which the test suite type-checks and snapshot-renders).
 
-The one thing to internalize first: **jikz uses SVG screen
-coordinates.** y grows *down*, angles run *clockwise*, 0° = east,
-270° = north. See [Coordinate system](./coordinate-system.md) for the
-porting rules. Everything else maps one-to-one.
+The one thing to decide first: **which frame the picture is written
+in.** The default is SVG screen space — y grows *down*, angles run
+*clockwise*, 0° = east, 270° = north. `picture({ frame: 'math', unit:
+cm(1) })` is TikZ's frame instead: y up, counter-clockwise, `A.90` is
+the top, one unit is a centimetre — and every coordinate in this table
+then reads exactly as the TikZ column. See
+[Coordinate system](./coordinate-system.md). Everything else maps
+one-to-one.
 
 ## Coordinates & points (TikZ calc library)
 
 | TikZ | jikz |
 |---|---|
 | `(2,3)` | `point(2, 3)` |
-| `(60:2)` — polar | `polar(60, r)` (screen convention; TikZ θ → `-θ`) |
+| `(60:2)` — polar | `polar(60, 2)` in a math-frame picture; `polar(-60, r)` in the screen frame |
+| `++(1,0)` — relative | `rel(1, 0)` as any pen verb's point |
 | `(A)!0.5!(B)` — partway modifier | `A.toward(B, 0.5)` |
 | `(A)!2cm!(B)` — distance modifier | `A.towardByDistance(B, 20)` |
 | `(A)!0.5!(B)` midpoint | `A.midpoint(B)` |
@@ -24,8 +29,10 @@ porting rules. Everything else maps one-to-one.
 | `(P)` — reference by name | `'P'` (string endpoints resolve by name) |
 | `(A)+(1,0)` — relative offset | `A.add(point(1, 0))` |
 
-Units are pixels — TikZ's `2cm` is simply a number in jikz. Scale with
-`xScale`/`yScale` options on plots, or a canvas `Transform`.
+Units are pixels. `cm(2)`, `pt(10)` and `length('3mm')` convert TikZ
+lengths; `picture({ unit: cm(1) })` makes every coordinate a
+centimetre while lengths given as options (`width`, `innerSep`, …)
+stay px, as TikZ keeps `line width` absolute. Colours: `color('blue!30!black')`.
 
 ## Path verbs
 
@@ -67,7 +74,11 @@ pic.pen({ style: { stroke: '#0f172a', strokeWidth: 1.6 } })
 | `node[midway]{x}` on the last segment | `.label('x', { pos: 0.5 })` |
 | `coordinate (P)` mid-statement | `.coordinate('P')` |
 | restyle mid-statement `[red, thick]` | `.push({ style: { stroke: 'red' } })` — later segments compile to a new path |
-| `arc (0:90:1)` | `.circularArcTo(r, largeArc, sweep, to)` — SVG endpoint arcs |
+| `arc (0:90:1)` / `arc[start angle=0, end angle=90, radius=1]` | `.arc({ start: 0, end: 90, radius: 1 })` |
+| `rectangle (2,1)`, `circle (1)`, `ellipse (2 and 1)` | `.rectangle(2, 1)`, `.circle(1)`, `.ellipse(2, 1)` |
+| `grid[step=0.5] (3,2)` | `.grid(3, 2, { step: 0.5 })` |
+| `parabola bend (1,2) (2,0)`, `sin (1,1)`, `cos (2,0)` | `.parabola(p, { bend })`, `.sin(p)`, `.cos(p)` |
+| `node[circle, draw] (n) {x}` on a path | `.node('n', { shape: 'circle', text: 'x' })` — a real node at the pen (or `pos`) |
 
 Named endpoints work too: `pen.moveTo('P').vhTo('Q')` is
 `\draw (P) |- (Q)`.
@@ -83,6 +94,9 @@ Named endpoints work too: `pen.moveTo('P').vhTo('Q')` is
 | no size given → fits text | omit `width`/`height` — the node measures its text |
 | `\usetikzlibrary{shapes.geometric}` shapes | `picture({ shapes: allShapes })` — the set you hand a picture is its shape library; `basicShapes` is the core four |
 | `rotate=45` | `rotate: 45` |
+| `text width=3cm, align=left` | `textWidth: cm(3), align: 'left'` |
+| `pin=east:x` | `pins: [{ text: 'x', at: 'east' }]` |
+| `alias=B` | `alias: 'B'` |
 | `at=(p), anchor=north` | `{ at: p, anchor: 'north' }` |
 
 ## Anchors
@@ -95,7 +109,7 @@ angles work everywhere TikZ does — with the screen convention
 |---|---|
 | `(A.north)` | `'A.north'` (string spec) or `pic.getNode('A').anchor('north')` |
 | `(A.ne)` | `'A.ne'` |
-| `(A.45)` | `'A.45'` |
+| `(A.45)` | `'A.45'` (the frame's angle convention) |
 | `(A)` — boundary point facing B | bare `'A'` as an edge endpoint — auto-resolves |
 
 ## Labels
@@ -117,6 +131,9 @@ included), so font size never causes collisions.
 |---|---|
 | `\draw (A) -- (B);` | `pic.edge('A', 'B')` — clips at node boundaries |
 | `\draw[->] (A) -- (B);` | `{ arrowEnd: 'stealth' }` — also `'latex'`, `'to'`, `'->'`, `'<-'`, `'<->'`, `'bar'`, `'\|'` |
+| `-{Stealth[length=3mm, open]}`, `->>` | `arrowEnd: { tip: 'stealth', length: length('3mm'), open: true }`, `arrowEnd: ['to', 'to']` |
+| `node[midway, sloped]{x}` | `label: { text: 'x', sloped: true }` |
+| custom `to path` | `route: orthogonalRouter()`, `busRouter({ y })`, or your own `(from, to) => Path` |
 | `bend left=35` | `bendAngle: 35` (positive = left of travel) |
 | `out=45, in=135` | `out: 45, in: 135` (screen convention) |
 | `looseness=5` | `looseness: 5` |
@@ -132,6 +149,11 @@ included), so font size never causes collisions.
 | `every node/.style={…}`, `every edge` | `picture({ every: { node: {…}, edge: {…}, path: {…}, text: {…} } })` — scopes take `every` too |
 | `rounded corners=4pt` | `roundedCorners: 4` on any path |
 | `\clip (0,0) circle (1);` | `style: { clip: circle(p, r) }`, or `clip` on a scope |
+| `preaction={draw=yellow, line width=6pt}` | `preactions: [{ stroke: 'yellow', strokeWidth: pt(6) }]` — `postactions` too |
+| `path picture={…}` | `pathPicture: (inside) => inside.draw(…)` |
+| `use as bounding box` | `useAsBoundingBox: true` |
+| `even odd rule` | `fillRule: 'evenodd'` |
+| `shorten >=2pt` on a `\draw` | `pic.pen({ shortenEnd: pt(2) })` |
 | `dashed` / `dotted` / `dashdotted` | `dash: 'dashed'` — full vocabulary incl. `densely dashed`, `loosely dotted`, … |
 | `fill opacity=0.3` | `fillOpacity: 0.3` |
 | `double` | `doubleLine: { spacing: 5 }` |

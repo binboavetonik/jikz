@@ -23,6 +23,7 @@ Every `style` option across the library resolves to this shape
 | `dash` | `DashPatternName` | TikZ names: `'dashed'`, `'dotted'`, `'dashdotted'`, `'densely dashed'`, `'loosely dashed'`, `'densely dotted'`, `'loosely dotted'` — sugar for `strokeDasharray` |
 | `fill` | `Color` | |
 | `fillOpacity` | `number` | |
+| `fillRule` | `'nonzero' \| 'evenodd'` | TikZ `even odd rule` |
 | `fillPattern` | `PatternKind \| FillPatternSpec` | a `fillPatterns.*` tile, or `{ pattern, color, scale, … }` |
 | `gradient` | `GradientSpec` | linear/radial, multi-stop — compiles to `<defs>` |
 | `dropShadow` | `DropShadowSpec \| boolean` | SVG filter primitive |
@@ -30,6 +31,10 @@ Every `style` option across the library resolves to this shape
 | `roundedCorners` | `number` | TikZ `rounded corners=<inset>`, on any path |
 | `doubleLine` | `DoubleLineSpec \| boolean` | TikZ `double` |
 | `opacity` | `number` | whole-element |
+
+On any item's options (not the style): `preactions` / `postactions`
+(TikZ `preaction`/`postaction`, a list of styles painted over the
+invisible `path` baseline before/after the item).
 
 ## The array form — TikZ's option list as data
 

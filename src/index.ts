@@ -2,6 +2,9 @@
 export { Point, point, polar, origin } from './core/Point'
 export { JikzError, warn, setWarningHandler } from './core/errors'
 export type { JikzErrorCode, WarningHandler } from './core/errors'
+export { cm, mm, inch, pt, bp, length, PX_PER_CM, PX_PER_MM, PX_PER_INCH, PX_PER_PT, PX_PER_BP } from './core/units'
+export { color, mix, parseColor, toHex, defineColor, xcolor } from './core/color'
+export type { RGB } from './core/color'
 export { Transform, transform, fromMatrix } from './core/Transform'
 
 // Types
@@ -261,6 +264,9 @@ export {
   diamondNode,
   DEFAULT_LABEL_DISTANCE,
   DEFAULT_LABEL_FONT_SIZE,
+  DEFAULT_PIN_DISTANCE,
+  DEFAULT_PIN_EDGE_STYLE,
+  readableAngle,
   // Edge
   Edge,
   edge,
@@ -287,6 +293,10 @@ export {
   nodeColumn,
   nodeGrid,
   nodeCircle,
+  // Routers
+  straightRouter,
+  orthogonalRouter,
+  busRouter,
 } from './node'
 
 export type {
@@ -344,8 +354,12 @@ export type {
   NodeOptions,
   Label,
   TextStyle,
+  Pin,
   ArrowTip,
+  ArrowTipSpec,
+  ArrowSpec,
   EdgeRouting,
+  EdgeRouter,
   EdgeAnchorSpec,
   EdgeOptions,
   PositionDirection,
@@ -382,6 +396,7 @@ export {
   subPath,
   joinPaths,
   roundCorners,
+  shortenPath,
   // Brace/bracket
   bracePath,
   bracketPath,
@@ -452,6 +467,7 @@ export {
   isPolygon,
   isNode,
   isEdge,
+  isPaintable,
   // Style mapping (user-facing; the pattern/gradient/shadow registry
   // internals stay private to the render package)
   DEFAULT_STYLE,
@@ -522,9 +538,10 @@ export {
   Scope,
   TransformedAnchorable,
 } from './picture'
-export { Pen } from './picture'
-export type { PenOptions, PenHost, PenPoint, ToOptions } from './picture'
-export type { NodeOptionsFor, AddableItems, AddOptions, EveryOptions, PictureEdgeOptions, PlacementOptions } from './picture'
+export { Pen, Frame, rel, isRelative } from './picture'
+export type { FrameOptions, FrameName, RelativePoint } from './picture'
+export type { PenOptions, PenHost, PenPoint, ToOptions, PenArcOptions, PenGridOptions, PenCircleOptions } from './picture'
+export type { NodeOptionsFor, AddableItems, AddOptions, EveryOptions, PictureEdgeOptions, PlacementOptions, AliasOptions } from './picture'
 export type {
   PictureEndpoint,
   PictureItem,
@@ -546,6 +563,10 @@ export type {
 export type {
   Renderer,
   Renderable,
+  Bounds,
+  CustomRenderable,
+  Paintable,
+  PaintContext,
   RenderOptions,
   TextOptions,
   GroupOptions,

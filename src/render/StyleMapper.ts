@@ -58,6 +58,8 @@ export interface RenderStyle {
   // Fill
   fill?: Color
   fillOpacity?: number
+  /** TikZ `even odd rule` / `nonzero rule`. */
+  fillRule?: 'nonzero' | 'evenodd'
   fillPattern?: PatternKind | FillPatternSpec
   gradient?: GradientSpec
 
@@ -97,6 +99,7 @@ export interface SVGAttributes {
   'stroke-miterlimit'?: number
   fill?: string
   'fill-opacity'?: number
+  'fill-rule'?: string
   opacity?: number
   filter?: string
   'clip-path'?: string
@@ -465,6 +468,10 @@ export function styleToSVGAttributes(style: Partial<RenderStyle>): SVGAttributes
 
   if (style.fillOpacity !== undefined) {
     attrs['fill-opacity'] = style.fillOpacity
+  }
+
+  if (style.fillRule !== undefined) {
+    attrs['fill-rule'] = style.fillRule
   }
 
   if (style.opacity !== undefined) {
