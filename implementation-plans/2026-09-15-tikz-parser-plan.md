@@ -1,17 +1,242 @@
 # TikZ parser — plan
 
-Status: PLAN (2026-09-15). Picks up the item deferred in
-`2026-09-11-tikz-parity-evaluation.md` §5 and excluded from
-`2026-09-13-extension-roadmap.md` ("a separate package and a
-tokenizer/grammar project, not a library extension"). Ships as
-`@ozan.e/jikz-tikz`; nothing in the core roadmap blocks it or is
-blocked by it.
+Status: PLAN, **reframed 2026-09-19** (§0 supersedes §1, §2, §6, §8's
+milestones, §9 and §10; the rest stands as evidence). Written
+2026-09-15 as the item deferred in `2026-09-11-tikz-parity-evaluation.md`
+§5. Ships as `@ozan.e/jikz-tikz`; nothing in the core roadmap blocks
+it or is blocked by it.
 
-Why it is worth doing: every other roadmap item widens *what* a jikz
-user can draw. This one widens *who can adopt jikz at all*, by turning
-"learn my API" into "paste what you already wrote."
+## 0. Reframing (2026-09-19): TikZ's notation as a jikz feature
+
+### What changed since the plan was written
+
+Two things, and together they move the product.
+
+The API review (`2026-09-18-api-review-and-roadmap.md`, all four
+phases now on `master`) gave jikz a **math frame** (`picture({ frame:
+'math', unit: cm(1) })`), the pen's TikZ path operations (`arc`,
+`rectangle`, `circle`, `grid`, `rel()`), parameterised arrow tips,
+`color()`, `length()`, `every`, style names as strings, `right=of`
+placement, pins, and a projection stage. Section 3's coordinate
+contract — negate angles, swap arc endpoints, rewrite `(A.45)` to
+`'A.-45'`, evaluate colours at convert time — is now a pass-through:
+TikZ's numbers are jikz's numbers. Lowering became nearly one to one.
+
+And the lezer spike (below) found that "paste TikZ, get SVG" already
+exists under MIT (`@tikz-editor/core`, 112k lines), which is why this
+plan demoted the interpreter to an oracle. That was right about the
+*file* converter. It was wrong about where the interpreter is valuable.
+
+### The product
+
+**A tagged template that puts TikZ statements into a jikz picture.**
+TikZ's notation exactly where it is denser than method chains —
+paths, coordinates, calc, option lists — and JavaScript exactly where
+TikZ is weakest — data, loops, composition, types — sharing one
+registry, one style system, one frame:
+
+```ts
+import { picture, cm, allShapes } from '@ozan.e/jikz'
+import { tikz } from '@ozan.e/jikz-tikz'
+
+const pic = picture({ frame: 'math', unit: cm(1), shapes: allShapes })
+const T = tikz(pic)                                   // bound to this picture
+
+T`\draw[thick, ->] (0,0) -- (2,1) arc (0:90:1) node[right] {$P$};`
+for (const [i, name] of ['A', 'B', 'C'].entries()) {
+  T`\node[circle, draw, fill=blue!20] (${name}) at (${i * 2}, 0) {${name}};`
+}
+pic.edge('A', 'C', { bendAngle: 30, label: 'from JS' })   // same names, same picture
+```
+
+Three claims, each of which the old framing could not make:
+
+1. **No conversion ceiling.** A syntax is not a compatibility promise.
+   The M0 ceiling (~35% of wild TikZ converts) was about *files*; a
+   statement either lowers to what jikz can express or throws a
+   `JikzError` naming the construct. Nothing is silently dropped.
+2. **No pgfmath.** `${}` interpolation is the expression language.
+   The one deficiency the lezer grammar declares (`pgfmath_expression:
+   none`) is not on this product's critical path at all.
+3. **A line no competitor has.** `tikz-editor` renders TikZ to its own
+   SVG; TikZJax runs TeX. Neither puts a `\draw` into a picture you
+   then address by name from JavaScript, style with `every`, lay out
+   with `tree()`, or fit, mount and pan.
+
+The file converter survives as **eject**: `toTypeScript(source)`
+prints the same IR as readable jikz code, for the day a figure
+prototyped in TikZ strings should become typed code. Same lowering,
+same oracle, secondary billing.
+
+### The decisions, restated
+
+1. **Scope: statements, not documents.** `\draw`, `\fill`,
+   `\filldraw`, `\path`, `\shade`, `\clip`, `\node`, `\coordinate`,
+   `\begin{scope}…\end{scope}`, `\foreach` (TikZ list syntax; bodies
+   are statements), plus the path and coordinate grammar of §4 and the
+   key registry of §4. `\begin{tikzpicture}[opts] … \end{tikzpicture}`
+   is accepted as a body via `tikzPicture` (a whole picture from one
+   template, math frame and `cm(1)` by default). Preamble, macros,
+   `\pgfmathsetmacro`, pgfplots, 3D coordinate systems: out, by name.
+2. **Unknown means throw, in the DSL.** Decision 2 (comment out,
+   continue) was right for a migration you run once and read; it is
+   wrong for code that runs. An unknown statement, operation or key
+   throws `JikzError` — `unsupported` with the construct and the
+   statement's line and column, `unknown-name` for a key, listing the
+   keys the registry knows. `eject` keeps decision 2, since its output
+   is read by a person.
+3. **The DSL never grows its own vocabulary.** Everything it accepts
+   lowers to a call the typed API already exposes, and the reference
+   for what a key means is the typed option it becomes. The typed API
+   is the primary route and the docs say so: strings lose the
+   compile-time names (shapes, ports, placement keys) three phases of
+   the review built. The DSL is for the dense parts.
+4. **Coordinates are the picture's frame.** In a `frame: 'math'`
+   picture a statement's numbers are TikZ's; in the default screen
+   frame they are px, y down, and the docs say that too. Interpolated
+   `Point`s are frame coordinates; interpolated numbers are numbers;
+   interpolated strings are TikZ source.
+
+### Zero dependencies — the front end is ours after all
+
+`@tikz-editor/lezer-tikz` is on npm (published 2026-06, three months
+before this note), so the spike's vendoring question is moot. It does
+not change the answer, because jikz's zero-runtime-dependency line is
+worth more than the grammar: a `jikz-tikz` carrying `@lezer/lr` and
+`@lezer/common` (152 KB) would break that promise in the one package
+meant to be the on-ramp, and its tables would be coupled to a
+generator version and to one upstream author's schedule.
+
+The spike's "the path grammar is the hard part" was about *documents*:
+macros with arity, preamble, `\pgfmathsetmacro`, resynchronising at
+`\begin{tikzpicture}` after swallowing a preamble. §0's scope is
+*statements*, whose syntax is regular — `\cmd[opts] path;`, path items
+that are coordinates, operators, `node{}`s and option lists, and a
+bounded set of coordinate forms. That is a recursive-descent parser of
+about 600 lines: a tokenizer that knows TeX's braces, brackets and
+`;`; an option-list parser (balanced braces, `key=value`, the quotes
+syntax `"text"`); a coordinate parser (cartesian, polar, named with
+anchor, `|-`/`-|`, relative `++`/`+`, calc `($…$)` with `!t!`, `!d!`,
+`!(P)!`, `!θ:`); path items; `\node`/`\coordinate`; `scope` and
+`\foreach`. **Written from the TikZ manual and `tikz.code.tex`, not
+from the Lezer grammar**, so provenance stays clean and the parser
+owes nothing to anyone.
+
+**`lezer-tikz` becomes a dev-only conformance oracle.** A
+devDependency, never shipped: a test parses every corpus statement
+with both and diffs the statement structure ours produces against
+its tree. That buys the breadth of a 996-line grammar as a *test* —
+which is exactly what the spike showed it is good at — and ships none
+of it. It is the pattern the repo already uses for MathJax in the
+cookbook build: heavy tools at dev time, nothing in `dist/`. If ours
+and theirs disagree, the corpus entry decides, by hand.
+
+### Architecture
+
+    template literal ──▶ tokenize ──▶ parse ──▶ lower() ──▶ IR ──▶ interpret()  ── the product ──▶ picture items
+         ${} slots       (ours)      (ours)    + key registry    │
+                                                                 └──▶ emit()  ── eject ──▶ TypeScript
+    .tex file ──▶ pictureBody() ──▶ precheck ──▶ (the same pipeline, decision 2 in force)
+    corpus ──▶ ours ⟷ lezer-tikz (devDependency)  ── conformance test, not shipped
+
+`interpret()` stops building its own picture and takes the caller's
+container (`ItemContainer`): it calls `pen()`, `node()`, `edge()`,
+`scope()`, `coordinate()`, `text()` on it, so a statement lands in
+whatever registry and frame the caller has. The oracle property (§7)
+is unchanged — interpreting a corpus entry into a fresh picture and
+running the ejected TypeScript must give byte-identical SVG — and it
+now guards the product rather than a by-product.
+
+Interpolation is resolved before parsing: each `${}` becomes a
+placeholder token the grammar sees as a number, a coordinate or an
+identifier, and `lower()` substitutes the value. Numbers and `Point`s
+are typed slots; strings are spliced as source (and parsed), which is
+the escape hatch and is documented as one.
+
+### Milestones, replacing §8's M1–M7
+
+- **M1 — done.** Skeleton, IR, the two back ends, the oracle, the
+  pre-check.
+- **M2 — the statement parser, ours.** Grow `tokenize.ts` and
+  `parse.ts` from the M1 slice into the recursive-descent parser
+  above, keeping `pictureBody()`. Path grammar of §4 end to end: every
+  segment type, `arc`/`circle`/`rectangle`/`ellipse`/`grid`, `cycle`,
+  `++`/`+`, inline `node{}` as labels and as named nodes, all §4
+  coordinate forms including calc. Add `@tikz-editor/lezer-tikz` as a
+  devDependency and the conformance test over the corpus. Exit: every
+  corpus *statement* that the pre-check does not refuse parses, and
+  the conformance diff is empty or explained per entry.
+- **M3 — the key registry, over the new API.** The §4 key list, now
+  mapping to the typed options one to one: colours through `color()`,
+  lengths through `length()`, `->`/`{Stealth[…]}` through the tip
+  specs, `bend`/`out`/`in`/`loop`, `minimum size`/`inner sep`/`outer
+  sep`/`anchor`/`rotate`, `right=of`, `label=`/`pin=`, `text width`/
+  `align`, `midway`/`pos`/`sloped`, `opacity`, `double`, `pattern`,
+  `rounded corners`, `path fading`, `shorten`, `scale`/`shift`/`rotate`
+  on scopes, `every node/.style`. `\tikzset` becomes `picture({
+  styles })`. Unknown keys throw with the known list.
+- **M4 — the DSL surface.** `tikz(pic)` and `tikzPicture`, `${}`
+  slots, `\begin{scope}`, `\foreach` with `/`-tuples and `...`
+  ranges, `interpret()` onto a caller's container, the error policy
+  with line and column, and the type-level contract: `T` returns the
+  names it registered so `pic.edge()` can use them without a cast.
+- **M5 — eject.** `toTypeScript(source | template)` printing the
+  §6 shape against the new API, the "keep every statement as a
+  comment" rule, oracle equivalence green across the corpus, and the
+  corpus itself promoted to jikz's TikZ-fidelity suite.
+- **M6 — docs and playground.** A reference page on `@ozan.e/jikz`'s
+  site, the support matrix gaining a "DSL" column, and the playground
+  (TikZ on the left; the picture and the ejected code on the right).
+- **Post-v1, in order.** Trees (`child{}`, on `tree()`), pics
+  (`angle`, `right angle` → `ext/angles`; `\usetikzlibrary` selects
+  ext shape sets and helpers), decorations keys (`snake`, `zigzag`,
+  `markings`, `footprints`, `shapes` → the path decorations), then
+  the pgfmath evaluator — only when the migration path earns it,
+  since the DSL never needs it — and circuitikz bipoles.
+
+### Definition of done, replacing §9
+
+1. `@ozan.e/jikz-tikz` exporting `tikz`, `tikzPicture`,
+   `toTypeScript` and `convert` (file mode), with jikz as its only
+   peer and **no runtime dependencies**, like jikz itself.
+2. Every statement in §0's scope lowers to a typed-API call, and a
+   test per key asserts the option it becomes.
+3. Every refusal in §5 and every unknown construct throws a
+   `JikzError` whose message names the construct and the position;
+   each has a test.
+4. Oracle equivalence green across the corpus, in both modes.
+5. A docs page whose first line is the §0 claim — TikZ's notation,
+   JavaScript's data, one picture — and whose second is the caveat:
+   the typed API is primary; strings lose its names.
+6. The playground on the docs site.
+
+### Risks, replacing §10
+
+- **Two vocabularies drifting.** The DSL must not accept anything the
+  typed API cannot express, or mean anything differently. The test in
+  done-item 2 is the guard, and the API report (`api:check`) catches
+  a typed change that the registry then has to follow.
+- **Strings hide type errors until runtime.** Mitigated by the error
+  policy (position, known names) and by the return value carrying
+  registered names; not eliminated. The docs sell the DSL as the
+  dense-notation route, not the default.
+- **Our parser lags the grammar it is measured against.** Accepted:
+  the conformance test says where, per corpus entry, and §0's scope
+  bounds what "lagging" can mean. The alternative — shipping
+  `@lezer/lr` — was rejected to keep both packages at zero runtime
+  dependencies; `lezer-tikz` stays a devDependency only.
+- **Provenance.** The parser is written from the TikZ manual and
+  source, not from the Lezer grammar; the conformance test reads that
+  grammar's *output*, never its rules.
+- **Scope creep toward "real TikZ."** Decision 1 and 3 above, stated
+  on the docs page from day one. The pre-check's "cannot" list is the
+  public boundary.
+- **The file converter's yield.** Unchanged at ~35%; it is secondary
+  billing now, so that number stops being the product's number.
 
 ## 1. The four decisions
+
+*Superseded by §0 (2026-09-19); kept as the record of the migration-tool framing.*
 
 1. **Scope: core drawing + control flow.** Coordinates, path verbs,
    `\node`, `\coordinate`, edges and routing, styles, arrow tips —
@@ -44,6 +269,8 @@ user can draw. This one widens *who can adopt jikz at all*, by turning
 
 ## 2. Architecture: one front end, two back ends
 
+*Superseded by §0's architecture: the interpreter is the product, the emitter is eject.*
+
     .tex source
         │  tokenizer          (catcode-lite: TeX-ish, not TeX)
         ▼
@@ -68,6 +295,8 @@ The IR exists so neither back end parses and neither re-derives
 semantics. Lowering happens once.
 
 ## 3. The coordinate contract
+
+*Largely moot since the math frame: in a `frame: 'math'` picture the table below is a pass-through. Kept for the screen-frame case and as the record.*
 
 **Settled by measurement, not preference.** The tempting design —
 keep TikZ's numbers literally and wrap the picture in a y-flipping
@@ -288,6 +517,8 @@ difficulty is not drawing: pgfplots' option surface is enormous, and
 
 ## 6. Codegen shape
 
+*Now the eject path (§0, M5). The rules stand.*
+
     import { picture, point, allShapes } from '@ozan.e/jikz'
 
     export function build() {
@@ -326,6 +557,8 @@ Three layers, in descending strength:
    names the construct and the line. Refusals are behaviour.
 
 ## 8. Milestones
+
+*M0 and the spikes below are evidence and stand. M1–M7 as listed are superseded by §0's milestones.*
 
 - **M0 — spike. ✅ done 2026-09-15**, against two corpora. Ten
   texample.net entries and ten tex.stackexchange answers, both sampled
@@ -636,6 +869,8 @@ substitution.
 
 ## 9. Definition of done
 
+*Superseded by §0.*
+
 1. `@ozan.e/jikz-tikz` with a `jikz-tikz <file.tex>` CLI and a
    programmatic `convert(source, opts)`.
 2. Oracle equivalence green across the whole corpus.
@@ -649,6 +884,8 @@ substitution.
 6. The playground on the docs site, running the interpreter.
 
 ## 10. Risks
+
+*Superseded by §0.*
 
 - **Key surface breadth.** Mitigated by decision 2 — an unknown key
   never blocks a file.

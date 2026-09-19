@@ -16,13 +16,34 @@ restructuring to a workspace costs days and this may not survive M1.
 
 ## What it is
 
-Port a 2D diagram, keep what maps, get told about the rest. The M0
-spike measured roughly 10-15% of wild TikZ converting cleanly, another
-20-25% usefully with gaps flagged, and ~40% out for reasons unrelated
-to the parser — 3D, pgfplots, LaTeX inside nodes, animation.
+**TikZ's notation as a jikz feature.** A tagged template puts TikZ
+statements into a jikz picture — TikZ where it is denser (paths,
+coordinates, calc, option lists), JavaScript where TikZ is weakest
+(data, loops, composition, types), one registry and one frame:
 
-It is a **migration tool**, not a renderer. You run it once and keep
-the TypeScript.
+    const T = tikz(pic)
+    T`\draw[thick, ->] (0,0) -- (2,1) arc (0:90:1) node[right] {$P$};`
+    pic.edge('P', 'A')            // same names, same picture
+
+A statement either lowers to what the typed API can express or throws
+a `JikzError` naming the construct — nothing is silently dropped, and
+there is no conversion ceiling because a syntax is not a compatibility
+promise. `${}` is the expression language, so pgfmath is not on the
+path. The typed API stays primary: strings lose its compile-time names.
+
+The file converter is the secondary route, **eject**: the same
+lowering printed as readable TypeScript, for the day a figure
+prototyped in strings should become typed code. Its M0-measured yield
+(10-15% of wild TikZ clean, 20-25% with gaps, ~40% out for reasons
+unrelated to parsing) is that route's number, not the product's.
+
+Zero runtime dependencies, like jikz: the statement parser is ours,
+written from the TikZ manual and source. `@tikz-editor/lezer-tikz` is
+a dev-only conformance oracle — the corpus is parsed by both and the
+structures diffed — and ships nowhere.
+
+Reframed 2026-09-19; the plan's §0 has the decisions, architecture and
+milestones.
 
 ## Shape
 
