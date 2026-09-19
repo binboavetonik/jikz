@@ -42,9 +42,9 @@ export interface MappedOptions {
   /** `to[…]`/`edge[…]` routing (`BezierRouteOptions`) and `loop`. */
   to: IrRecord
   loop?: string
-  /** `shorten <`/`shorten >`, px. */
-  shortenStart?: number
-  shortenEnd?: number
+  /** `shorten <`/`shorten >`. */
+  shortenStart?: IrValue
+  shortenEnd?: IrValue
   /** Scope transform keys. */
   transform?: IrTransform
   /** Labels and pins from `label=`, `pin=` and the quotes syntax. */
@@ -54,11 +54,13 @@ export interface MappedOptions {
   name?: string
   /** Scope-level state: `>=`, `node distance=`. */
   tip?: string
-  nodeDistancePx?: number
-  /** `label distance=` inside a label's own options, px. */
-  labelDistancePx?: number
+  nodeDistance?: IrValue
+  /** `label distance=` inside a label's own options. */
+  labelDistance?: IrValue
   /** Shading colours (`\shade`, `top color=` …), resolved to a gradient at the end. */
   gradient?: IrRecord
+  /** `step`/`xstep`/`ystep` on the path, for its `grid` operations. */
+  grid?: IrRecord
   unknown: (Option & { hint?: string })[]
 }
 
@@ -178,7 +180,7 @@ export const KNOWN_KEYS: Record<KeyContext, readonly string[]> = (() => {
   ]
   const scope = ['shift', 'xshift', 'yshift', 'rotate', 'scale', 'node distance', '>', 'every node', 'every path', 'every label', 'every edge']
   return {
-    path: [...paint, ...routing],
+    path: [...paint, ...routing, 'step', 'xstep', 'ystep', '>'],
     node: [...paint, ...node],
     label: [...paint, ...node, 'label distance'],
     to: [...paint, ...routing],
@@ -198,6 +200,12 @@ function shapeNamed(key: string): string | undefined {
   if (SHAPE_ALIASES[key]) return SHAPE_ALIASES[key]
   const camel = key.replace(/ (\w)/g, (_, c: string) => c.toUpperCase())
   return camel in allShapes ? camel : undefined
+}
+
+/** A TikZ length as an IR value: kept as written, so the printer can say `cm(2)`. */
+export function len(value: string): { $len: string } {
+  lengthPx(value) // validates
+  return { $len: value.trim().replace(/\s+/g, '') }
 }
 
 /** A TikZ length to px. A bare number is pt, as TikZ reads it in a key value. */
@@ -240,8 +248,8 @@ function parseArrows(key: string, env: KeyEnv): { start?: IrValue; end?: IrValue
       const record: Record<string, IrValue> = { tip }
       for (const part of opts.split(',')) {
         const [k, v] = part.split('=').map((x) => x.trim())
-        if (k === 'length' && v) record.length = lengthPx(v)
-        else if (k === 'width' && v) record.width = lengthPx(v)
+        if (k === 'length' && v) record.length = len(v)
+        else if (k === 'width' && v) record.width = len(v)
         else if (k === 'open') record.open = true
         else if (k === 'reversed') record.reversed = true
         else if (k === 'fill' && v) record.fill = color(v)
@@ -268,8 +276,19 @@ function parseArrows(key: string, env: KeyEnv): { start?: IrValue; end?: IrValue
  * `circle` is a shape on a node and nothing on a path; `above` is an
  * anchor on a node and a label position on a path node.
  */
-export function mapOptions(options: readonly Option[], context: KeyContext, env: KeyEnv = {}): MappedOptions {
+export function mapOptions(options: readonly Option[], context: KeyContext, outerEnv: KeyEnv = {}): MappedOptions {
   const out: MappedOptions = { style: [], textStyle: {}, node: {}, to: {}, labels: [], pins: [], unknown: [] }
+  // `>=stealth` names the tip that `->` uses — wherever in the list it
+  // sits, since TikZ reads `->` when the path is drawn.
+  let env = outerEnv
+  for (const o of options) {
+    if (o.key === '>' && o.value !== undefined) {
+      const tip = TIPS[o.value.trim()]
+      if (!tip) throw new KeyError(`>=${o.value}: not an arrow tip`)
+      env = { ...env, tip }
+      out.tip = tip
+    }
+  }
   let transform: IrTransform | undefined
   // TikZ `color=` (and a bare colour name) sets the colour that a later
   // bare `draw`/`fill` uses and the text colour; on a `\draw` path it is
@@ -310,7 +329,7 @@ export function mapOptions(options: readonly Option[], context: KeyContext, env:
       continue
     }
     if (key === 'line width' && value !== undefined) {
-      out.style.push({ strokeWidth: lengthPx(value) })
+      out.style.push({ strokeWidth: len(value) })
       continue
     }
     if (value === undefined && THICKNESS[key]) {
@@ -329,7 +348,7 @@ export function mapOptions(options: readonly Option[], context: KeyContext, env:
       continue
     }
     if (key === 'dash phase' && value !== undefined) {
-      out.style.push({ strokeDashoffset: lengthPx(value) })
+      out.style.push({ strokeDashoffset: len(value) })
       continue
     }
     if (key === 'opacity') {
@@ -358,7 +377,7 @@ export function mapOptions(options: readonly Option[], context: KeyContext, env:
       continue
     }
     if (key === 'rounded corners') {
-      out.style.push({ roundedCorners: value === undefined ? pt(4) : lengthPx(value) })
+      out.style.push({ roundedCorners: len(value ?? '4pt') })
       continue
     }
     if (key === 'sharp corners') {
@@ -366,11 +385,11 @@ export function mapOptions(options: readonly Option[], context: KeyContext, env:
       continue
     }
     if (key === 'double') {
-      out.style.push(value === undefined ? 'double' : { doubleLine: { spacing: pt(0.6), innerColor: color(value) } })
+      out.style.push(value === undefined ? 'double' : { doubleLine: { spacing: len('0.6pt'), innerColor: color(value) } })
       continue
     }
     if (key === 'double distance' && value !== undefined) {
-      out.style.push({ doubleLine: { spacing: lengthPx(value) } })
+      out.style.push({ doubleLine: { spacing: len(value) } })
       continue
     }
     if (key === 'even odd rule' && value === undefined) {
@@ -383,7 +402,7 @@ export function mapOptions(options: readonly Option[], context: KeyContext, env:
     }
     if (key === 'help lines' && value === undefined) {
       // TikZ: `line width=0.2pt, gray!50`.
-      out.style.push({ stroke: color('gray!50'), strokeWidth: pt(0.2) })
+      out.style.push({ stroke: color('gray!50'), strokeWidth: len('0.2pt') })
       continue
     }
     if (key === 'pattern' && value !== undefined) {
@@ -413,11 +432,11 @@ export function mapOptions(options: readonly Option[], context: KeyContext, env:
       continue
     }
     if (key === 'shorten <' && value !== undefined) {
-      out.shortenStart = lengthPx(value)
+      out.shortenStart = len(value)
       continue
     }
     if (key === 'shorten >' && value !== undefined) {
-      out.shortenEnd = lengthPx(value)
+      out.shortenEnd = len(value)
       continue
     }
     if (key === 'font' && value !== undefined) {
@@ -427,6 +446,11 @@ export function mapOptions(options: readonly Option[], context: KeyContext, env:
         continue
       }
       out.textStyle = { ...out.textStyle, ...ts }
+      continue
+    }
+    if (key === '>' && value !== undefined) continue // read above
+    if ((key === 'step' || key === 'xstep' || key === 'ystep') && value !== undefined && context === 'path') {
+      out.grid = { ...out.grid, [key]: len(value) }
       continue
     }
     if (key === 'arrows' && value !== undefined) {
@@ -472,28 +496,27 @@ export function mapOptions(options: readonly Option[], context: KeyContext, env:
         continue
       }
       if (key === 'minimum size' && value !== undefined) {
-        const n = lengthPx(value)
-        out.node = { ...out.node, minWidth: n, minHeight: n }
+        out.node = { ...out.node, minWidth: len(value), minHeight: len(value) }
         continue
       }
       if (key === 'minimum width' && value !== undefined) {
-        out.node = { ...out.node, minWidth: lengthPx(value) }
+        out.node = { ...out.node, minWidth: len(value) }
         continue
       }
       if (key === 'minimum height' && value !== undefined) {
-        out.node = { ...out.node, minHeight: lengthPx(value) }
+        out.node = { ...out.node, minHeight: len(value) }
         continue
       }
       if (key === 'inner sep' && value !== undefined) {
-        out.node = { ...out.node, innerSep: lengthPx(value) }
+        out.node = { ...out.node, innerSep: len(value) }
         continue
       }
       if (key === 'outer sep' && value !== undefined) {
-        out.node = { ...out.node, outerSep: lengthPx(value) }
+        out.node = { ...out.node, outerSep: len(value) }
         continue
       }
       if (key === 'text width' && value !== undefined) {
-        out.node = { ...out.node, textWidth: lengthPx(value) }
+        out.node = { ...out.node, textWidth: len(value) }
         continue
       }
       if (key === 'align' && value !== undefined) {
@@ -552,7 +575,7 @@ export function mapOptions(options: readonly Option[], context: KeyContext, env:
         const m = /^(?:(\S+)\s+)?of\s+(.+)$/.exec(value)
         const dir = PLACEMENT_OF[key]
         if (m && dir) {
-          out.node = { ...out.node, [dir]: m[2]!.trim(), ...(m[1] ? { distance: lengthPx(m[1]) } : {}) }
+          out.node = { ...out.node, [dir]: m[2]!.trim(), ...(m[1] ? { distance: len(m[1]) } : {}) }
           continue
         }
         // `above=2pt`: the anchor, moved that far along the direction.
@@ -582,16 +605,16 @@ export function mapOptions(options: readonly Option[], context: KeyContext, env:
         continue
       }
       if (key === 'label distance' && value !== undefined) {
-        if (context === 'label') out.labelDistancePx = lengthPx(value)
-        else out.node = { ...out.node, labelDistance: lengthPx(value) }
+        if (context === 'label') out.labelDistance = len(value)
+        else out.node = { ...out.node, labelDistance: len(value) }
         continue
       }
       if (key === 'pin distance' && value !== undefined) {
-        out.labelDistancePx = lengthPx(value)
+        out.labelDistance = len(value)
         continue
       }
       if (key === 'node distance' && value !== undefined) {
-        out.nodeDistancePx = lengthPx(value)
+        out.nodeDistance = len(value)
         continue
       }
     }
@@ -621,14 +644,8 @@ export function mapOptions(options: readonly Option[], context: KeyContext, env:
         transform = { ...transform, scale: numberValue(value, key) }
         continue
       }
-      if (key === '>' && value !== undefined) {
-        const tip = TIPS[value.trim()]
-        if (!tip) throw new KeyError(`>=${value}: not an arrow tip`)
-        out.tip = tip
-        continue
-      }
       if (key === 'node distance' && value !== undefined) {
-        out.nodeDistancePx = lengthPx(value)
+        out.nodeDistance = len(value)
         continue
       }
     }
@@ -663,16 +680,16 @@ function fontStyle(value: string): IrRecord | undefined {
   const ts: Record<string, IrValue> = {}
   if (/\\bfseries|\\bf\b|\\textbf/.test(value)) ts.fontWeight = 'bold'
   if (/\\itshape|\\it\b|\\em\b|\\textit/.test(value)) ts.fontStyle = 'italic'
-  if (/\\tiny/.test(value)) ts.fontSize = pt(5)
-  else if (/\\scriptsize/.test(value)) ts.fontSize = pt(7)
-  else if (/\\footnotesize/.test(value)) ts.fontSize = pt(8)
-  else if (/\\small/.test(value)) ts.fontSize = pt(9)
-  else if (/\\normalsize/.test(value)) ts.fontSize = pt(10)
-  else if (/\\LARGE/.test(value)) ts.fontSize = pt(17)
-  else if (/\\Large/.test(value)) ts.fontSize = pt(14)
-  else if (/\\large/.test(value)) ts.fontSize = pt(12)
-  else if (/\\Huge/.test(value)) ts.fontSize = pt(25)
-  else if (/\\huge/.test(value)) ts.fontSize = pt(20)
+  if (/\\tiny/.test(value)) ts.fontSize = len('5pt')
+  else if (/\\scriptsize/.test(value)) ts.fontSize = len('7pt')
+  else if (/\\footnotesize/.test(value)) ts.fontSize = len('8pt')
+  else if (/\\small/.test(value)) ts.fontSize = len('9pt')
+  else if (/\\normalsize/.test(value)) ts.fontSize = len('10pt')
+  else if (/\\LARGE/.test(value)) ts.fontSize = len('17pt')
+  else if (/\\Large/.test(value)) ts.fontSize = len('14pt')
+  else if (/\\large/.test(value)) ts.fontSize = len('12pt')
+  else if (/\\Huge/.test(value)) ts.fontSize = len('25pt')
+  else if (/\\huge/.test(value)) ts.fontSize = len('20pt')
   if (/\\ttfamily|\\tt\b|\\texttt/.test(value)) ts.fontFamily = 'monospace'
   else if (/\\sffamily|\\textsf/.test(value)) ts.fontFamily = 'sans-serif'
   else if (/\\rmfamily/.test(value)) ts.fontFamily = 'serif'
@@ -750,7 +767,7 @@ function parseLabel(value: string, env: KeyEnv, pin: boolean): IrRecord {
   return {
     text,
     ...(at ? { at: side !== undefined ? opposite(side) : /^-?[\d.]+$/.test(at) ? Number(at) : at } : {}),
-    ...(opts?.labelDistancePx !== undefined ? { distance: opts.labelDistancePx } : {}),
+    ...(opts?.labelDistance !== undefined ? { distance: opts.labelDistance } : {}),
     ...(opts && Object.keys(opts.textStyle).length ? { style: opts.textStyle } : {}),
     ...(edge !== undefined ? { edge } : {}),
   }
@@ -767,7 +784,7 @@ function quotedLabel(q: { text: string; swap: boolean; options: readonly Option[
     ...(anchor !== undefined ? { at: opposite(anchor) } : {}),
     ...(inner.pos !== undefined ? { pos: inner.pos } : {}),
     ...(inner.sloped ? { sloped: true } : {}),
-    ...(inner.labelDistancePx !== undefined ? { distance: inner.labelDistancePx } : {}),
+    ...(inner.labelDistance !== undefined ? { distance: inner.labelDistance } : {}),
     ...(Object.keys(inner.textStyle).length ? { style: inner.textStyle } : {}),
   }
 }

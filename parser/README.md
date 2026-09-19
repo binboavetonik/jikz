@@ -67,7 +67,7 @@ every §14 coordinate form incl. calc), `ast.ts`, `keys.ts` (TikZ keys
 the `dsl`/`file` gap policy), `ir.ts`, `interpret.ts`, `emit.ts`,
 `dsl.ts` (`tikz(pic)`), `precheck.ts` (file mode only).
 
-## Status: M4
+## Status: M5
 
 The statement parser is ours and complete for the plan's §4 grammar:
 all path operations, the coordinate forms (cartesian with units,
@@ -102,6 +102,12 @@ in — for a template call, the rest of that call. `+(…)` works wherever
 the pen's position is known without drawing (not after an arc), and
 `plot coordinates {…}` is a polyline (`-- plot` joins it).
 
+Eject: `toTypeScript(text)` prints the statements a template stands
+for (or a whole module with `shape: 'module'`), TikZ lengths as
+`cm(2)`/`pt(4)` calls. `parser/corpus/expected/*.ts` is what each
+corpus file ejects to; those files are typechecked with the parser,
+so the ejected code is proven to compile against the typed API.
+
 Arrow tips lower to `pic.edge()` on a single-segment path and on
 `edge` items; the pen has no tips yet. Not lowered yet, by name:
 `plot[smooth]`/function plots, `pic`, decorations, `/.code` handlers,
@@ -109,10 +115,13 @@ Arrow tips lower to `pic.edge()` on a single-segment path and on
 `${}`). Scope `scale` is a group transform in jikz, so it scales
 strokes too, where TikZ scales coordinates only.
 
-`parser/corpus/*.tex` is the fidelity suite: the oracle runs every
-statement through both back ends, and `conformance.test.ts` diffs the
-statement split against `@tikz-editor/lezer-tikz` (devDependency
-only). Differences are listed there with a reason each.
+`parser/corpus/*.tex` is the fidelity suite (`fidelity.test.ts`):
+every file lowers without a gap (except `unsupported.tex`, whose gaps
+are the point), runs as a template, and ejects to its expected file;
+the oracle runs every statement through both back ends; and
+`conformance.test.ts` diffs the statement split against
+`@tikz-editor/lezer-tikz` (devDependency only), with differences
+listed there with a reason each.
 
     npx vitest run parser
     npx tsc -p tsconfig.parser.json

@@ -11,7 +11,9 @@ import {
   Transform,
   circle,
   fillPatterns,
+  length,
   path,
+  pt,
   point,
   rect,
   rel,
@@ -161,9 +163,18 @@ function liveValue(v: IrValue | undefined): unknown {
   if (v === undefined || typeof v !== 'object') return v
   if (Array.isArray(v)) return v.map((x) => liveValue(x as IrValue))
   if ('$pattern' in v) return fillPatterns[(v as { $pattern: string }).$pattern as keyof typeof fillPatterns]
+  if ('$len' in v) return lengthPx((v as { $len: string }).$len)
   const out: Record<string, unknown> = {}
   for (const [k, x] of Object.entries(v as IrRecord)) if (x !== undefined) out[k] = liveValue(x)
   return out
+}
+
+/** A TikZ length to px: `2cm` through `length()`, a bare number is pt, em/ex at 10pt/4.3pt. */
+export function lengthPx(value: string): number {
+  if (/^[-+]?[\d.]+$/.test(value)) return pt(Number(value))
+  if (/em$/.test(value)) return pt(10) * parseFloat(value)
+  if (/ex$/.test(value)) return pt(4.3) * parseFloat(value)
+  return length(value)
 }
 
 /** A pen target: names and `rel()` pass through; recipes evaluate. */

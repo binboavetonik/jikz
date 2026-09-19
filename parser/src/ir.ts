@@ -33,7 +33,15 @@ export type IrPoint =
  * `{ $pattern }` names a `fillPatterns` entry, the one option value
  * that is an object from the library rather than data.
  */
-export type IrValue = string | number | boolean | readonly IrValue[] | IrRecord | { readonly $pattern: string }
+export type IrValue =
+  | string
+  | number
+  | boolean
+  | readonly IrValue[]
+  | IrRecord
+  | { readonly $pattern: string }
+  /** A TikZ length as written (`2cm`, `4pt`, a bare number of pt): px to the interpreter, `cm(2)` to the printer. */
+  | { readonly $len: string }
 export interface IrRecord {
   readonly [key: string]: IrValue | undefined
 }

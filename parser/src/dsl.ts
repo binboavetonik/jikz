@@ -19,6 +19,7 @@
  */
 import { JikzError, allShapes, cm, picture, type Picture, type Point } from 'jikz'
 import { interpret, namesOf, type TikzHost } from './interpret'
+import { emit } from './emit'
 import { createState, lower, type TikzState } from './lower'
 import { parse, parseStatements } from './parse'
 import { precheck } from './precheck'
@@ -94,6 +95,41 @@ tikzPicture.source = (text: string, options: TikzPictureOptions = {}): Picture<t
   interpret(ir, pic)
   return pic
 }
+
+export interface ToTypeScriptOptions {
+  /** `statements` (default): the calls, to paste where the template was. `module`: an importable file with `build()`. */
+  shape?: 'statements' | 'module'
+  /** The variable the statements are called on. Default `pic`. */
+  host?: string
+  /** Module specifier for the import in `module` shape. Default `@ozan.e/jikz`. */
+  from?: string
+  /** Px per TikZ unit, for lengths inside coordinates. Default `cm(1)`. */
+  unit?: number
+  /** Styles carried over from earlier template calls on the same picture. */
+  state?: TikzState
+}
+
+/**
+ * Eject: the TypeScript a template call stands for, against the typed
+ * API. Same pipeline, printed instead of run; gaps throw as in the
+ * template. `tikz.toTypeScript\`…\`` or `toTypeScript(text, options)`.
+ */
+export function toTypeScript(text: string, options: ToTypeScriptOptions = {}): string {
+  const source = text
+  const env = /\\begin\{tikzpicture\}/.test(source)
+  const ast = guarded(() => (env ? parse(source) : parseStatements(source)))
+  let counter = 0
+  const ir = lower(ast, { mode: 'dsl', unit: options.unit ?? cm(1), names: () => `tikz-${++counter}`, state: options.state })
+  return emit(ir, {
+    shape: options.shape ?? 'statements',
+    ...(options.host ? { host: options.host } : {}),
+    ...(options.from ? { from: options.from } : {}),
+    ...(options.unit !== undefined ? { unit: String(options.unit) } : {}),
+  })
+}
+
+toTypeScript.template = (strings: TemplateStringsArray, ...values: readonly TikzValue[]): string =>
+  toTypeScript(join(strings, values))
 
 function guarded<T>(parse: () => T): T {
   try {

@@ -19,33 +19,48 @@ export interface EmitOptions {
   from?: string
   /** The unit to build the picture with, as source text. Default `cm(1)`. */
   unit?: string
+  /**
+   * `module` (default): an importable file with `build()`. `statements`:
+   * just the calls on `host`, to paste where a template call was.
+   */
+  shape?: 'module' | 'statements'
+  /** The variable the statements are called on. Default `pic`. */
+  host?: string
 }
 
 export function emit(items: readonly IrItem[], options: EmitOptions = {}): string {
   const from = options.from ?? '@ozan.e/jikz'
   const unit = options.unit ?? 'cm(1)'
-  const used = new Set<string>(['picture', 'allShapes', 'cm'])
+  const host = options.host ?? 'pic'
+  const used = new Set<string>()
   const body: string[] = []
-  emitItems(items, 'pic', '  ', body, used)
+  emitItems(items, host, options.shape === 'statements' ? '' : '  ', body, used, host)
 
   const needsRef = body.some((l) => l.includes('ref('))
   if (body.some((l) => l.includes('fillPatterns['))) used.add('fillPatterns')
+  const ref = `const ref = (spec: string) => ${host}.frame.unmap(${host}.resolve(spec))`
+  if (options.shape === 'statements') {
+    const lines = needsRef ? [ref, ...body] : body
+    // Drop the blank line that separates items from a preamble.
+    return `${lines.join('\n').replace(/^\n/, '')}\n`
+  }
+  used.add('picture').add('allShapes').add('cm')
   const imports = [...used].filter((n) => n !== 'ref').sort()
   const lines: string[] = [
     `import { ${imports.join(', ')} } from '${from}'`,
     '',
     'export function build() {',
-    `  const pic = picture({ shapes: allShapes, frame: 'math', unit: ${unit} })`,
+    `  const ${host} = picture({ shapes: allShapes, frame: 'math', unit: ${unit} })`,
   ]
   if (needsRef) {
     lines.push('  /** A named point, in the picture\'s frame coordinates. */')
-    lines.push('  const ref = (spec: string) => pic.frame.unmap(pic.resolve(spec))')
+    lines.push(`  ${ref}`)
   }
-  lines.push(...body, '', '  return pic', '}', '')
+  lines.push(...body, '', `  return ${host}`, '}', '')
   return lines.join('\n')
 }
 
-function emitItems(items: readonly IrItem[], host: string, indent: string, out: string[], used: Set<string>): void {
+function emitItems(items: readonly IrItem[], host: string, indent: string, out: string[], used: Set<string>, root: string): void {
   for (const item of items) {
     out.push('')
     for (const line of item.source.split('\n')) out.push(`${indent}// ${line}`)
@@ -54,13 +69,13 @@ function emitItems(items: readonly IrItem[], host: string, indent: string, out: 
         out.push(`${indent}// TODO(jikz-tikz): ${item.reason}`)
         break
       case 'pen': {
-        const opts = Object.keys(item.options).length ? printValue(item.options, indent) : ''
+        const opts = Object.keys(item.options).length ? printValue(item.options, indent, used) : ''
         out.push(`${indent}${host}.pen(${opts})${item.ops.map((op) => printOp(op, indent, used)).join('')}`)
         break
       }
       case 'node': {
         const at = item.at ? `at: ${printPoint(item.at, used)}, ` : ''
-        out.push(`${indent}${host}.node(${str(item.name)}, { ${at}${printFields(item.options, indent)} })`)
+        out.push(`${indent}${host}.node(${str(item.name)}, { ${at}${printFields(item.options, indent, used)} })`)
         break
       }
       case 'coordinate':
@@ -69,22 +84,22 @@ function emitItems(items: readonly IrItem[], host: string, indent: string, out: 
       case 'edge':
         out.push(
           `${indent}${host}.edge(${printEndpoint(item.from, used)}, ${printEndpoint(item.to, used)}${
-            Object.keys(item.options).length ? `, ${printValue(item.options, indent)}` : ''
+            Object.keys(item.options).length ? `, ${printValue(item.options, indent, used)}` : ''
           })`
         )
         break
       case 'clip': {
-        out.push(`${indent}${host}.scope({ clip: pic.frame.renderable(${printShape(item.shape, used)}) }, (s) => {`)
-        emitItems(item.body, 's', `${indent}  `, out, used)
+        out.push(`${indent}${host}.scope({ clip: ${root}.frame.renderable(${printShape(item.shape, used)}) }, (s) => {`)
+        emitItems(item.body, 's', `${indent}  `, out, used, root)
         out.push(`${indent}})`)
         break
       }
       case 'scope': {
-        const fields = printFields(item.options, indent)
-        const transform = item.transform ? printTransform(item.transform, used) : ''
+        const fields = printFields(item.options, indent, used)
+        const transform = item.transform ? printTransform(item.transform, used, root) : ''
         const all = [fields, transform ? `transform: ${transform}` : ''].filter(Boolean).join(', ')
         out.push(`${indent}${host}.scope({ ${all} }, (s) => {`)
-        emitItems(item.body, 's', `${indent}  `, out, used)
+        emitItems(item.body, 's', `${indent}  `, out, used, root)
         out.push(`${indent}})`)
         break
       }
@@ -109,25 +124,25 @@ function printOp(op: IrOp, indent: string, used: Set<string>): string {
     case 'curveTo':
       return `.curveTo(${p(op.c1)}, ${p(op.c2)}, ${p(op.to)})`
     case 'to':
-      return `.to(${xy(op.to)}${Object.keys(op.options).length ? `, ${printValue(op.options, indent)}` : ''})`
+      return `.to(${xy(op.to)}${Object.keys(op.options).length ? `, ${printValue(op.options, indent, used)}` : ''})`
     case 'arc':
-      return `.arc(${printValue(op.options, indent)})`
+      return `.arc(${printValue(op.options, indent, used)})`
     case 'circle':
-      return `.circle(${printValue(op.options, indent)})`
+      return `.circle(${printValue(op.options, indent, used)})`
     case 'ellipse':
       return `.ellipse(${num(op.xRadius)}, ${num(op.yRadius)})`
     case 'grid':
-      return `.grid(${xy(op.to)}${Object.keys(op.options).length ? `, ${printValue(op.options, indent)}` : ''})`
+      return `.grid(${xy(op.to)}${Object.keys(op.options).length ? `, ${printValue(op.options, indent, used)}` : ''})`
     case 'parabola':
       return `.parabola(${p(op.to)}${op.bend ? `, { bend: ${p(op.bend)} }` : ''})`
     case 'close':
       return '.close()'
     case 'node':
-      return `\n${indent}  .node(${str(op.name)}, ${printValue(op.options, indent + '  ')})`
+      return `\n${indent}  .node(${str(op.name)}, ${printValue(op.options, indent + '  ', used)})`
     case 'coordinate':
       return `.coordinate(${str(op.name)})`
     case 'push':
-      return `\n${indent}  .push(${printValue(op.options, indent + '  ')})`
+      return `\n${indent}  .push(${printValue(op.options, indent + '  ', used)})`
   }
 }
 
@@ -196,10 +211,10 @@ function printShape(sh: IrShape, used: Set<string>): string {
   }
 }
 
-function printTransform(t: IrTransform, used: Set<string>): string {
+function printTransform(t: IrTransform, used: Set<string>, root: string): string {
   used.add('Transform')
   let s = 'Transform.identity()'
-  if (t.shift) s += `.translate(pic.length(${num(t.shift.dx)}), -pic.length(${num(t.shift.dy)}))`
+  if (t.shift) s += `.translate(${root}.length(${num(t.shift.dx)}), -${root}.length(${num(t.shift.dy)}))`
   if (t.rotate !== undefined) s += `.rotate(${num(-t.rotate)})`
   if (t.scale !== undefined) s += `.scale(${num(t.scale)})`
   return s
@@ -207,21 +222,44 @@ function printTransform(t: IrTransform, used: Set<string>): string {
 
 // ─── value printer ──────────────────────────────────────────────────
 
-function printFields(record: { readonly [k: string]: IrValue | undefined }, indent: string): string {
+function printFields(record: { readonly [k: string]: IrValue | undefined }, indent: string, used: Set<string>): string {
   return Object.entries(record)
     .filter(([, v]) => v !== undefined)
-    .map(([k, v]) => `${key(k)}: ${printValue(v!, indent)}`)
+    .map(([k, v]) => `${key(k)}: ${printValue(v!, indent, used)}`)
     .join(', ')
 }
 
-export function printValue(v: IrValue, indent: string): string {
+export function printValue(v: IrValue, indent: string, used: Set<string>): string {
   if (typeof v === 'string') return str(v)
   if (typeof v === 'number') return num(v)
   if (typeof v === 'boolean') return String(v)
-  if (Array.isArray(v)) return `[${v.map((x) => printValue(x, indent)).join(', ')}]`
+  if (Array.isArray(v)) return `[${v.map((x) => printValue(x, indent, used)).join(', ')}]`
   if ('$pattern' in v) return `fillPatterns[${str((v as { $pattern: string }).$pattern)}]`
-  const fields = printFields(v as { readonly [k: string]: IrValue | undefined }, indent)
+  if ('$len' in v) return printLength((v as { $len: string }).$len, used)
+  const fields = printFields(v as { readonly [k: string]: IrValue | undefined }, indent, used)
   return fields.length === 0 ? '{}' : `{ ${fields} }`
+}
+
+/** `2cm` → `cm(2)`; a bare number is pt; em/ex spelled out in pt. */
+function printLength(value: string, used: Set<string>): string {
+  const m = /^([-+]?[\d.]+)([a-z]*)$/i.exec(value)
+  if (!m) throw new Error(`not a length: ${value}`)
+  const n = Number(m[1])
+  const unit = m[2]!.toLowerCase()
+  const fn: Record<string, string> = { '': 'pt', pt: 'pt', cm: 'cm', mm: 'mm', bp: 'bp', in: 'inch' }
+  if (unit === 'px') return num(n)
+  if (unit === 'em') {
+    used.add('pt')
+    return `pt(${num(10 * n)})`
+  }
+  if (unit === 'ex') {
+    used.add('pt')
+    return `pt(${num(4.3 * n)})`
+  }
+  const f = fn[unit]
+  if (!f) throw new Error(`not a length: ${value}`)
+  used.add(f)
+  return `${f}(${num(n)})`
 }
 
 function key(k: string): string {

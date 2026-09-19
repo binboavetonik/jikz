@@ -16,8 +16,8 @@ import { interpret } from './interpret'
 import type { PrecheckRefusal } from './precheck'
 import type { Diagnostic, IrItem } from './ir'
 
-export { tikz, tikzPicture } from './dsl'
-export type { TikzTemplate, TikzValue, TikzResult, TikzPictureOptions } from './dsl'
+export { tikz, tikzPicture, toTypeScript } from './dsl'
+export type { TikzTemplate, TikzValue, TikzResult, TikzPictureOptions, ToTypeScriptOptions } from './dsl'
 export { namesOf } from './interpret'
 export { precheck, parse, lower, emit, interpret }
 export { parseStatements, parseOptionList } from './parse'

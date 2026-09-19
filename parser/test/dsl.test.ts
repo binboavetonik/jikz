@@ -1,7 +1,7 @@
 /** `tikz(pic)` — the product. */
 import { describe, it, expect } from 'vitest'
 import { picture, allShapes, cm, point, JikzError, type Picture } from 'jikz'
-import { tikz, tikzPicture } from '../src/index'
+import { tikz, tikzPicture, toTypeScript } from '../src/index'
 
 function fresh(): Picture<typeof allShapes> {
   return picture({ shapes: allShapes, frame: 'math', unit: cm(1) })
@@ -127,5 +127,35 @@ describe('tikz(pic) results and tikzPicture (M4)', () => {
     const pic = fresh()
     tikz(pic)`\clip (0,0) rectangle (1,1); \draw (-1,-1) -- (2,2);`
     expect(pic.toSVG({ width: 200, height: 200 })).toContain('clip-path')
+  })
+})
+
+describe('toTypeScript (M5)', () => {
+  it('prints the statements a template stands for, with TikZ lengths as calls', () => {
+    const code = toTypeScript(String.raw`\node[draw, minimum size=1cm, inner sep=2pt] (a) at (0,0) {a};
+\draw[line width=1mm] (a) -- (2,0);`)
+    expect(code).toMatchInlineSnapshot(`
+      "// \\node[draw, minimum size=1cm, inner sep=2pt] (a) at (0,0) {a};
+      pic.node('a', { at: point(0, 0), text: 'a', minWidth: cm(1), minHeight: cm(1), innerSep: pt(2), style: [{ stroke: 'none', fill: 'none' }, { stroke: '#000000' }] })
+
+      // \\draw[line width=1mm] (a) -- (2,0);
+      pic.pen({ style: [{ strokeWidth: mm(1) }] }).moveTo('a').lineTo(2, 0)
+      "
+    `)
+  })
+
+  it('prints a module on request, with the imports it needs', () => {
+    const code = toTypeScript(String.raw`\draw[thick] (0,0) -- ++(1,0);`, { shape: 'module', from: 'jikz' })
+    expect(code).toContain("import { allShapes, cm, picture, rel } from 'jikz'")
+    expect(code).toContain('export function build()')
+  })
+
+  it('has a template form and throws on gaps like the template does', () => {
+    expect(toTypeScript.template`\coordinate (p) at (1,${2});`).toContain("pic.coordinate('p', point(1, 2))")
+    expect(() => toTypeScript(String.raw`\pic at (0,0) {angle};`)).toThrow(JikzError)
+  })
+
+  it('takes the host name', () => {
+    expect(toTypeScript(String.raw`\draw (0,0) -- (1,0);`, { host: 's' })).toBe("// \\draw (0,0) -- (1,0);\ns.pen().moveTo(0, 0).lineTo(1, 0)\n")
   })
 })

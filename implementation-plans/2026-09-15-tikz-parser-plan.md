@@ -207,10 +207,20 @@ the escape hatch and is documented as one.
   `clip: frame.renderable(shape)` around the rest of the body. Not
   the type-level names contract: `pic.edge()` takes strings, so the
   runtime list is the useful part.
-- **M5 — eject.** `toTypeScript(source | template)` printing the
-  §6 shape against the new API, the "keep every statement as a
-  comment" rule, oracle equivalence green across the corpus, and the
-  corpus itself promoted to jikz's TikZ-fidelity suite.
+- **M5 — done (2026-09-19).** Eject: `toTypeScript(text, { shape,
+  host, from, unit })` and `toTypeScript.template`, printing the §6
+  shape — a module with `build()`, or just the statements to paste
+  where a template call was. TikZ lengths travel through the IR as
+  written (`{ $len: '2cm' }`) so the printer says `cm(2)` and the
+  interpreter computes px; both still agree byte for byte. The corpus
+  is the fidelity suite: `fidelity.test.ts` requires every file to
+  lower without a gap, run as a template, and eject to
+  `corpus/expected/*.ts` — files `tsconfig.parser.json` typechecks,
+  so the ejected code is proven to compile against the typed API, not
+  just to print. Found on the way: `>=` is legal in any option list
+  (read before `->`, as TikZ reads it at draw time), `step` belongs
+  on the path for `grid`, and `Frame.renderable` now keeps its
+  argument's type so an ejected clip typechecks.
 - **M6 — docs and playground.** A reference page on `@ozan.e/jikz`'s
   site, the support matrix gaining a "DSL" column, and the playground
   (TikZ on the left; the picture and the ejected code on the right).

@@ -41,12 +41,12 @@ export interface TikzState {
   styles: Map<string, string>
   /** What `>` stands for in `->`. */
   tip?: string
-  /** `node distance`, px. TikZ's default is 1cm. */
-  nodeDistancePx: number
+  /** `node distance`. TikZ's default is 1cm. */
+  nodeDistance: IrValue
 }
 
 export function createState(): TikzState {
-  return { styles: new Map(), nodeDistancePx: cm(1) }
+  return { styles: new Map(), nodeDistance: { $len: '1cm' } }
 }
 
 class Unsupported extends Error {
@@ -180,7 +180,7 @@ function applySet(options: readonly Option[], ctx: Ctx): void {
 
 function applyState(mapped: MappedOptions, ctx: Ctx): void {
   if (mapped.tip !== undefined) ctx.state.tip = mapped.tip
-  if (mapped.nodeDistancePx !== undefined) ctx.state.nodeDistancePx = mapped.nodeDistancePx
+  if (mapped.nodeDistance !== undefined) ctx.state.nodeDistance = mapped.nodeDistance
 }
 
 function env(ctx: Ctx): { tip?: string } {
@@ -365,7 +365,7 @@ function nodeOptions(item: NodeItem, ctx: Ctx, onPath: boolean): { name: string;
   const pins = m.pins.map((l) => withEvery(l, 'pin', ctx))
   const node = { ...m.node }
   if (typeof node.rightOf === 'string' || typeof node.leftOf === 'string' || typeof node.above === 'string' || typeof node.below === 'string' || typeof node.aboveLeft === 'string' || typeof node.aboveRight === 'string' || typeof node.belowLeft === 'string' || typeof node.belowRight === 'string') {
-    if (node.distance === undefined) node.distance = ctx.state.nodeDistancePx
+    if (node.distance === undefined) node.distance = ctx.state.nodeDistance
   }
   const options: Record<string, IrValue | undefined> = {
     text: item.text,
@@ -588,7 +588,7 @@ function lowerPath(stmt: PathStmt, ctx: Ctx): IrItem[] {
   return [...(paintsNothing ? [] : [{ kind: 'pen' as const, source: stmt.source, options: penOptions, ops }]), ...edges]
 }
 
-function segment(pending: PathItem, to: IrPoint, ctx: Ctx): IrOp {
+function segment(pending: PathItem, to: IrPoint, ctx: Ctx, pathGrid?: IrRecord): IrOp {
   switch (pending.kind) {
     case 'op':
       return { op: pending.op === '--' ? 'lineTo' : pending.op === '-|' ? 'hvTo' : 'vhTo', to }
@@ -611,7 +611,9 @@ function segment(pending: PathItem, to: IrPoint, ctx: Ctx): IrOp {
     case 'cos':
       return { op: pending.kind, to }
     case 'grid': {
+      // Grid steps are frame lengths: `step=0.5` is half a unit, `step=1cm` a length.
       const options: Record<string, IrValue> = {}
+      for (const [k, v] of Object.entries(pathGrid ?? {})) if (v !== undefined) options[k] = lengthUnits((v as { $len: string }).$len, ctx)
       for (const o of pending.options) {
         if ((o.key === 'step' || o.key === 'xstep' || o.key === 'ystep') && o.value !== undefined) {
           options[o.key] = lengthUnits(o.value, ctx)
