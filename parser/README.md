@@ -67,7 +67,7 @@ every §14 coordinate form incl. calc), `ast.ts`, `keys.ts` (TikZ keys
 the `dsl`/`file` gap policy), `ir.ts`, `interpret.ts`, `emit.ts`,
 `dsl.ts` (`tikz(pic)`), `precheck.ts` (file mode only).
 
-## Status: M5
+## Status: M6
 
 The statement parser is ours and complete for the plan's §4 grammar:
 all path operations, the coordinate forms (cartesian with units,
@@ -114,6 +114,12 @@ Arrow tips lower to `pic.edge()` on a single-segment path and on
 `\clip` with options, pgfmath expressions (by design — the DSL has
 `${}`). Scope `scale` is a group transform in jikz, so it scales
 strokes too, where TikZ scales coordinates only.
+
+Docs: `docs/reference/tikz.md` is the reference page, the support
+matrix (`docs/concepts/tikz-support.md`) has a "TikZ notation"
+column, and `docs/playground.md` is the playground — TikZ on the
+left, the picture or the ejected TypeScript on the right, running
+`parser/src` against the live library.
 
 `parser/corpus/*.tex` is the fidelity suite (`fidelity.test.ts`):
 every file lowers without a gap (except `unsupported.tex`, whose gaps

@@ -221,9 +221,16 @@ the escape hatch and is documented as one.
   (read before `->`, as TikZ reads it at draw time), `step` belongs
   on the path for `grid`, and `Frame.renderable` now keeps its
   argument's type so an ejected clip typechecks.
-- **M6 — docs and playground.** A reference page on `@ozan.e/jikz`'s
-  site, the support matrix gaining a "DSL" column, and the playground
-  (TikZ on the left; the picture and the ejected code on the right).
+- **M6 — done (2026-09-19).** Docs and playground:
+  `docs/reference/tikz.md` (the template, `tikzPicture`, `${}`, the
+  error policy, styles and state, what lowers to what, `toTypeScript`,
+  the gaps by name); the support matrix's fourth column, "TikZ
+  notation", annotating every row with what `tikz(pic)` accepts; and
+  `docs/playground.md` with `TikzPlayground.vue` — TikZ on the left,
+  the picture or the ejected module on the right, presets from the
+  corpus, errors shown with line and column. The playground imports
+  `parser/src` directly and the corpus files as `?raw`, so it is the
+  pipeline itself, not a copy.
 - **Post-v1, in order.** Trees (`child{}`, on `tree()`), pics
   (`angle`, `right angle` → `ext/angles`; `\usetikzlibrary` selects
   ext shape sets and helpers), decorations keys (`snake`, `zigzag`,

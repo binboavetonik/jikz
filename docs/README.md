@@ -62,6 +62,7 @@ Per-module pages — intros with the key tables, linking into the
 generated API (`npm run docs:api` → `docs/api/`):
 
 - [picture](reference/picture.md) — the main registry API
+- [TikZ notation](reference/tikz.md) — `tikz(pic)`, `tikzPicture`, `toTypeScript`; try it in the [playground](playground.md)
 - [core](reference/core.md) — Point, Transform, anchors
 - [geometry](reference/geometry.md) — shapes, conics, intersections, plotting
 - [node](reference/node.md) — NodeOptions, labels, anchors

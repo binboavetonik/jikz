@@ -7,7 +7,7 @@ export function build() {
   pic.node('a', { at: point(0, 0), text: 'a', style: [{ stroke: 'none', fill: 'none' }, { stroke: '#000000' }], pins: [{ text: '$p$', at: 'north' }] })
 
   // \node[draw, pin={[pin edge={red, thick}]30:$q$}, label={[label distance=4pt]below:$l$}] (b) at (3,0) {b};
-  pic.node('b', { at: point(3, 0), text: 'b', style: [{ stroke: 'none', fill: 'none' }, { stroke: '#000000' }], labels: [{ text: '$l$', at: 'south', distance: pt(4) }], pins: [{ text: '$q$', at: 30, edge: [{ stroke: '#ff0000', fill: '#ff0000' }, 'thick'] }] })
+  pic.node('b', { at: point(3, 0), text: 'b', style: [{ stroke: 'none', fill: 'none' }, { stroke: '#000000' }], labels: [{ text: '$l$', at: 'south', distance: pt(4) }], pins: [{ text: '$q$', at: 30, edge: [{ stroke: '#ff0000' }, 'thick'] }] })
 
   // \node[draw, label distance=2pt, label=right:$r$] (c) at (6,0) {c};
   pic.node('c', { at: point(6, 0), text: 'c', labelDistance: pt(2), style: [{ stroke: 'none', fill: 'none' }, { stroke: '#000000' }], labels: [{ text: '$r$', at: 'east' }] })
@@ -82,7 +82,7 @@ export function build() {
   pic.edge('p', 'p', { arrowEnd: 'to', loop: 'above', labels: [{ text: 'y', pos: 0.5 }] })
 
   // \draw (q) edge[->, red] (p);
-  pic.edge('q', 'p', { arrowEnd: 'to', style: [{ stroke: '#ff0000', fill: '#ff0000' }] })
+  pic.edge('q', 'p', { arrowEnd: 'to', style: [{ stroke: '#ff0000' }] })
 
   // \draw[->, shorten >=2pt, shorten <=2pt] (p) to[out=-30, in=-150] (q);
   pic.edge('p', 'q', { arrowEnd: 'to', out: -30, in: -150, shortenStart: pt(2), shortenEnd: pt(2) })

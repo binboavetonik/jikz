@@ -22,7 +22,7 @@ export function build() {
   pic.node('e', { text: 'e', shape: 'rectangle', minWidth: cm(1), minHeight: cm(1), rightOf: 'd', distance: cm(2), style: [{ stroke: 'none', fill: 'none' }, { stroke: '#000000' }, 'thick'], textStyle: { fontSize: pt(9) } })
 
   // \begin{scope}[every node/.style={draw, circle}, red]
-  pic.scope({ style: [{ stroke: '#ff0000', fill: '#ff0000' }] }, (s) => {
+  pic.scope({ style: [{ stroke: '#ff0000' }] }, (s) => {
 
     // \node (f) at (0,2) {f};
     s.node('f', { at: point(0, 2), text: 'f', shape: 'circle', style: [{ stroke: 'none', fill: 'none' }, { stroke: '#000000' }] })

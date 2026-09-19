@@ -33,7 +33,7 @@ export function build() {
     s.pen().moveTo(-1, -1).lineTo(5, 5)
 
     // \fill[red] (3,3) circle (2);
-    s.pen({ mode: 'fill', style: [{ stroke: '#ff0000', fill: '#ff0000' }] }).moveTo(3, 3).circle({ radius: 2 })
+    s.pen({ mode: 'fill', style: [{ fill: '#ff0000' }] }).moveTo(3, 3).circle({ radius: 2 })
   })
 
   return pic

@@ -22,6 +22,13 @@ export type KeyContext = 'path' | 'node' | 'to' | 'scope' | 'edge' | 'label'
 export interface KeyEnv {
   /** The tip `>` stands for — TikZ `>=stealth`. Default `to`. */
   tip?: string
+  /**
+   * What a bare colour paints, in `path` context: TikZ `color=` sets
+   * the current colour, and the verb decides whether that is the
+   * stroke (`\draw`), the fill (`\fill`), both (`\filldraw`) or
+   * nothing (`\path`). Default `draw`.
+   */
+  paint?: 'draw' | 'fill' | 'filldraw' | 'path'
 }
 
 export interface MappedOptions {
@@ -320,7 +327,12 @@ export function mapOptions(options: readonly Option[], context: KeyContext, oute
     const bare = value === undefined && !shapeNamed(key) && !PLACEMENT_ANCHOR[key] ? tryColor(key) : undefined
     if ((key === 'color' && value !== undefined) || bare !== undefined) {
       current = bare ?? color(value!)
-      if (!nodeish) out.style.push({ stroke: current, fill: current })
+      if (!nodeish) {
+        const paint = context === 'path' ? (env.paint ?? 'draw') : 'draw'
+        if (paint === 'draw') out.style.push({ stroke: current })
+        else if (paint === 'fill') out.style.push({ fill: current })
+        else if (paint === 'filldraw') out.style.push({ stroke: current, fill: current })
+      }
       out.textStyle = { ...out.textStyle, fill: current }
       continue
     }

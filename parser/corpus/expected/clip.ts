@@ -10,7 +10,7 @@ export function build() {
     s.scope({ clip: pic.frame.renderable(circle(point(1, 1), 1)) }, (s) => {
 
       // \fill[blue] (0,0) rectangle (2,2);
-      s.pen({ mode: 'fill', style: [{ stroke: '#0000ff', fill: '#0000ff' }] }).moveTo(0, 0).rectangle(2, 2)
+      s.pen({ mode: 'fill', style: [{ fill: '#0000ff' }] }).moveTo(0, 0).rectangle(2, 2)
     })
   })
 
@@ -21,7 +21,7 @@ export function build() {
     s.scope({ clip: pic.frame.renderable(path().moveTo(point(0, 0)).lineTo(point(2, 0)).lineTo(point(1, 2)).close()) }, (s) => {
 
       // \fill[green] (0,0) rectangle (2,2);
-      s.pen({ mode: 'fill', style: [{ stroke: '#00ff00', fill: '#00ff00' }] }).moveTo(0, 0).rectangle(2, 2)
+      s.pen({ mode: 'fill', style: [{ fill: '#00ff00' }] }).moveTo(0, 0).rectangle(2, 2)
     })
   })
 

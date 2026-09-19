@@ -20,7 +20,7 @@
 import { JikzError, cm, length, pt } from 'jikz'
 import type { CalcExpr, Coordinate, Length, Option, PathItem, PictureAst, RelativeKind, Statement } from './ast'
 import type { IrItem, IrOp, IrPoint, IrRecord, IrShape, IrValue } from './ir'
-import { KeyError, mapOptions, opposite, type KeyContext, type MappedOptions } from './keys'
+import { KeyError, mapOptions, opposite, type KeyContext, type KeyEnv, type MappedOptions } from './keys'
 import { coordinateOf, parseOptionList, parseStatements } from './parse'
 import { Scanner } from './scan'
 
@@ -183,14 +183,14 @@ function applyState(mapped: MappedOptions, ctx: Ctx): void {
   if (mapped.nodeDistance !== undefined) ctx.state.nodeDistance = mapped.nodeDistance
 }
 
-function env(ctx: Ctx): { tip?: string } {
-  return ctx.state.tip !== undefined ? { tip: ctx.state.tip } : {}
+function env(ctx: Ctx, paint?: KeyEnv['paint']): KeyEnv {
+  return { ...(ctx.state.tip !== undefined ? { tip: ctx.state.tip } : {}), ...(paint ? { paint } : {}) }
 }
 
 /** Map with styles expanded and the `every` defaults in front. */
-function mapped(options: readonly Option[], context: KeyContext, ctx: Ctx, everyName?: string): MappedOptions {
+function mapped(options: readonly Option[], context: KeyContext, ctx: Ctx, everyName?: string, paint?: KeyEnv['paint']): MappedOptions {
   const defaults = everyName ? every(everyName, ctx) : []
-  const m = mapOptions([...defaults, ...expand(options, ctx)], context, env(ctx))
+  const m = mapOptions([...defaults, ...expand(options, ctx)], context, env(ctx, paint))
   requireKnown(m, context)
   return m
 }
@@ -406,7 +406,7 @@ function lowerPath(stmt: PathStmt, ctx: Ctx): IrItem[] {
   if (verb === 'clip') throw new Unsupported('\\clip inside a \\foreach body is not supported')
   if (verb === 'pattern' || verb === 'useasboundingbox') throw new Unsupported(`\\${verb} is not supported yet`)
   const mode = verb === 'shade' ? 'fill' : verb === 'shadedraw' ? 'filldraw' : verb
-  const m = mapped(stmt.options, 'path', ctx, 'path')
+  const m = mapped(stmt.options, 'path', ctx, 'path', mode)
   const items = stmt.items
 
   // `\node …;` / `\coordinate …;` — a path whose only item is the node.
@@ -567,7 +567,7 @@ function lowerPath(stmt: PathStmt, ctx: Ctx): IrItem[] {
         ops.push({ op: 'coordinate', name: item.name })
         break
       case 'options': {
-        const o = mapped(item.options, 'path', ctx)
+        const o = mapped(item.options, 'path', ctx, undefined, mode)
         if (o.arrowStart !== undefined || o.arrowEnd !== undefined) throw new Unsupported('arrow tips mid-path')
         ops.push({ op: 'push', options: { ...(o.style.length ? { style: styleOf(o) } : {}) } })
         break

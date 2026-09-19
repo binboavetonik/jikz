@@ -17,7 +17,7 @@
  * `${}` is the escape hatch that replaces pgfmath: a number prints as
  * a number, a point as `(x,y)` in the frame, a string as raw source.
  */
-import { JikzError, allShapes, cm, picture, type Picture, type Point } from 'jikz'
+import { JikzError, allShapes, cm, picture, type MathRenderer, type Picture, type Point } from 'jikz'
 import { interpret, namesOf, type TikzHost } from './interpret'
 import { emit } from './emit'
 import { createState, lower, type TikzState } from './lower'
@@ -68,6 +68,8 @@ export function tikz(host: TikzHost): TikzTemplate {
 export interface TikzPictureOptions {
   /** Px per TikZ unit. Default `cm(1)`, TikZ's `x=1cm, y=1cm`. */
   unit?: number
+  /** Renders `$…$` in node text — `katexAdapter(katex)` or `mathjaxAdapter(...)`. */
+  mathRenderer?: MathRenderer
 }
 
 /**
@@ -88,7 +90,12 @@ export function tikzPicture(strings: TemplateStringsArray, ...values: readonly T
 tikzPicture.source = (text: string, options: TikzPictureOptions = {}): Picture<typeof allShapes> => {
   const refusal = precheck(text)
   if (refusal) throw new JikzError('unsupported', `tikz: line ${refusal.line}: ${refusal.reason}`)
-  const pic = picture({ shapes: allShapes, frame: 'math', unit: options.unit ?? cm(1) })
+  const pic = picture({
+    shapes: allShapes,
+    frame: 'math',
+    unit: options.unit ?? cm(1),
+    ...(options.mathRenderer ? { mathRenderer: options.mathRenderer } : {}),
+  })
   const ast = guarded(() => parse(text))
   const own = stateOf(pic)
   const ir = lower(ast, { mode: 'dsl', unit: pic.frame.unit, names: () => `tikz-${++own.counter}`, state: own.state })

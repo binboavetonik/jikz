@@ -193,3 +193,16 @@ describe('the pen position (M4)', () => {
     expect(svg).toMatch(/d="M[^"]*L[^"]*L/)
   })
 })
+
+describe('a bare colour follows the verb', () => {
+  it('\\draw[red] strokes red and does not fill; \\fill[red] fills', () => {
+    const drawn = run(String.raw`\draw[red] (0,0) -- (1,0) -- (1,1);`).toSVG({ width: 100, height: 100 })
+    expect(drawn).toContain('stroke="#ff0000"')
+    expect(drawn).not.toContain('fill="#ff0000"')
+    const filled = run(String.raw`\fill[red] (0,0) rectangle (1,1);`).toSVG({ width: 100, height: 100 })
+    expect(filled).toContain('fill="#ff0000"')
+    const both = run(String.raw`\filldraw[red] (0,0) rectangle (1,1);`).toSVG({ width: 100, height: 100 })
+    expect(both).toContain('fill="#ff0000"')
+    expect(both).toContain('stroke="#ff0000"')
+  })
+})

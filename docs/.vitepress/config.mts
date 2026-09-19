@@ -60,6 +60,7 @@ export default defineConfig({
       { text: 'Tutorials', link: '/tutorials/01-first-picture' },
       { text: 'Reference', link: '/reference/picture' },
       { text: 'Cookbook', link: '/cookbook/' },
+      { text: 'TikZ playground', link: '/playground' },
     ],
     sidebar: [
       { text: 'Gallery', link: '/' },
@@ -75,6 +76,8 @@ export default defineConfig({
         items: [
           { text: 'TikZ → jikz mapping', link: '/concepts/tikz-mapping' },
           { text: 'TikZ support matrix', link: '/concepts/tikz-support' },
+          { text: 'TikZ notation (tikz(pic))', link: '/reference/tikz' },
+          { text: 'TikZ playground', link: '/playground' },
           { text: 'Coordinate system', link: '/concepts/coordinate-system' },
           { text: 'Two API levels', link: '/concepts/two-api-levels' },
           { text: 'ViewBox, sizing & fit', link: '/concepts/viewbox-and-fit' },
@@ -97,6 +100,7 @@ export default defineConfig({
         text: 'Reference',
         items: [
           { text: 'picture', link: '/reference/picture' },
+          { text: 'TikZ notation', link: '/reference/tikz' },
           { text: 'core', link: '/reference/core' },
           { text: 'geometry', link: '/reference/geometry' },
           { text: 'node', link: '/reference/node' },

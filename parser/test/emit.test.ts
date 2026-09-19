@@ -42,7 +42,7 @@ describe('emit', () => {
         pic.scope({ transform: Transform.identity().translate(pic.length(3), -pic.length(0)).rotate(-45) }, (s) => {
 
           // \\fill[red] (0,0) rectangle (1,1);
-          s.pen({ mode: 'fill', style: [{ stroke: '#ff0000', fill: '#ff0000' }] }).moveTo(0, 0).rectangle(1, 1)
+          s.pen({ mode: 'fill', style: [{ fill: '#ff0000' }] }).moveTo(0, 0).rectangle(1, 1)
         })
 
         // \\usetikzlibrary{calc}

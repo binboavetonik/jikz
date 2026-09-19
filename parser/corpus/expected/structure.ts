@@ -16,7 +16,7 @@ export function build() {
     })
 
     // \begin{scope}[rotate=45, thick, red]
-    s.scope({ style: ['thick', { stroke: '#ff0000', fill: '#ff0000' }], transform: Transform.identity().rotate(-45) }, (s) => {
+    s.scope({ style: ['thick', { stroke: '#ff0000' }], transform: Transform.identity().rotate(-45) }, (s) => {
 
       // \draw (0,0) rectangle (1,1);
       s.pen().moveTo(0, 0).rectangle(1, 1)
