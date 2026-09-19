@@ -103,7 +103,7 @@ before it means "write the jikz call".
 | `shade`, `left color`, `ball color`, `shading angle` | `pic.shade(shape, { leftColor, … })`; `gradient` specs | ✅ | ✅ `\shade`, `\shadedraw`, the colour keys, `shading angle` |
 | `drop shadow` | `dropShadow` | ✅ | ❌ |
 | `\clip` | `style: { clip: shape }` on an item, `clip` on a scope | ✅ | ✅ rectangle, circle, polygon; applies to the rest of the body (or template call) |
-| `preaction`/`postaction` | `preactions: [style]`, `postactions: [style]` on any item | ✅ | ❌ |
+| `preaction`/`postaction` | `preactions: [style]`, `postactions: [style]` on any item | ✅ | 🟡 only `{decorate, decoration=…}` |
 | `path picture` | `pathPicture: (inside) => …` on a draw verb, clipped, between fill and stroke | ✅ | ❌ |
 | `use as bounding box` | `useAsBoundingBox: true` | ✅ | ❌ |
 | `even odd rule` | `fillRule: 'evenodd'` | ✅ | ✅ |
@@ -135,9 +135,9 @@ before it means "write the jikz call".
 
 | TikZ | jikz | | TikZ notation |
 |---|---|---|---|
-| `decorations.pathmorphing` (snake, zigzag, coil, bumps, saw, random) | `snakePath()`, `zigzagPath()`, … and `decoratePath(path, name)`; register your own | ✅ | ❌ post-v1 |
-| `decorations.pathreplacing` braces | `bracePath()`, `bracketPath()` | ✅ | ❌ |
-| `decorations.markings` | `markPath(path, marks)` | ✅ | ❌ |
+| `decorations.pathmorphing` (snake, zigzag, coil, bumps, saw, random) | `snakePath()`, `zigzagPath()`, … and `decoratePath(path, name)`; register your own | ✅ | ✅ `decorate, decoration={snake, amplitude, segment length, aspect}`, as `pre`/`postaction` too; on lines, curves, `to` and `cycle` |
+| `decorations.pathreplacing` braces | `bracePath()`, `bracketPath()` | ✅ | ✅ `decoration={brace, amplitude, mirror}` with path nodes kept in place |
+| `decorations.markings` | `markPath(path, marks)` | ✅ | 🟡 `mark=at position t with {\arrow{tip}}`; `\arrowreversed` ❌; the guide is always stroked |
 | `decorations.text` | `textAlongPath()` | ✅ | ❌ |
 | `decorations.fractals` | `lsystem(LSYSTEMS.kochCurve, …)` and friends draw the same curves as paths | 🟡 as generators, not decorations | ❌ |
 | `decorations.footprints` | `footprints(path, { footLength, stride, sep, angle, foot })` | ✅ | ❌ |

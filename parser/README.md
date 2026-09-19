@@ -114,13 +114,20 @@ distance`, `grow`/`grow'`, `level <n>` styles, `every child (node)`,
 `missing`, and an edge per `edge from parent` — not to jikz's packing
 `tree()` builder, so the picture is TikZ's picture.
 
+Decorations (`decorate`, `decoration={snake|zigzag|coil|bumps|saw|
+random steps|brace|markings, …}`, also as `pre`/`postaction`) build
+the path as geometry, map it once, decorate in screen px with
+`decoratePath()`/`markPath()`, and draw the result through `screen()`
+— a new core helper that tells a math-frame picture the geometry is
+already in px.
+
 Pics: the angles library's `angle` and `right angle` lower onto the
 angles extension's marks, painted by the verb or the pic's own
 `draw`/`fill` keys; `\usetikzlibrary` is accepted and ignored.
 
 Arrow tips lower to `pic.edge()` on a single-segment path and on
 `edge` items; the pen has no tips yet. Not lowered yet, by name:
-`plot[smooth]`/function plots, other pics, decorations, `/.code` handlers,
+`plot[smooth]`/function plots, other pics, decorations on arcs and circles, `/.code` handlers,
 `\clip` with options, pgfmath expressions (by design — the DSL has
 `${}`). Scope `scale` is a group transform in jikz, so it scales
 strokes too, where TikZ scales coordinates only.

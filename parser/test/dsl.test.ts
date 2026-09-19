@@ -58,7 +58,7 @@ describe('tikz(pic)', () => {
 
   it('throws on an unknown key rather than dropping it', () => {
     const t = tikz(fresh())
-    expect(() => t`\draw[decorate] (0,0) -- (1,1);`).toThrow(/unknown path key "decorate"/)
+    expect(() => t`\draw[decorated] (0,0) -- (1,1);`).toThrow(/unknown path key "decorated" — did you mean "decorate"\?/)
   })
 
   it('reports a syntax error with its position', () => {

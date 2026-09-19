@@ -398,7 +398,11 @@ function nodeOptions(item: NodeItem, ctx: Ctx, onPath: boolean): { name: string;
   if (onPath) {
     if (m.pos !== undefined) options.pos = m.pos
     if (m.sloped) throw new Unsupported('sloped on a path node is not supported yet')
-    if (m.shiftPx) throw new Unsupported('xshift/yshift on a path node is not supported yet')
+    if (m.shiftPx) {
+      // The pen places the node in screen px; the shift follows, y flipped.
+      options.dx = round(m.shiftPx.dx)
+      options.dy = round(-m.shiftPx.dy)
+    }
   } else if (m.pos !== undefined || m.sloped) {
     throw new Unsupported('pos/sloped on a node that is not on a path')
   }
@@ -614,7 +618,21 @@ function lowerPath(stmt: PathStmt, ctx: Ctx): IrItem[] {
   if (pendingNodes.length) flushNodes()
   // `\draw (a) edge (b);` — a path of bare moves paints nothing; skip the empty pen.
   const paintsNothing = ops.every((op) => op.op === 'moveTo')
-  return [...(paintsNothing ? [] : [{ kind: 'pen' as const, source: stmt.source, options: penOptions, ops }]), ...edges]
+  const pen = { kind: 'pen' as const, source: stmt.source, options: penOptions, ops }
+
+  // Decorations: `decorate` replaces the path by its decoration; a
+  // `pre`/`postaction` decoration paints under/over the path itself.
+  const decorated = (d: MappedOptions, paint: MappedOptions): IrItem => decoratedItem(stmt, mode, d, paint, ops, ctx)
+  if (m.decorate) {
+    if (!m.decoration) throw new Unsupported('decorate without a decoration')
+    // Path nodes still need their positions: an invisible pen carries them.
+    const nodes = ops.filter((op) => op.op === 'node' || op.op === 'coordinate')
+    const carrier = nodes.length ? [{ kind: 'pen' as const, source: stmt.source, options: { mode: 'path' }, ops }] : []
+    return [decorated(m, m), ...carrier, ...edges]
+  }
+  const pre = m.preaction ? [decorated(m.preaction, m)] : []
+  const post = m.postaction ? [decorated(m.postaction, m)] : []
+  return [...pre, ...(paintsNothing ? [] : [pen]), ...post, ...edges]
 }
 
 function segment(pending: PathItem, to: IrPoint, ctx: Ctx, pathGrid?: IrRecord): IrOp {
@@ -800,6 +818,49 @@ function lowerEdgeItem(item: EdgeItem, from: IrPoint, stmt: PathStmt, paint: Map
   const labels = item.nodes.flatMap((n) => (n.kind === 'node' ? [edgeLabel(n, 0.5, ctx)] : []))
   const source = `${stmt.source.split('\n')[0]}`
   return { kind: 'edge', source, from, to, options: edgeOptions(paint, routing, labels) }
+}
+
+// ─── decorations ────────────────────────────────────────────────────
+
+const DECORATION_DEFAULTS = { amplitude: { $len: '2.5pt' }, segmentLength: { $len: '10pt' } }
+
+/**
+ * The decorated path: the statement's segments (no operations the
+ * `Path` builder lacks) decorated in screen space. pgf's defaults —
+ * amplitude 2.5pt, segment length 10pt — apply. The brace bulges to
+ * the left of the path in TikZ's frame, which is `side: 'right'` in
+ * screen space; `mirror` flips it.
+ */
+function decoratedItem(stmt: PathStmt, mode: 'draw' | 'fill' | 'filldraw' | 'path', d: MappedOptions, paint: MappedOptions, ops: readonly IrOp[], ctx: Ctx): IrItem {
+  void ctx
+  const dec = d.decoration!
+  const pathOps = ops.filter((op) => op.op !== 'node' && op.op !== 'coordinate')
+  for (const op of pathOps) {
+    if (!['moveTo', 'lineTo', 'hvTo', 'vhTo', 'curveTo', 'to', 'close'].includes(op.op)) {
+      throw new Unsupported(`"${op.op}" on a decorated path is not supported yet (lines, curves, to and cycle are)`)
+    }
+  }
+  if (pathOps.length < 2) throw new Unsupported('a decorated path needs at least one segment')
+  const style = [...styleOf(paint), ...(d !== paint ? styleOf(d) : [])]
+  const options: Record<string, IrValue | undefined> = style.length ? { style } : {}
+  if (dec.name === 'markings') {
+    return {
+      kind: 'decorated',
+      source: stmt.source,
+      mode,
+      options,
+      ops: pathOps,
+      decoration: { name: 'markings', marks: dec.marks!.map((mk) => ({ mark: mk.tip, at: mk.at })) },
+    }
+  }
+  const decOptions: Record<string, IrValue> = {
+    amplitude: dec.amplitude ?? DECORATION_DEFAULTS.amplitude,
+    ...(dec.name === 'brace' ? { side: dec.mirror ? 'left' : 'right' } : { wavelength: dec.segmentLength ?? DECORATION_DEFAULTS.segmentLength }),
+    ...(dec.aspect !== undefined ? { aspect: dec.aspect } : {}),
+    // TikZ's random steps are random per run; a fixed seed keeps the picture reproducible.
+    ...(dec.name === 'random' ? { seed: 1 } : {}),
+  }
+  return { kind: 'decorated', source: stmt.source, mode, options, ops: pathOps, decoration: { name: dec.name, options: decOptions } }
 }
 
 // ─── pics ───────────────────────────────────────────────────────────

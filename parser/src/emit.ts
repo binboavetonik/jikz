@@ -12,7 +12,7 @@
  * lowered in, so the numbers in the output are the numbers in the
  * source.
  */
-import type { IrItem, IrOp, IrPoint, IrShape, IrTransform, IrValue } from './ir'
+import type { IrItem, IrOp, IrPoint, IrRecord, IrShape, IrTransform, IrValue } from './ir'
 
 export interface EmitOptions {
   /** Module specifier for the jikz import. Default `@ozan.e/jikz`. */
@@ -91,6 +91,22 @@ function emitItems(items: readonly IrItem[], host: string, indent: string, out: 
           })`
         )
         break
+      case 'decorated': {
+        used.add('path').add('screen')
+        const guide = `${root}.frame.renderable(path()${item.ops.map((op) => printPathOp(op, indent, used)).join('')})`
+        const d = item.decoration
+        let shape: string
+        if (d.name === 'markings') {
+          used.add('markPath')
+          shape = `markPath(${guide}, ${(d as { marks: readonly IrRecord[] }).marks.map((mk) => printValue(mk, indent, used)).join(', ')})`
+        } else {
+          used.add('decoratePath')
+          shape = `decoratePath(${guide}, ${str(d.name)}, ${printValue((d as { options: IrRecord }).options, indent, used)})`
+        }
+        const opts = Object.keys(item.options).length ? `, ${printValue(item.options, indent, used)}` : ''
+        out.push(`${indent}${host}.${item.mode}(screen(${shape})${opts})`)
+        break
+      }
       case 'pic': {
         used.add(item.pic)
         const pts = item.points.map((p) => printPoint(p, used)).join(', ')
@@ -204,6 +220,25 @@ export function printPoint(p: IrPoint, used: Set<string>): string {
     case 'perp':
       used.add('point')
       return `point(${q(p.a)}.x, ${q(p.b)}.y)`
+  }
+}
+
+/** A `Path` builder call for a pen op (the subset the builder has). */
+function printPathOp(op: IrOp, indent: string, used: Set<string>): string {
+  switch (op.op) {
+    case 'moveTo':
+    case 'lineTo':
+    case 'hvTo':
+    case 'vhTo':
+      return `.${op.op}(${printPoint(op.to, used)})`
+    case 'curveTo':
+      return `.curveTo(${printPoint(op.c1, used)}, ${printPoint(op.c2, used)}, ${printPoint(op.to, used)})`
+    case 'to':
+      return `.to(${printPoint(op.to, used)}${Object.keys(op.options).length ? `, ${printValue(op.options, indent, used)}` : ''})`
+    case 'close':
+      return '.close()'
+    default:
+      throw new Error(`${op.op} is not a Path builder call`)
   }
 }
 

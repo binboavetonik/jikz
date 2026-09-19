@@ -27,6 +27,7 @@ import {
   type PointLike,
   type ScopeOptions,
 } from 'jikz'
+import { decoratePath, markPath, screen } from 'jikz'
 import { angle, rightAngle } from 'jikz/angles'
 import type { IrItem, IrOp, IrPoint, IrRecord, IrShape, IrTransform, IrValue } from './ir'
 
@@ -70,6 +71,27 @@ export function interpret(items: readonly IrItem[], host: TikzHost): void {
       case 'scope':
         host.scope(scopeOptions(item.options, item.transform, host), (s) => interpret(item.body, s))
         break
+      case 'decorated': {
+        // Build the guide in frame coordinates, map it once, decorate in px, draw as given.
+        let p = path()
+        for (const op of item.ops) {
+          if (op.op === 'moveTo') p = p.moveTo(resolve(op.to, host))
+          else if (op.op === 'lineTo') p = p.lineTo(resolve(op.to, host))
+          else if (op.op === 'hvTo') p = p.hvTo(resolve(op.to, host))
+          else if (op.op === 'vhTo') p = p.vhTo(resolve(op.to, host))
+          else if (op.op === 'curveTo') p = p.curveTo(resolve(op.c1, host), resolve(op.c2, host), resolve(op.to, host))
+          else if (op.op === 'to') p = p.to(resolve(op.to, host), live(op.options))
+          else if (op.op === 'close') p = p.close()
+        }
+        const guide = host.frame.renderable(p)
+        const d = item.decoration
+        const shape =
+          d.name === 'markings'
+            ? markPath(guide, ...(d as { marks: readonly IrRecord[] }).marks.map((mk) => live(mk) as never))
+            : decoratePath(guide, d.name, live((d as { options: IrRecord }).options))
+        host[item.mode](screen(shape), live(item.options) as DrawOptions)
+        break
+      }
       case 'pic': {
         const [a, b, c] = item.points.map((p) => resolve(p, host)) as [Point, Point, Point]
         const mark = (item.pic === 'angle' ? angle : rightAngle)(a, b, c, live(item.options))

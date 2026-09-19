@@ -281,3 +281,39 @@ describe('pics (post-v1)', () => {
     expect(() => run(String.raw`\usetikzlibrary{arrows.meta, angles}`)).not.toThrow()
   })
 })
+
+describe('decorations (post-v1)', () => {
+  it('decorate replaces the path by its decoration, in screen space', () => {
+    const plain = run(String.raw`\draw (0,0) -- (3,0);`).toSVG({ width: 300, height: 300 })
+    const snake = run(String.raw`\draw[decorate, decoration={snake, amplitude=1mm}] (0,0) -- (3,0);`).toSVG({ width: 300, height: 300 })
+    expect(snake).not.toBe(plain)
+    expect(snake.length).toBeGreaterThan(plain.length * 3) // many samples along the wave
+  })
+
+  it('a brace bulges up in the math frame, and mirror flips it', () => {
+    const above = run(String.raw`\draw[decorate, decoration={brace, amplitude=10pt}] (0,0) -- (3,0);`).toSVG({ width: 300, height: 300 })
+    const below = run(String.raw`\draw[decorate, decoration={brace, amplitude=10pt, mirror}] (0,0) -- (3,0);`).toSVG({ width: 300, height: 300 })
+    // Every y of the path data: TikZ's brace on an eastward span bulges up (screen y negative).
+    const ys = (svg: string) => {
+      const d = /d="([^"]+)"/.exec(svg)![1]!
+      return [...d.matchAll(/(-?\d+(?:\.\d+)?)[ ,](-?\d+(?:\.\d+)?)/g)].map((m) => Number(m[2]))
+    }
+    expect(Math.min(...ys(above))).toBeLessThan(-5)
+    expect(Math.max(...ys(below))).toBeGreaterThan(5)
+  })
+
+  it('keeps path nodes in place on a decorated path', () => {
+    const pic = run(String.raw`\draw[decorate, decoration=brace] (0,0) -- (2,0) node[midway, above] (m) {x};`)
+    expect(pic.resolve('m').x).toBeCloseTo(U)
+  })
+
+  it('postaction markings keep the path and add the arrow', () => {
+    const svg = run(String.raw`\draw[postaction={decorate, decoration={markings, mark=at position 0.5 with {\arrow{>}}}}] (0,0) -- (3,0);`).toSVG({ width: 300, height: 300 })
+    expect((svg.match(/<path/g) ?? []).length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('refuses what it cannot decorate, by name', () => {
+    expect(() => run(String.raw`\draw[decorate, decoration=snake] (0,0) circle (1);`)).toThrow(/"circle" on a decorated path/)
+    expect(() => run(String.raw`\draw[decorate, decoration={markings, mark=at position 0.5 with {\node {x};}}] (0,0) -- (1,0);`)).toThrow(/only "at position/)
+  })
+})

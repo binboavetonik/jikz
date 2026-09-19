@@ -249,6 +249,20 @@ the escape hatch and is documented as one.
   `\usetikzlibrary{…}` parses and lowers to nothing: the notation
   already has every library's constructs it supports, and the ones it
   lacks are refused where they appear.
+- **Post-v1: decorations — done (2026-09-19).** `decorate` with
+  `decoration={snake|zigzag|coil|bumps|saw|random steps|brace|
+  markings, amplitude, segment length, aspect, mirror, mark=…}`, and
+  the same inside `preaction`/`postaction`. The statement's segments
+  become a `Path` in frame coordinates, mapped once through the
+  frame, decorated in px by `decoratePath()`/`markPath()`, and drawn
+  as given: that last step needed `screen()`, a new core helper
+  (`src/picture/Frame.ts`) that marks geometry as already in px so a
+  math-frame picture's verbs leave it alone — a gap any jikz user hit
+  who decorated a path in a `frame: 'math'` picture. pgf's defaults
+  (2.5pt, 10pt) apply; the brace bulges to TikZ's left (screen
+  `side: 'right'`); path nodes keep their positions through an
+  invisible carrier pen. Not on arcs/circles/grids (the `Path`
+  builder has no such ops); the markings guide is always stroked.
 - **Post-v1, in order.** Pics
   (`angle`, `right angle` → `ext/angles`; `\usetikzlibrary` selects
   ext shape sets and helpers), decorations keys (`snake`, `zigzag`,

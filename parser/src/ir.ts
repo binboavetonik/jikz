@@ -80,6 +80,18 @@ export type IrItem =
   | { readonly kind: 'coordinate'; readonly source: string; readonly name: string; readonly at: IrPoint }
   | { readonly kind: 'edge'; readonly source: string; readonly from: IrPoint; readonly to: IrPoint; readonly options: IrRecord }
   | { readonly kind: 'scope'; readonly source: string; readonly options: IrRecord; readonly transform?: IrTransform; readonly body: readonly IrItem[] }
+  /**
+   * `\draw[decorate, decoration={…}]`: the path as screen geometry,
+   * decorated, drawn as given (`screen()`). `markings` marks the path.
+   */
+  | {
+      readonly kind: 'decorated'
+      readonly source: string
+      readonly mode: 'draw' | 'fill' | 'filldraw' | 'path'
+      readonly options: IrRecord
+      readonly ops: readonly IrOp[]
+      readonly decoration: { readonly name: string; readonly options: IrRecord } | { readonly name: 'markings'; readonly marks: readonly IrRecord[] }
+    }
   /** `\pic {angle=A--B--C}` / `right angle`: a verb on the angles extension's mark. */
   | {
       readonly kind: 'pic'

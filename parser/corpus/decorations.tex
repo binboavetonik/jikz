@@ -1,0 +1,13 @@
+% Decorations: pathmorphing, the brace, markings; as decorate and as post/preaction.
+\draw[decorate, decoration=snake] (0,0) -- (3,0);
+\draw[decorate, decoration={zigzag, amplitude=1mm, segment length=3mm}] (0,1) -- (3,1);
+\draw[decorate, decoration={coil, aspect=0.3}] (0,2) -- (3,2);
+\draw[decorate, decoration={bumps}] (0,3) -- (3,3);
+\draw[decorate, decoration={saw}] (0,4) -- (3,4);
+\draw[decorate, decoration={random steps, segment length=2mm}] (0,5) -- (3,5);
+\draw[decorate, decoration={brace, amplitude=5pt}] (0,6) -- (3,6) node[midway, above=6pt] {span};
+\draw[decorate, decoration={brace, mirror}] (0,7) -- (3,7);
+\draw[thick, postaction={decorate, decoration={markings, mark=at position 0.5 with {\arrow{>}}}}] (4,0) -- (7,1);
+\draw[postaction={decorate, decoration={markings, mark=at position 0.3 with {\arrow{stealth}}, mark=at position 0.7 with {\arrow{latex}}}}] (4,2) .. controls (5,3) and (6,1) .. (7,2);
+\draw[red, preaction={decorate, decoration={snake, amplitude=2pt}}] (4,4) -- (7,4) -- (7,5);
+\draw[decorate, decoration=snake] (4,6) -- (5,7) -| (7,6) -- cycle;

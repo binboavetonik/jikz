@@ -74,6 +74,11 @@ export interface MappedOptions {
   missing?: boolean
   /** Pic keys (the angles library): `angle radius`, `angle eccentricity`, `pic text`. */
   pic?: { radius?: IrValue; eccentricity?: number; text?: string }
+  /** `decorate`, `decoration={…}`; `preaction`/`postaction` carrying a decoration. */
+  decorate?: boolean
+  decoration?: Decoration
+  preaction?: MappedOptions
+  postaction?: MappedOptions
   unknown: (Option & { hint?: string })[]
 }
 
@@ -192,7 +197,8 @@ export const KNOWN_KEYS: Record<KeyContext, readonly string[]> = (() => {
     'yshift', 'node distance', 'auto', 'swap',
   ]
   const scope = ['shift', 'xshift', 'yshift', 'rotate', 'scale', 'node distance', '>', 'every node', 'every path', 'every label', 'every edge']
-  paint.push('level distance', 'sibling distance', 'grow', "grow'", 'missing', 'angle radius', 'angle eccentricity', 'pic text')
+  paint.push('level distance', 'sibling distance', 'grow', "grow'", 'missing', 'angle radius', 'angle eccentricity', 'pic text',
+    'decorate', 'decoration', 'preaction', 'postaction')
   return {
     path: [...paint, ...routing, 'step', 'xstep', 'ystep', '>'],
     node: [...paint, ...node],
@@ -202,6 +208,48 @@ export const KNOWN_KEYS: Record<KeyContext, readonly string[]> = (() => {
     scope: [...paint, ...scope],
   }
 })()
+
+export interface Decoration {
+  name: string
+  amplitude?: IrValue
+  segmentLength?: IrValue
+  mirror?: boolean
+  aspect?: number
+  /** `markings`: `mark=at position t with {\arrow{>}}` */
+  marks?: { at: number; tip: string }[]
+}
+
+const DECORATIONS = new Set(['snake', 'zigzag', 'coil', 'bumps', 'saw', 'random steps', 'brace', 'markings'])
+const MARK_TIPS: Record<string, string> = { ...TIPS, '>': 'to', '|': 'bar', Bar: 'bar', '||': 'doubleBar' }
+
+/** `decoration={snake, amplitude=1mm, segment length=3mm}` or `decoration=snake`. */
+function parseDecoration(value: string): Decoration {
+  const parts = parseInlineOptions(value)
+  let out: Decoration | undefined
+  const rest: Option[] = []
+  for (const o of parts) {
+    if (o.value === undefined && DECORATIONS.has(o.key)) out = { name: o.key === 'random steps' ? 'random' : o.key }
+    else rest.push(o)
+  }
+  if (!out) throw new KeyError(`decoration: "${value}" names no decoration (known: ${[...DECORATIONS].join(', ')})`)
+  for (const o of rest) {
+    const { key, value: v } = o
+    if (key === 'amplitude' && v !== undefined) out.amplitude = len(v)
+    else if (key === 'segment length' && v !== undefined) out.segmentLength = len(v)
+    else if (key === 'mirror' && v === undefined) out.mirror = true
+    else if (key === 'aspect' && v !== undefined) out.aspect = numberValue(v, key)
+    else if (key === 'mark' && v !== undefined) {
+      const m = /^at position\s+([-\d.]+)\s+with\s*\{\s*\\(arrow|arrowreversed)\s*\{([^}]*)\}\s*\}$/.exec(v.trim())
+      if (!m) throw new KeyError(`mark: only "at position t with {\\arrow{tip}}" is read, got "${v}"`)
+      const tip = MARK_TIPS[m[3]!.trim()]
+      if (!tip) throw new KeyError(`mark: unknown tip "${m[3]}"`)
+      if (m[2] === 'arrowreversed') throw new KeyError('mark: \\arrowreversed is not supported — markPath() has no reversed mark')
+      out.marks = [...(out.marks ?? []), { at: Number(m[1]), tip }]
+    } else throw new KeyError(`decoration key "${key}" is not supported (amplitude, segment length, mirror, aspect, mark)`)
+  }
+  if (out.name === 'markings' && !out.marks?.length) throw new KeyError('markings without a mark')
+  return out
+}
 
 export class KeyError extends Error {
   constructor(message: string) {
@@ -486,6 +534,21 @@ export function mapOptions(options: readonly Option[], context: KeyContext, oute
       const angle = named[value.trim()] ?? Number(value)
       if (!Number.isFinite(angle)) throw new KeyError(`${key}=${value}: expected a direction or an angle`)
       out.tree = { ...out.tree, grow: angle, swap: key === "grow'" }
+      continue
+    }
+    if (key === 'decorate' && value === undefined) {
+      out.decorate = true
+      continue
+    }
+    if (key === 'decoration' && value !== undefined) {
+      out.decoration = parseDecoration(value)
+      continue
+    }
+    if ((key === 'preaction' || key === 'postaction') && value !== undefined) {
+      const inner = mapOptions(parseInlineOptions(value), context, env)
+      if (inner.unknown.length) throw new KeyError(`${key}: unknown key "${inner.unknown[0]!.key}"`)
+      if (!inner.decorate || !inner.decoration) throw new KeyError(`${key}: only a decoration ({decorate, decoration=…}) is supported`)
+      out[key] = inner
       continue
     }
     if (key === 'angle radius' && value !== undefined) {
