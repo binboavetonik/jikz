@@ -110,13 +110,13 @@ describe('the hopeless-file pre-check', () => {
 describe('decision 2: unsupported statements', () => {
   it('keeps the source and names the reason, per statement', () => {
     const { code, diagnostics } = convert(String.raw`\draw (0,0) -- (1,1);
-\pic at (2,2) {angle};`)
+\pgfmathsetmacro{\x}{2}`)
     expect(diagnostics).toHaveLength(1)
-    expect(diagnostics[0]!.reason).toContain('\\pic is not supported')
+    expect(diagnostics[0]!.reason).toContain('\\pgfmathsetmacro is not supported')
     expect(diagnostics[0]!.line).toBe(2)
     // The original survives in the output, where the gap happened.
     expect(code).toContain('// TODO(jikz-tikz)')
-    expect(code).toContain('\\pic')
+    expect(code).toContain('\\pgfmathsetmacro')
   })
 
   it('carries every statement into the output as a comment', () => {

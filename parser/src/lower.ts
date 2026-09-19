@@ -126,6 +126,9 @@ function lowerStatement(stmt: Statement, ctx: Ctx): IrItem[] {
     case 'tikzset':
       applySet(stmt.options, ctx)
       return []
+    case 'library':
+      // The notation has every library's constructs it supports already.
+      return []
     case 'scope':
       return [lowerScope(stmt, ctx)]
     case 'foreach':
@@ -448,6 +451,8 @@ function lowerPath(stmt: PathStmt, ctx: Ctx): IrItem[] {
     return [{ kind: 'coordinate', source: stmt.source, name: item.name, at }]
   }
 
+  if (items.length === 1 && items[0]!.kind === 'pic') return [lowerPic(stmt, items[0]!, m, ctx)]
+  if (items.some((i) => i.kind === 'pic')) throw new Unsupported('a pic inside a longer path')
   if (items.some((i) => i.kind === 'child')) return lowerTree(stmt, m, ctx)
   if (items.some((i) => i.kind === 'edgeFromParent')) throw new Unsupported('"edge from parent" outside a child')
 
@@ -522,6 +527,7 @@ function lowerPath(stmt: PathStmt, ctx: Ctx): IrItem[] {
       }
       case 'child':
       case 'edgeFromParent':
+      case 'pic':
         throw new Unsupported(`"${item.kind}" here`)
       case 'plot': {
         const points = plotPoints(item, ctx)
@@ -794,6 +800,51 @@ function lowerEdgeItem(item: EdgeItem, from: IrPoint, stmt: PathStmt, paint: Map
   const labels = item.nodes.flatMap((n) => (n.kind === 'node' ? [edgeLabel(n, 0.5, ctx)] : []))
   const source = `${stmt.source.split('\n')[0]}`
   return { kind: 'edge', source, from, to, options: edgeOptions(paint, routing, labels) }
+}
+
+// ─── pics ───────────────────────────────────────────────────────────
+
+type PicItem = Extract<PathItem, { kind: 'pic' }>
+
+/**
+ * The angles library: `\pic[draw, fill=…, "$\alpha$", angle radius=…]
+ * {angle=A--B--C}` and `right angle`, onto `angle()`/`rightAngle()`
+ * from the angles extension, painted by the verb — `\draw pic` — or
+ * by the pic's own `draw`/`fill` keys (`pic actions`).
+ */
+function lowerPic(stmt: PathStmt, item: PicItem, m: MappedOptions, ctx: Ctx): IrItem {
+  const pic = item.type === 'angle' ? 'angle' : item.type === 'right angle' ? 'rightAngle' : undefined
+  if (!pic) throw new Unsupported(`pic "${item.type}" is not supported — only the angles library's "angle" and "right angle" are`)
+  if (item.at) throw new Unsupported('"at" on an angle pic (its position is the corner)')
+  if (item.name !== undefined) throw new Unsupported('a named pic')
+  const names = (item.args ?? 'A--B--C').split('--').map((n) => n.trim())
+  if (names.length !== 3 || names.some((n) => n.length === 0)) throw new Unsupported(`${item.type}=${item.args ?? ''}: expected A--B--C`)
+  const pm = mapped(item.options, 'path', ctx, undefined, 'filldraw')
+  if (pm.arrowEnd !== undefined || pm.arrowStart !== undefined) throw new Unsupported('arrow tips on a pic')
+  // The verb paints, or the pic actions do: a `draw` key strokes, a `fill` key fills.
+  const strokes = pm.style.some((e) => typeof e === 'object' && 'stroke' in e)
+  const fills = pm.style.some((e) => typeof e === 'object' && 'fill' in e) || pm.gradient !== undefined
+  const mode = stmt.verb !== 'path' ? (stmt.verb === 'shade' ? 'fill' : stmt.verb === 'shadedraw' ? 'filldraw' : stmt.verb) : strokes && fills ? 'filldraw' : strokes ? 'draw' : fills ? 'fill' : 'path'
+  if (mode === 'clip' || mode === 'pattern' || mode === 'useasboundingbox') throw new Unsupported(`\\${mode} pic`)
+  const label = pm.labels[0] ?? m.labels[0]
+  const text = pm.pic?.text ?? m.pic?.text ?? (label ? String(label.text) : undefined)
+  const labelStyle = label?.style
+  const options: Record<string, IrValue | undefined> = {
+    radius: pm.pic?.radius ?? m.pic?.radius ?? { $len: '5mm' },
+    eccentricity: pm.pic?.eccentricity ?? m.pic?.eccentricity ?? 0.6,
+    ...(text !== undefined ? { label: text } : {}),
+    ...(labelStyle !== undefined ? { labelStyle } : {}),
+  }
+  const style = [...styleOf(m), ...styleOf(pm)]
+  return {
+    kind: 'pic',
+    source: stmt.source,
+    pic,
+    points: [{ kind: 'name', ref: names[0]! }, { kind: 'name', ref: names[1]! }, { kind: 'name', ref: names[2]! }],
+    mode,
+    options,
+    ...(style.length ? { style } : {}),
+  }
 }
 
 // ─── trees ──────────────────────────────────────────────────────────

@@ -74,6 +74,8 @@ export type PathItem =
   | { readonly kind: 'child'; readonly options: readonly Option[]; readonly body: readonly PathItem[] }
   /** `edge from parent[opts] node{…}` inside a child */
   | { readonly kind: 'edgeFromParent'; readonly options: readonly Option[]; readonly nodes: readonly PathItem[] }
+  /** `pic[opts] (name) at (c) {type=args}` */
+  | { readonly kind: 'pic'; readonly options: readonly Option[]; readonly name?: string; readonly at?: Coordinate; readonly type: string; readonly args?: string }
   /** `plot[opts] …` — recorded whole; not lowered in M2 */
   | { readonly kind: 'plot'; readonly options: readonly Option[]; readonly source: string }
 
@@ -95,6 +97,8 @@ export type Statement =
   /** `\foreach \x/\y [opts] in {list} body` — the body stays text until expansion */
   | { readonly kind: 'foreach'; readonly variables: readonly string[]; readonly list: string; readonly options: readonly Option[]; readonly body: string; readonly source: string; readonly at: Position }
   | { readonly kind: 'tikzset'; readonly options: readonly Option[]; readonly source: string; readonly at: Position }
+  /** `\usetikzlibrary{…}` — accepted and ignored: the notation selects nothing, the picture has it all */
+  | { readonly kind: 'library'; readonly names: readonly string[]; readonly source: string; readonly at: Position }
   | { readonly kind: 'unsupported'; readonly reason: string; readonly source: string; readonly at: Position }
 
 /** `\begin{tikzpicture}[opts] … \end{tikzpicture}` or a bare body. */

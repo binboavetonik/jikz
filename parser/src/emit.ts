@@ -45,9 +45,12 @@ export function emit(items: readonly IrItem[], options: EmitOptions = {}): strin
     return `${lines.join('\n').replace(/^\n/, '')}\n`
   }
   used.add('picture').add('allShapes').add('cm')
+  // The angles extension is its own subpath.
+  const angles = ['angle', 'rightAngle'].filter((n) => used.delete(n))
   const imports = [...used].filter((n) => n !== 'ref').sort()
   const lines: string[] = [
     `import { ${imports.join(', ')} } from '${from}'`,
+    ...(angles.length ? [`import { ${angles.join(', ')} } from '${from}/angles'`] : []),
     '',
     'export function build() {',
     `  const ${host} = picture({ shapes: allShapes, frame: 'math', unit: ${unit} })`,
@@ -88,6 +91,13 @@ function emitItems(items: readonly IrItem[], host: string, indent: string, out: 
           })`
         )
         break
+      case 'pic': {
+        used.add(item.pic)
+        const pts = item.points.map((p) => printPoint(p, used)).join(', ')
+        const style = item.style ? `, { style: ${printValue(item.style, indent, used)} }` : ''
+        out.push(`${indent}${host}.${item.mode}(${item.pic}(${pts}, ${printValue(item.options, indent, used)})${style})`)
+        break
+      }
       case 'clip': {
         out.push(`${indent}${host}.scope({ clip: ${root}.frame.renderable(${printShape(item.shape, used)}) }, (s) => {`)
         emitItems(item.body, 's', `${indent}  `, out, used, root)

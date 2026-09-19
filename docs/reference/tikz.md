@@ -109,6 +109,8 @@ t`\node[box, tint=blue] (a) at (0,0) {a};`
 | `\foreach` | expanded at lowering: lists, `...` ranges with a step, `/`-tuples, `count=` |
 | `\node {r} child {node {a}} …` | nodes at TikZ's own positions (`level distance`, `sibling distance`, `grow`, `level <n>`, `missing`) plus `host.edge(parent, child)` per `edge from parent`; anonymous children are `r-1`, `r-2`, … |
 | `($(A)!0.5!(B)$)` and friends | `Point` methods on resolved names |
+| `\pic[draw, "$\alpha$"] {angle=A--O--B}`, `right angle` | `host.draw/fill/filldraw(angle(A, O, B, { radius, eccentricity, label }))` from `@ozan.e/jikz/angles`; the verb or the pic's `draw`/`fill` keys paint |
+| `\usetikzlibrary{…}` | nothing — the notation has every library's constructs it supports already |
 
 Anonymous nodes are named `tikz-1`, `tikz-2`, … per picture.
 
@@ -130,7 +132,7 @@ picture.
 
 ## Not lowered, by name
 
-`pic`, `let`, `child foreach`, `plot` with `smooth` or a function, decorations,
+pics other than `angle` and `right angle`, `let`, `child foreach`, `plot` with `smooth` or a function, decorations,
 `/.code` handlers, `sloped` on path nodes, `->` on a path with more
 than one segment, `\clip` with options, `transform shape`, and
 pgfmath expressions. In a file (`convert`, the migration path) each

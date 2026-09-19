@@ -45,9 +45,6 @@ describe('emit', () => {
           s.pen({ mode: 'fill', style: [{ fill: '#ff0000' }] }).moveTo(0, 0).rectangle(1, 1)
         })
 
-        // \\usetikzlibrary{calc}
-        // TODO(jikz-tikz): \\usetikzlibrary is not supported
-
         return pic
       }
       "

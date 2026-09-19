@@ -80,6 +80,16 @@ export type IrItem =
   | { readonly kind: 'coordinate'; readonly source: string; readonly name: string; readonly at: IrPoint }
   | { readonly kind: 'edge'; readonly source: string; readonly from: IrPoint; readonly to: IrPoint; readonly options: IrRecord }
   | { readonly kind: 'scope'; readonly source: string; readonly options: IrRecord; readonly transform?: IrTransform; readonly body: readonly IrItem[] }
+  /** `\pic {angle=A--B--C}` / `right angle`: a verb on the angles extension's mark. */
+  | {
+      readonly kind: 'pic'
+      readonly source: string
+      readonly pic: 'angle' | 'rightAngle'
+      readonly points: readonly [IrPoint, IrPoint, IrPoint]
+      readonly mode: 'draw' | 'fill' | 'filldraw' | 'path'
+      readonly options: IrRecord
+      readonly style?: readonly IrValue[]
+    }
   /** `\clip` — the statements after it, in a scope clipped to the shape. */
   | { readonly kind: 'clip'; readonly source: string; readonly shape: IrShape; readonly body: readonly IrItem[] }
   /** Decision 2: the statement survives as a comment, and the gap is named. */

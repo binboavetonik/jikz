@@ -29,7 +29,6 @@ interface Entry {
  * says which side calls it what, and why that is fine.
  */
 const EXPLAINED: Record<string, string> = {
-  '\\pic at (0,0) {angle};': 'lezer: path (\\pic is a path command); ours: unsupported — pics are post-v1',
   '\\draw (0,0) -- (2*\\x, 1);': 'lezer: path; ours: unsupported — pgfmath expressions in coordinates are refused by design',
   '\\node at (1,2,3) {3d};': 'lezer: path; ours: unsupported — 3D coordinates are refused',
 }

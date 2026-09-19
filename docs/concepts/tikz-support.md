@@ -49,7 +49,7 @@ before it means "write the jikz call".
 | `rectangle`, `circle`, `ellipse`, `arc[start angle, end angle, radius]`, `grid`, `parabola`, `sin`, `cos` | `pen.rectangle()`, `.circle()`, `.ellipse()`, `.arc({ start, end, radius })`, `.grid()`, `.parabola()`, `.sin()`, `.cos()` | ✅ | ✅ both spellings (`arc (0:90:1)` and `arc[…]`) |
 | `plot` | `plot()`, `plotParametric()`, `plotPolar()`, `plotFromPoints()` with `marks` | ✅ as shapes | 🟡 `plot coordinates {…}` as a polyline; `smooth`, functions, `mark=` ❌ |
 | `svg "…"` | `pathFromSVG(d)` | ✅ | ❌ |
-| `pic`, `let`, `foreach` | a pic is a value you hand to a verb (`angle(A, B, C)`); JS loops; `let` is a variable | ✅ by construction | 🟡 `\foreach` with lists, `...` ranges, `/`-tuples, `count=`; `pic`, `let` ❌ |
+| `pic`, `let`, `foreach` | a pic is a value you hand to a verb (`angle(A, B, C)`); JS loops; `let` is a variable | ✅ by construction | 🟡 `\foreach` with lists, `...` ranges, `/`-tuples, `count=`; `pic {angle=…}` and `right angle`; other pics and `let` ❌ |
 | `edge` from a path | `pic.edge(a, b, …)` as its own statement | ✅ | ✅ from the coordinate before it, with `loop` |
 
 ## Nodes
@@ -152,7 +152,7 @@ before it means "write the jikz call".
 | `petri` | `@ozan.e/jikz/petri` | ✅ | ❌ |
 | `datavisualization` | `@ozan.e/jikz/dataviz` — `chart()`, `axes()`, `legend()`, nice ticks | ✅ | ❌ refused as pgfplots-like |
 | `intersections`, `calc`, `through`, `positioning`, `fit`, `patterns`, `shadings`, `shadows`, `arrows` (legacy set), `svg.path`, `plotmarks` | core | ✅ | 🟡 `calc`, `positioning`, `patterns`, `shadings`, `arrows`; `intersections`, `through`, `fit`, `svg.path`, `plotmarks` ❌ |
-| `angles` | `@ozan.e/jikz/angles` — `angle()`, `rightAngle()` as one paintable value | ✅ | ❌ post-v1 (`pic`) |
+| `angles` | `@ozan.e/jikz/angles` — `angle()`, `rightAngle()` as one paintable value | ✅ | ✅ `\pic[draw, fill, "$\alpha$", angle radius, angle eccentricity] {angle=A--O--B}`, `right angle`, `\draw pic {…}` |
 | `automata` | `@ozan.e/jikz/automata` — `state`, `accepting`, `state with output`, `initialArrow()` | ✅ | ❌ |
 | `er` | `@ozan.e/jikz/er` — `entity`, `relationship`, `attribute`, `key attribute` | ✅ | ❌ |
 | `turtle`, `lindenmayersystems` | `@ozan.e/jikz/turtle` — `turtle()`, `lsystem()`, the classic systems | ✅ | ❌ |

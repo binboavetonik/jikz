@@ -6,8 +6,8 @@ export function build() {
   // \draw (0,0) -- (1,0);
   pic.pen().moveTo(0, 0).lineTo(1, 0)
 
-  // \usetikzlibrary{arrows}
-  // TODO(jikz-tikz): \usetikzlibrary is not supported
+  // \def\x{2}
+  // TODO(jikz-tikz): \def is not supported
 
   // \draw (0,0) -- (1,0);
   pic.pen().moveTo(0, 0).lineTo(1, 0)
@@ -24,8 +24,8 @@ export function build() {
   // \draw (0,0) edge (1,1);
   pic.edge(point(0, 0), point(1, 1))
 
-  // \pic at (0,0) {angle};
-  // TODO(jikz-tikz): \pic is not supported
+  // \pic {code={\draw (0,0) -- (1,0);}};
+  // TODO(jikz-tikz): pic "code" is not supported — only the angles library's "angle" and "right angle" are
 
   // \draw (0,0) -- +(1,0);
   pic.pen().moveTo(0, 0).lineTo(1, 0)

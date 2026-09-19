@@ -1,0 +1,13 @@
+% The angles library as pics.
+\usetikzlibrary{angles, quotes}
+\coordinate (A) at (3,0);
+\coordinate (O) at (0,0);
+\coordinate (B) at (2,2);
+\coordinate (C) at (0,2);
+\draw (A) -- (O) -- (B) (O) -- (C);
+\pic[draw, fill=blue!20, "$\alpha$"] {angle=A--O--B};
+\pic[draw=red, angle radius=1cm, angle eccentricity=1.3, "$\beta$" {red}] {angle=B--O--C};
+\draw pic[angle radius=4mm] {angle=A--O--C};
+\pic[draw, thick] {right angle=A--O--C};
+\pic[fill=gray, pic text=$\gamma$] {angle=C--O--A};
+\filldraw[fill=yellow] pic {angle=B--O--A};

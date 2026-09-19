@@ -240,6 +240,15 @@ the escape hatch and is documented as one.
   `level distance`, `sibling distance`, `grow`/`grow'`, `level <n>`,
   `every child`/`every child node`, `missing`, per-child edge paint
   and labels; anonymous children are `parent-i` as in TikZ.
+- **Post-v1: pics — done (2026-09-19).** `\pic[opts] {angle=A--O--B}`
+  and `right angle`, as a statement or `\draw pic {…}` on a path,
+  onto `angle()`/`rightAngle()` from `@ozan.e/jikz/angles` with
+  `angle radius` (5mm), `angle eccentricity` (.6), `pic text` and the
+  quotes label, painted by the verb or by the pic's own `draw`/`fill`
+  keys as `pic actions` are. Other pic types are refused by name.
+  `\usetikzlibrary{…}` parses and lowers to nothing: the notation
+  already has every library's constructs it supports, and the ones it
+  lacks are refused where they appear.
 - **Post-v1, in order.** Pics
   (`angle`, `right angle` → `ext/angles`; `\usetikzlibrary` selects
   ext shape sets and helpers), decorations keys (`snake`, `zigzag`,

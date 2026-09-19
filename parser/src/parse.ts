@@ -116,6 +116,15 @@ function parseStatementInner(s: Scanner, start: number, at: Position): Statement
     const items = [head, ...parsePathItems(s)]
     return { kind: 'path', verb: 'path', options: [], items, source: s.slice(start), at }
   }
+  if (cmd === 'pic') {
+    const head = parsePicItem(s)
+    const items = [head, ...parsePathItems(s)]
+    return { kind: 'path', verb: 'path', options: [], items, source: s.slice(start), at }
+  }
+  if (cmd === 'usetikzlibrary') {
+    const names = s.balanced('{', '}').split(',').map((n) => n.trim()).filter(Boolean)
+    return { kind: 'library', names, source: s.slice(start), at }
+  }
   if (cmd === 'foreach') return parseForeach(s, start, at)
   if (cmd === 'tikzset') {
     const options = parseOptionList(s.balanced('{', '}'))
@@ -278,6 +287,8 @@ function parsePathItem(s: Scanner): PathItem {
       return { kind: 'grid', options: optionsOpt(s) }
     case 'node':
       return parseNodeItem(s)
+    case 'pic':
+      return parsePicItem(s)
     case 'coordinate':
       return parseCoordinateItem(s)
     case 'arc': {
@@ -354,6 +365,25 @@ function parseNodeItem(s: Scanner): PathItem {
       return { kind: 'node', options, ...(name !== undefined ? { name } : {}), ...(at ? { at } : {}), text }
     } else if (s.keyword('foreach')) throw s.error('node foreach is not supported')
     else throw s.error('node: expected [options], (name), at (…) or {text}')
+  }
+}
+
+/** `[opts] (name) at (c) {type=args}` in any order, ending at the braces. */
+function parsePicItem(s: Scanner): PathItem {
+  let options: Option[] = []
+  let name: string | undefined
+  let at: Coordinate | undefined
+  for (;;) {
+    if (s.at('[')) options = [...options, ...parseOptionList(s.balanced('[', ']'))]
+    else if (s.at('(')) name = s.balanced('(', ')').trim()
+    else if (s.keyword('at')) at = parseCoordinate(s)
+    else if (s.at('{')) {
+      const body = s.balanced('{', '}').trim()
+      const eq = topLevelIndexOf(body, '=')
+      const type = normalizeKey(eq === -1 ? body : body.slice(0, eq))
+      const args = eq === -1 ? undefined : body.slice(eq + 1).trim()
+      return { kind: 'pic', options, ...(name !== undefined ? { name } : {}), ...(at ? { at } : {}), type, ...(args !== undefined ? { args } : {}) }
+    } else throw s.error('pic: expected [options], (name), at (…) or {type=…}')
   }
 }
 

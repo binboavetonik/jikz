@@ -72,6 +72,8 @@ export interface MappedOptions {
   tree?: { levelDistance?: IrValue; siblingDistance?: IrValue; grow?: number; swap?: boolean }
   /** `missing` on a child. */
   missing?: boolean
+  /** Pic keys (the angles library): `angle radius`, `angle eccentricity`, `pic text`. */
+  pic?: { radius?: IrValue; eccentricity?: number; text?: string }
   unknown: (Option & { hint?: string })[]
 }
 
@@ -190,7 +192,7 @@ export const KNOWN_KEYS: Record<KeyContext, readonly string[]> = (() => {
     'yshift', 'node distance', 'auto', 'swap',
   ]
   const scope = ['shift', 'xshift', 'yshift', 'rotate', 'scale', 'node distance', '>', 'every node', 'every path', 'every label', 'every edge']
-  paint.push('level distance', 'sibling distance', 'grow', "grow'", 'missing')
+  paint.push('level distance', 'sibling distance', 'grow', "grow'", 'missing', 'angle radius', 'angle eccentricity', 'pic text')
   return {
     path: [...paint, ...routing, 'step', 'xstep', 'ystep', '>'],
     node: [...paint, ...node],
@@ -484,6 +486,18 @@ export function mapOptions(options: readonly Option[], context: KeyContext, oute
       const angle = named[value.trim()] ?? Number(value)
       if (!Number.isFinite(angle)) throw new KeyError(`${key}=${value}: expected a direction or an angle`)
       out.tree = { ...out.tree, grow: angle, swap: key === "grow'" }
+      continue
+    }
+    if (key === 'angle radius' && value !== undefined) {
+      out.pic = { ...out.pic, radius: len(value) }
+      continue
+    }
+    if (key === 'angle eccentricity' && value !== undefined) {
+      out.pic = { ...out.pic, eccentricity: numberValue(value, key) }
+      continue
+    }
+    if (key === 'pic text' && value !== undefined) {
+      out.pic = { ...out.pic, text: value }
       continue
     }
     if (key === 'missing' && value === undefined) {

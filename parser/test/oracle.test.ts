@@ -82,10 +82,10 @@ describe('the file mode keeps unsupported statements as comments', () => {
     expect(kinds.filter((k) => k === 'edge')).toHaveLength(1)
     expect(result.diagnostics.map((d) => d.reason)).toMatchInlineSnapshot(`
       [
-        "\\usetikzlibrary is not supported",
+        "\\def is not supported",
         ""2*\\x" is an expression — TikZ would evaluate it with pgfmath, which is not supported; write the value",
         "3D coordinate (1,2,3) is not supported",
-        "\\pic is not supported",
+        "pic "code" is not supported — only the angles library's "angle" and "right angle" are",
         "environment "pgfonlayer" is not supported",
       ]
     `)

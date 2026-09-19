@@ -17,14 +17,17 @@ import {
   point,
   rect,
   rel,
+  type DrawOptions,
   type Frame,
   type Pen,
+  type Renderable,
   type PenOptions,
   type PictureEdgeOptions,
   type PictureEndpoint,
   type PointLike,
   type ScopeOptions,
 } from 'jikz'
+import { angle, rightAngle } from 'jikz/angles'
 import type { IrItem, IrOp, IrPoint, IrRecord, IrShape, IrTransform, IrValue } from './ir'
 
 /**
@@ -41,6 +44,10 @@ export interface TikzHost {
   coordinate(name: string, at: PointLike): unknown
   edge(from: PictureEndpoint, to: PictureEndpoint, options?: PictureEdgeOptions): unknown
   scope(options: ScopeOptions, build: (scope: TikzHost) => void): unknown
+  draw(obj: Renderable, options?: DrawOptions): unknown
+  fill(obj: Renderable, options?: DrawOptions): unknown
+  filldraw(obj: Renderable, options?: DrawOptions): unknown
+  path(obj: Renderable, options?: DrawOptions): unknown
 }
 
 export function interpret(items: readonly IrItem[], host: TikzHost): void {
@@ -63,6 +70,12 @@ export function interpret(items: readonly IrItem[], host: TikzHost): void {
       case 'scope':
         host.scope(scopeOptions(item.options, item.transform, host), (s) => interpret(item.body, s))
         break
+      case 'pic': {
+        const [a, b, c] = item.points.map((p) => resolve(p, host)) as [Point, Point, Point]
+        const mark = (item.pic === 'angle' ? angle : rightAngle)(a, b, c, live(item.options))
+        host[item.mode](mark, item.style ? { style: live({ style: item.style }).style as DrawOptions['style'] } : undefined)
+        break
+      }
       case 'clip':
         // A scope's clip is screen geometry; the frame maps the shape once.
         host.scope({ clip: host.frame.renderable(shape(item.shape, host)) as { toSVGPath(): string } }, (s) => interpret(item.body, s))

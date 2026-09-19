@@ -251,3 +251,33 @@ describe('trees (post-v1)', () => {
     expect(svg).toContain('>x<')
   })
 })
+
+describe('pics (post-v1)', () => {
+  const setup = String.raw`\coordinate (A) at (3,0); \coordinate (O) at (0,0); \coordinate (B) at (0,3);`
+
+  it('draws the angle pic with the verb or the pic actions', () => {
+    const byKeys = run(`${setup} \\pic[draw, fill=blue!20] {angle=A--O--B};`).toSVG({ width: 300, height: 300 })
+    expect(byKeys).toContain('fill="#ccccff"')
+    const byVerb = run(`${setup} \\draw pic {angle=A--O--B};`).toSVG({ width: 300, height: 300 })
+    expect(byVerb).toContain('<path')
+    expect(byVerb).not.toContain('#ccccff')
+  })
+
+  it('puts the quotes label at eccentricity × radius along the bisector', () => {
+    const svg = run(`${setup} \\pic[draw, "x", angle radius=1cm, angle eccentricity=2] {angle=A--O--B};`).toSVG({ width: 300, height: 300 })
+    // 2cm along 45°: (√2 cm, √2 cm) in the frame → screen (53.45, -53.45)
+    const m = /<text[^>]*x="([\d.]+)"[^>]*y="(-?[\d.]+)"[^>]*>x</.exec(svg)
+    expect(m).not.toBeNull()
+    expect(Number(m![1])).toBeCloseTo(Math.SQRT2 * U, 0)
+    expect(Number(m![2])).toBeCloseTo(-Math.SQRT2 * U, 0)
+  })
+
+  it('draws the right angle marker and refuses other pics by name', () => {
+    expect(run(`${setup} \\pic[draw] {right angle=A--O--B};`).toSVG({ width: 300, height: 300 })).toContain('<path')
+    expect(() => run(String.raw`\pic {code={\draw (0,0) -- (1,0);}};`)).toThrow(/only the angles library/)
+  })
+
+  it('ignores \\usetikzlibrary', () => {
+    expect(() => run(String.raw`\usetikzlibrary{arrows.meta, angles}`)).not.toThrow()
+  })
+})

@@ -85,12 +85,12 @@ describe('parseStatements', () => {
   })
 
   it('recovers after an unsupported statement', () => {
-    const stmts = parseStatements(String.raw`\usetikzlibrary{arrows}
+    const stmts = parseStatements(String.raw`\def\x{2}
 \draw (0,0) -- (1,1);
-\pic at (0,0) {angle};
+\pgfmathsetmacro{\y}{3}
 \draw (1,1) -- (2,2);`)
     expect(stmts.map((s) => s.kind)).toEqual(['unsupported', 'path', 'unsupported', 'path'])
-    expect(stmts[2]).toMatchObject({ source: String.raw`\pic at (0,0) {angle};` })
+    expect(stmts[2]).toMatchObject({ source: String.raw`\pgfmathsetmacro{\y}{3}` })
   })
 
   it('reports where a statement starts', () => {
