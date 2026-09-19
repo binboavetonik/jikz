@@ -1,0 +1,11 @@
+% M4: the forms that were refused by name before.
+\draw (0,0) -- +(1,0) -- +(0,1);
+\draw (1,1) -- ++(1,0) -- +(0,1) -- +(1,1);
+\coordinate (A) at (3,3);
+\draw (A) -- +(1,0);
+\draw plot coordinates {(0,4) (1,5) (2,4)};
+\draw (0,6) -- plot coordinates {(1,7) (2,6)};
+\draw (0,8) circle (0.2) coordinate (K) -- +(0,1);
+\clip (0,0) rectangle (4,4);
+\draw (-1,-1) -- (5,5);
+\fill[red] (3,3) circle (2);

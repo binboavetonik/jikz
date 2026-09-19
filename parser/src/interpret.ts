@@ -9,8 +9,11 @@
 import {
   Point,
   Transform,
+  circle,
   fillPatterns,
+  path,
   point,
+  rect,
   rel,
   type Frame,
   type Pen,
@@ -20,7 +23,7 @@ import {
   type PointLike,
   type ScopeOptions,
 } from 'jikz'
-import type { IrItem, IrOp, IrPoint, IrRecord, IrTransform, IrValue } from './ir'
+import type { IrItem, IrOp, IrPoint, IrRecord, IrShape, IrTransform, IrValue } from './ir'
 
 /**
  * What the interpreter needs of a picture or scope — the verbs of
@@ -57,6 +60,10 @@ export function interpret(items: readonly IrItem[], host: TikzHost): void {
         break
       case 'scope':
         host.scope(scopeOptions(item.options, item.transform, host), (s) => interpret(item.body, s))
+        break
+      case 'clip':
+        // A scope's clip is screen geometry; the frame maps the shape once.
+        host.scope({ clip: host.frame.renderable(shape(item.shape, host)) as { toSVGPath(): string } }, (s) => interpret(item.body, s))
         break
     }
   }
@@ -109,6 +116,40 @@ function runPen(pen: Pen, ops: readonly IrOp[], host: TikzHost): void {
         break
     }
   }
+}
+
+/** A clip shape in frame coordinates. */
+function shape(sh: IrShape, host: TikzHost) {
+  switch (sh.kind) {
+    case 'rect':
+      return rect(sh.x, sh.y, sh.width, sh.height)
+    case 'circle':
+      return circle(resolve(sh.center, host), sh.radius)
+    case 'path': {
+      let p = path()
+      for (const op of sh.ops) {
+        if (op.op === 'moveTo') p = p.moveTo(resolve(op.to, host))
+        else if (op.op === 'lineTo') p = p.lineTo(resolve(op.to, host))
+        else if (op.op === 'close') p = p.close()
+      }
+      return p
+    }
+  }
+}
+
+/** Every name the items register, in order — what a template call returns. */
+export function namesOf(items: readonly IrItem[]): string[] {
+  const out: string[] = []
+  for (const item of items) {
+    if (item.kind === 'node' || item.kind === 'coordinate') {
+      out.push(item.name)
+    } else if (item.kind === 'pen') {
+      for (const op of item.ops) if (op.op === 'node' || op.op === 'coordinate') out.push(op.name)
+    } else if (item.kind === 'scope' || item.kind === 'clip') {
+      out.push(...namesOf(item.body))
+    }
+  }
+  return out
 }
 
 /** IR data → the option object: `{ $pattern }` becomes the library's pattern. */

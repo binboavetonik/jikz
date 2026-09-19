@@ -1,0 +1,10 @@
+% \clip forms: circle and polygon, inside a scope.
+\begin{scope}
+  \clip (1,1) circle (1);
+  \fill[blue] (0,0) rectangle (2,2);
+\end{scope}
+\begin{scope}
+  \clip (0,0) -- (2,0) -- (1,2) -- cycle;
+  \fill[green] (0,0) rectangle (2,2);
+\end{scope}
+\draw (0,0) -- (3,3);

@@ -19,9 +19,10 @@
  */
 import { JikzError, cm, length, pt } from 'jikz'
 import type { CalcExpr, Coordinate, Length, Option, PathItem, PictureAst, RelativeKind, Statement } from './ast'
-import type { IrItem, IrOp, IrPoint, IrRecord, IrValue } from './ir'
+import type { IrItem, IrOp, IrPoint, IrRecord, IrShape, IrValue } from './ir'
 import { KeyError, mapOptions, opposite, type KeyContext, type MappedOptions } from './keys'
-import { parseOptionList, parseStatements } from './parse'
+import { coordinateOf, parseOptionList, parseStatements } from './parse'
+import { Scanner } from './scan'
 
 export interface LowerOptions {
   /** `dsl` throws on a gap; `file` (default) records it as `skipped`. */
@@ -86,8 +87,16 @@ interface Ctx {
 
 function lowerStatements(statements: readonly Statement[], ctx: Ctx): IrItem[] {
   const out: IrItem[] = []
-  for (const stmt of statements) {
+  for (let i = 0; i < statements.length; i++) {
+    const stmt = statements[i]!
     try {
+      if (stmt.kind === 'path' && stmt.verb === 'clip') {
+        // `\clip` applies to everything after it in the same body.
+        const shape = clipShape(stmt, ctx)
+        const body = lowerStatements(statements.slice(i + 1), ctx)
+        out.push({ kind: 'clip', source: stmt.source, shape, body })
+        return out
+      }
       out.push(...lowerStatement(stmt, ctx))
     } catch (e) {
       if (!(e instanceof Unsupported) && !(e instanceof KeyError)) throw e
@@ -261,6 +270,71 @@ function lowerCalc(e: CalcExpr, ctx: Ctx): IrPoint {
   }
 }
 
+/** `p + (dx, dy)` in frame units. */
+function plus(p: IrPoint, d: Extract<IrPoint, { kind: 'rel' }>): IrPoint {
+  if (p.kind === 'rel') throw new Unsupported('relative from relative')
+  if (p.kind === 'xy') return { kind: 'xy', x: round(p.x + d.dx), y: round(p.y + d.dy) }
+  return { kind: 'sum', terms: [{ factor: 1, p }, { factor: 1, p: { kind: 'xy', x: d.dx, y: d.dy } }] }
+}
+
+/** `plot coordinates {(…) (…)}` — the points; other plot forms by name. */
+function plotPoints(item: Extract<PathItem, { kind: 'plot' }>, ctx: Ctx): Coordinate[] {
+  for (const o of item.options) {
+    throw new Unsupported(`plot[${o.key}] is not supported yet — only plain "plot coordinates {…}" is`)
+  }
+  const m = /^plot\s*(?:\[[^\]]*\])?\s*coordinates\s*\{([\s\S]*)\}$/.exec(item.source.trim())
+  if (!m) throw new Unsupported('only "plot coordinates {…}" is supported — function and file plots need pgfmath or a file')
+  const s = new Scanner(m[1]!)
+  const out: Coordinate[] = []
+  while (!s.done) {
+    const c = coordinateOf(s.balanced('(', ')'), s)
+    if (c.kind !== 'perpendicular' && c.kind !== 'calc' && c.relative) throw new Unsupported('relative coordinates in a plot')
+    out.push(c)
+  }
+  if (out.length === 0) throw new Unsupported('plot coordinates {} has no points')
+  void ctx
+  return out
+}
+
+/** `\clip` forms the frame can map: a rectangle, a circle, or a polygon. */
+function clipShape(stmt: PathStmt, ctx: Ctx): IrShape {
+  if (stmt.options.length) throw new Unsupported('options on \\clip are not supported')
+  const items = stmt.items
+  const abs = (c: Coordinate): IrPoint => {
+    const p = lowerPoint(c, ctx)
+    if (p.kind === 'rel') throw new Unsupported('a relative coordinate in \\clip')
+    return p
+  }
+  if (items.length === 3 && items[0]!.kind === 'coord' && items[1]!.kind === 'rectangle' && items[2]!.kind === 'coord') {
+    const a = abs(items[0]!.coord)
+    const b = abs(items[2]!.coord)
+    if (a.kind !== 'xy' || b.kind !== 'xy') throw new Unsupported('\\clip rectangle needs plain coordinates')
+    return { kind: 'rect', x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y) }
+  }
+  if (items.length === 2 && items[0]!.kind === 'coord' && items[1]!.kind === 'circle') {
+    const r = radiiOptions(items[1]!, ctx)
+    if (r.radius === undefined) throw new Unsupported('\\clip circle needs one radius')
+    return { kind: 'circle', center: abs(items[0]!.coord), radius: r.radius }
+  }
+  const ops: IrOp[] = []
+  let expectCoord = true
+  for (const item of items) {
+    if (item.kind === 'coord' && expectCoord) {
+      ops.push({ op: ops.length === 0 ? 'moveTo' : 'lineTo', to: abs(item.coord) })
+      expectCoord = false
+    } else if (item.kind === 'op' && item.op === '--' && !expectCoord) {
+      expectCoord = true
+    } else if (item.kind === 'cycle' && expectCoord && ops.length > 1) {
+      ops.push({ op: 'close' })
+      expectCoord = false
+    } else {
+      throw new Unsupported('\\clip supports (a) rectangle (b), (c) circle (r), and polygons with -- and cycle')
+    }
+  }
+  if (ops.length < 3) throw new Unsupported('\\clip polygon needs at least three points')
+  return { kind: 'path', ops }
+}
+
 /** `p` moved by a px vector, in frame terms. */
 function shifted(p: IrPoint, shiftPx: { dx: number; dy: number }, ctx: Ctx): IrPoint {
   if (p.kind === 'rel') throw new Unsupported('xshift/yshift on a relative coordinate')
@@ -329,7 +403,8 @@ type EdgeItem = Extract<PathItem, { kind: 'edge' }>
 
 function lowerPath(stmt: PathStmt, ctx: Ctx): IrItem[] {
   const verb = stmt.verb
-  if (verb === 'clip' || verb === 'pattern' || verb === 'useasboundingbox') throw new Unsupported(`\\${verb} is not supported yet`)
+  if (verb === 'clip') throw new Unsupported('\\clip inside a \\foreach body is not supported')
+  if (verb === 'pattern' || verb === 'useasboundingbox') throw new Unsupported(`\\${verb} is not supported yet`)
   const mode = verb === 'shade' ? 'fill' : verb === 'shadedraw' ? 'filldraw' : verb
   const m = mapped(stmt.options, 'path', ctx, 'path')
   const items = stmt.items
@@ -379,6 +454,10 @@ function lowerPath(stmt: PathStmt, ctx: Ctx): IrItem[] {
   let pendingNodes: NodeItem[] = []
   let hasPen = false
   let lastCoord: IrPoint | undefined
+  // Where the pen is, when it can be known without drawing: `+(dx,dy)`
+  // and `cycle` need it. An arc's end is not known here.
+  let penPos: IrPoint | undefined
+  let subpathStart: IrPoint | undefined
 
   const flushNodes = () => {
     for (const n of pendingNodes) {
@@ -391,19 +470,44 @@ function lowerPath(stmt: PathStmt, ctx: Ctx): IrItem[] {
     if (!hasPen) throw new Unsupported(`"${what}" before the path has a starting point`)
   }
 
+  /** A coordinate as a pen target, with the pen's position kept up to date. */
+  const target = (coord: Coordinate): IrPoint => {
+    if (coord.kind !== 'perpendicular' && coord.kind !== 'calc' && coord.relative === 'keep') {
+      if (penPos === undefined) throw new Unsupported('+(…) after an operation whose end point is not known here (an arc); use ++(…) or an absolute coordinate')
+      const d = lowerPoint({ ...coord, relative: 'update' }, ctx) as Extract<IrPoint, { kind: 'rel' }>
+      return plus(penPos, d)
+    }
+    const to = lowerPoint(coord, ctx)
+    penPos = to.kind === 'rel' ? (penPos ? plus(penPos, to) : undefined) : to
+    return to
+  }
+  const place = (to: IrPoint) => {
+    if (pending === undefined) {
+      ops.push({ op: 'moveTo', to })
+      subpathStart = penPos
+    } else {
+      ops.push(segment(pending, to, ctx))
+      pending = undefined
+      flushNodes()
+    }
+    hasPen = true
+    lastCoord = to.kind === 'rel' ? undefined : to
+  }
+
   for (const item of items) {
     switch (item.kind) {
       case 'coord': {
-        const to = lowerPoint(item.coord, ctx)
-        if (pending === undefined) {
-          ops.push({ op: 'moveTo', to })
-        } else {
-          ops.push(segment(pending, to, ctx))
-          pending = undefined
-          flushNodes()
-        }
-        hasPen = true
-        lastCoord = to.kind === 'rel' ? undefined : to
+        place(target(item.coord))
+        break
+      }
+      case 'plot': {
+        const points = plotPoints(item, ctx)
+        if (pending !== undefined && (pending.kind !== 'op' || pending.op !== '--')) throw new Unsupported(`plot after ${pending.kind}`)
+        // `plot` starts with a move, `-- plot` with a line (tikz.code.tex).
+        points.forEach((p, i) => {
+          if (i > 0) pending = { kind: 'op', op: '--' }
+          place(target(p))
+        })
         break
       }
       case 'op':
@@ -425,12 +529,14 @@ function lowerPath(stmt: PathStmt, ctx: Ctx): IrItem[] {
         }
         pending = undefined
         ops.push({ op: 'close' })
+        penPos = subpathStart
         flushNodes()
         break
       case 'arc':
         requirePen('arc')
         ops.push({ op: 'arc', options: arcOptions(item, ctx) })
         lastCoord = undefined
+        penPos = undefined
         break
       case 'circle':
       case 'ellipse': {
@@ -473,8 +579,6 @@ function lowerPath(stmt: PathStmt, ctx: Ctx): IrItem[] {
         edges.push(lowerEdgeItem(item, lastCoord, stmt, m, ctx))
         break
       }
-      case 'plot':
-        throw new Unsupported('"plot" is not supported yet')
     }
   }
   if (pending !== undefined) throw new Unsupported(`path ends after "${pending.kind === 'op' ? pending.op : pending.kind}"`)

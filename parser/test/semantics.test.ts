@@ -170,3 +170,26 @@ describe('styles and scope state (M3)', () => {
     expect(pic.resolve('a.east').x - pic.resolve('a.west').x).toBeCloseTo(2 * U)
   })
 })
+
+describe('the pen position (M4)', () => {
+  it('+(dx,dy) measures from the pen without moving it', () => {
+    const pic = run(String.raw`\draw (1,1) -- +(1,0) coordinate (P) -- +(0,1) coordinate (Q);`)
+    expect(pic.resolve('P').x).toBeCloseTo(2 * U)
+    expect(pic.resolve('Q').x).toBeCloseTo(U)
+    expect(pic.resolve('Q').y).toBeCloseTo(-2 * U)
+  })
+
+  it('+(dx,dy) works from a named point and after cycle', () => {
+    const pic = run(String.raw`\coordinate (A) at (3,3);
+\draw (A) -- +(1,0) coordinate (P);
+\draw (0,0) -- (1,0) -- (1,1) -- cycle -- +(0.5,0) coordinate (R);`)
+    expect(pic.resolve('P').x).toBeCloseTo(4 * U)
+    expect(pic.resolve('R').x).toBeCloseTo(0.5 * U)
+    expect(pic.resolve('R').y).toBeCloseTo(0)
+  })
+
+  it('plot coordinates draws the polyline, and -- plot joins it', () => {
+    const svg = run(String.raw`\draw (0,0) -- plot coordinates {(1,1) (2,0)};`).toSVG({ width: 200, height: 200 })
+    expect(svg).toMatch(/d="M[^"]*L[^"]*L/)
+  })
+})

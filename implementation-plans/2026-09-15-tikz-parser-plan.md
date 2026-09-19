@@ -195,11 +195,18 @@ the escape hatch and is documented as one.
   Unknown keys throw with the nearest known key. Not `picture({
   styles })`: expansion needs no jikz feature and reads like TikZ in
   the ejected code.
-- **M4 — the DSL surface.** `tikz(pic)` and `tikzPicture`, `${}`
-  slots, `\begin{scope}`, `\foreach` with `/`-tuples and `...`
-  ranges, `interpret()` onto a caller's container, the error policy
-  with line and column, and the type-level contract: `T` returns the
-  names it registered so `pic.edge()` can use them without a cast.
+- **M4 — done (2026-09-19).** The DSL surface: `tikz(pic)` (from
+  M2) now returns `{ names }` — the names the call registered, in
+  order; `tikzPicture` (template or `.source(text, { unit })`) builds
+  a whole picture, applying the environment's options and the
+  pre-check. The gaps closed by name: `+(…)` via pen-position
+  tracking in the lowering (known after coordinates, `cycle` and
+  most operations; not after an arc), `plot coordinates {…}` as a
+  polyline with `-- plot` joining (per `tikz.code.tex`), and `\clip`
+  for rectangle, circle and polygon shapes, lowered to a scope with
+  `clip: frame.renderable(shape)` around the rest of the body. Not
+  the type-level names contract: `pic.edge()` takes strings, so the
+  runtime list is the useful part.
 - **M5 — eject.** `toTypeScript(source | template)` printing the
   §6 shape against the new API, the "keep every statement as a
   comment" rule, oracle equivalence green across the corpus, and the

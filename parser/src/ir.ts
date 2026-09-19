@@ -52,6 +52,13 @@ export type IrOp =
   | { readonly op: 'coordinate'; readonly name: string }
   | { readonly op: 'push'; readonly options: IrRecord }
 
+/** A clip region (`\clip …;`), in frame coordinates — a shape the frame can map. */
+export type IrShape =
+  | { readonly kind: 'rect'; readonly x: number; readonly y: number; readonly width: number; readonly height: number }
+  | { readonly kind: 'circle'; readonly center: IrPoint; readonly radius: number }
+  /** A polygon: `moveTo`/`lineTo`/`close` ops with absolute points. */
+  | { readonly kind: 'path'; readonly ops: readonly IrOp[] }
+
 /** A scope's transform, in frame terms; composed in this order. */
 export interface IrTransform {
   readonly shift?: { readonly dx: number; readonly dy: number }
@@ -65,6 +72,8 @@ export type IrItem =
   | { readonly kind: 'coordinate'; readonly source: string; readonly name: string; readonly at: IrPoint }
   | { readonly kind: 'edge'; readonly source: string; readonly from: IrPoint; readonly to: IrPoint; readonly options: IrRecord }
   | { readonly kind: 'scope'; readonly source: string; readonly options: IrRecord; readonly transform?: IrTransform; readonly body: readonly IrItem[] }
+  /** `\clip` — the statements after it, in a scope clipped to the shape. */
+  | { readonly kind: 'clip'; readonly source: string; readonly shape: IrShape; readonly body: readonly IrItem[] }
   /** Decision 2: the statement survives as a comment, and the gap is named. */
   | { readonly kind: 'skipped'; readonly source: string; readonly reason: string; readonly line: number }
 

@@ -12,7 +12,7 @@
  * lowered in, so the numbers in the output are the numbers in the
  * source.
  */
-import type { IrItem, IrOp, IrPoint, IrTransform, IrValue } from './ir'
+import type { IrItem, IrOp, IrPoint, IrShape, IrTransform, IrValue } from './ir'
 
 export interface EmitOptions {
   /** Module specifier for the jikz import. Default `@ozan.e/jikz`. */
@@ -73,6 +73,12 @@ function emitItems(items: readonly IrItem[], host: string, indent: string, out: 
           })`
         )
         break
+      case 'clip': {
+        out.push(`${indent}${host}.scope({ clip: pic.frame.renderable(${printShape(item.shape, used)}) }, (s) => {`)
+        emitItems(item.body, 's', `${indent}  `, out, used)
+        out.push(`${indent}})`)
+        break
+      }
       case 'scope': {
         const fields = printFields(item.options, indent)
         const transform = item.transform ? printTransform(item.transform, used) : ''
@@ -161,12 +167,32 @@ export function printPoint(p: IrPoint, used: Set<string>): string {
     case 'rotateAround':
       return `${q(p.p)}.rotateAround(${q(p.about)}, ${num(p.angle)})`
     case 'sum': {
-      used.add('point')
-      return p.terms.reduce((acc, t) => `${acc}.add(${q(t.p)}.scale(${num(t.factor)}))`, 'point(0, 0)')
+      // `a + b - c`, with unit factors left out: the first term starts the chain.
+      const term = (t: { factor: number; p: IrPoint }, first: boolean) => {
+        const f = Math.abs(t.factor)
+        const scaled = f === 1 ? q(t.p) : `${q(t.p)}.scale(${num(f)})`
+        if (first) return t.factor < 0 ? `${scaled}.neg()` : scaled
+        return `.${t.factor < 0 ? 'sub' : 'add'}(${scaled})`
+      }
+      return p.terms.map((t, i) => term(t, i === 0)).join('')
     }
     case 'perp':
       used.add('point')
       return `point(${q(p.a)}.x, ${q(p.b)}.y)`
+  }
+}
+
+function printShape(sh: IrShape, used: Set<string>): string {
+  switch (sh.kind) {
+    case 'rect':
+      used.add('rect')
+      return `rect(${num(sh.x)}, ${num(sh.y)}, ${num(sh.width)}, ${num(sh.height)})`
+    case 'circle':
+      used.add('circle')
+      return `circle(${printPoint(sh.center, used)}, ${num(sh.radius)})`
+    case 'path':
+      used.add('path')
+      return `path()${sh.ops.map((op) => (op.op === 'close' ? '.close()' : `.${op.op}(${printPoint((op as { to: IrPoint }).to, used)})`)).join('')}`
   }
 }
 

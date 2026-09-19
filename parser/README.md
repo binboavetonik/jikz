@@ -67,7 +67,7 @@ every §14 coordinate form incl. calc), `ast.ts`, `keys.ts` (TikZ keys
 the `dsl`/`file` gap policy), `ir.ts`, `interpret.ts`, `emit.ts`,
 `dsl.ts` (`tikz(pic)`), `precheck.ts` (file mode only).
 
-## Status: M3
+## Status: M4
 
 The statement parser is ours and complete for the plan's §4 grammar:
 all path operations, the coordinate forms (cartesian with units,
@@ -94,12 +94,20 @@ label`/`every edge` — expanded inline when used, scoped to the scope
 that set them, and kept per picture across template calls. Unknown
 keys throw with the nearest known key as a hint.
 
+The DSL surface: `tikz(pic)` binds a template to a picture or scope;
+each call returns the names it registered. `tikzPicture` builds a
+whole picture from an environment (its options apply) or a bare body.
+`\clip` (rectangle, circle, polygon) clips the rest of the body it is
+in — for a template call, the rest of that call. `+(…)` works wherever
+the pen's position is known without drawing (not after an arc), and
+`plot coordinates {…}` is a polyline (`-- plot` joins it).
+
 Arrow tips lower to `pic.edge()` on a single-segment path and on
 `edge` items; the pen has no tips yet. Not lowered yet, by name:
-`+(…)`, `plot`, `\clip`, `pic`, decorations, `/.code` handlers,
-pgfmath expressions (by design — the DSL has `${}`). Scope `scale`
-is a group transform in jikz, so it scales strokes too, where TikZ
-scales coordinates only.
+`plot[smooth]`/function plots, `pic`, decorations, `/.code` handlers,
+`\clip` with options, pgfmath expressions (by design — the DSL has
+`${}`). Scope `scale` is a group transform in jikz, so it scales
+strokes too, where TikZ scales coordinates only.
 
 `parser/corpus/*.tex` is the fidelity suite: the oracle runs every
 statement through both back ends, and `conformance.test.ts` diffs the

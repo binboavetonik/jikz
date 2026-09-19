@@ -78,16 +78,14 @@ describe('the file mode keeps unsupported statements as comments', () => {
     const result = convert(tex, { from: 'jikz' })
     expect(result.refused).toBeUndefined()
     const kinds = result.ir!.map((i) => i.kind)
-    expect(kinds.filter((k) => k === 'pen')).toHaveLength(4)
+    expect(kinds.filter((k) => k === 'pen')).toHaveLength(6)
     expect(kinds.filter((k) => k === 'edge')).toHaveLength(1)
     expect(result.diagnostics.map((d) => d.reason)).toMatchInlineSnapshot(`
       [
         "\\usetikzlibrary is not supported",
-        ""plot" is not supported yet",
         ""2*\\x" is an expression — TikZ would evaluate it with pgfmath, which is not supported; write the value",
         "3D coordinate (1,2,3) is not supported",
         "\\pic is not supported",
-        "+(dx,dy) (a relative coordinate that does not move the pen) is not supported yet — use ++(dx,dy)",
         "environment "pgfonlayer" is not supported",
       ]
     `)
