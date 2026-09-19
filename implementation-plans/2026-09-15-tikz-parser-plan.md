@@ -176,15 +176,25 @@ the escape hatch and is documented as one.
   Arrow tips on a single-segment path lower to `pic.edge()` (the pen
   has no tips). Found and fixed in core: `Pen.coordinate` mapped its
   point through the frame twice in a math-frame picture.
-- **M3 — the key registry, over the new API.** The §4 key list, now
-  mapping to the typed options one to one: colours through `color()`,
-  lengths through `length()`, `->`/`{Stealth[…]}` through the tip
-  specs, `bend`/`out`/`in`/`loop`, `minimum size`/`inner sep`/`outer
-  sep`/`anchor`/`rotate`, `right=of`, `label=`/`pin=`, `text width`/
-  `align`, `midway`/`pos`/`sloped`, `opacity`, `double`, `pattern`,
-  `rounded corners`, `path fading`, `shorten`, `scale`/`shift`/`rotate`
-  on scopes, `every node/.style`. `\tikzset` becomes `picture({
-  styles })`. Unknown keys throw with the known list.
+- **M3 — done (2026-09-19).** The key registry over the new API,
+  one to one: colours through `color()`, lengths through `length()`,
+  `->`/`{Stealth[…]}`/`arrows=`/`>=` through the tip specs, `bend`/
+  `out`/`in`/`loop`, the node geometry and placement keys incl.
+  `right=of` with `node distance`, `label=`/`pin=`/quotes with `label
+  distance`, `text width`/`align`, `midway`/`pos`, `opacity`,
+  `double`/`double distance`, `pattern`/`pattern color`, `rounded
+  corners`, `path fading`, `shorten`, `dash pattern`, `even odd
+  rule`, `help lines`, shading (`\shade`, `top color` … `ball color`,
+  `shading angle` → `gradient`), `shift`/`rotate`/`scale` on scopes,
+  `xshift`/`yshift` and `above=<len>` on nodes. `\tikzset` is TikZ's:
+  `/.style` with `#1`, `/.append style`, `\tikzstyle`, and `every
+  node`/`path`/`label`/`edge`, expanded inline when used and scoped
+  like TikZ scopes them (a `TikzState` per picture for the DSL).
+  `\begin{tikzpicture}[opts]` lowers as a scope. `edge` items lower
+  to `pic.edge()` from the coordinate before them, with `loop`.
+  Unknown keys throw with the nearest known key. Not `picture({
+  styles })`: expansion needs no jikz feature and reads like TikZ in
+  the ejected code.
 - **M4 — the DSL surface.** `tikz(pic)` and `tikzPicture`, `${}`
   slots, `\begin{scope}`, `\foreach` with `/`-tuples and `...`
   ranges, `interpret()` onto a caller's container, the error policy

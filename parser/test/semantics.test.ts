@@ -89,3 +89,84 @@ describe('what the statements mean', () => {
     expect(pic.resolve('d3').x).toBeCloseTo(3 * U)
   })
 })
+
+describe('styles and scope state (M3)', () => {
+  it('expands /.style with #1, /.append style, and \\tikzstyle', () => {
+    const pic = run(String.raw`\tikzset{box/.style={draw, minimum size=1cm}, tint/.style={fill=#1!20}}
+\tikzset{box/.append style={inner sep=0pt}}
+\tikzstyle{old}=[circle]
+\node[box, tint=blue] (a) at (0,0) {a};
+\node[old] (b) at (3,0) {b};`)
+    const svg = pic.toSVG({ width: 400, height: 400 })
+    expect(svg).toContain('#ccccff') // blue!20 as the fill
+    expect(pic.resolve('a.east').x - pic.resolve('a.west').x).toBeCloseTo(U) // minimum size, inner sep 0
+    // `old` is a circle: the border is equally far in every direction.
+    const b = pic.resolve('b')
+    expect(pic.resolve('b.north').distanceTo(b)).toBeCloseTo(pic.resolve('b.east').distanceTo(b))
+  })
+
+  it('applies every node before the node\'s own options, per scope', () => {
+    const pic = run(String.raw`\tikzset{every node/.style={minimum size=2cm}}
+\node[draw] (a) at (0,0) {a};
+\begin{scope}[every node/.style={minimum size=1cm}]
+  \node[draw] (b) at (5,0) {b};
+  \node[draw, minimum size=3cm] (c) at (10,0) {c};
+\end{scope}
+\node[draw] (d) at (15,0) {d};`)
+    const width = (n: string) => pic.resolve(`${n}.east`).x - pic.resolve(`${n}.west`).x
+    expect(width('a')).toBeCloseTo(2 * U)
+    expect(width('b')).toBeCloseTo(U)
+    expect(width('c')).toBeCloseTo(3 * U)
+    expect(width('d')).toBeCloseTo(2 * U)
+  })
+
+  it('>= sets what -> means, and node distance what right=of means', () => {
+    const pic = run(String.raw`\tikzset{>=stealth, node distance=3cm}
+\node[draw, minimum size=1cm] (a) at (0,0) {a};
+\node[draw, minimum size=1cm, right=of a] (b) {b};
+\draw[->] (a) -- (b);`)
+    expect(pic.resolve('b.west').x - pic.resolve('a.east').x).toBeCloseTo(3 * U)
+    const svg = pic.toSVG({ width: 400, height: 400 })
+    expect(svg).toMatch(/marker/)
+    const plain = run(String.raw`\node[draw, minimum size=1cm] (a) at (0,0) {a};
+\node[draw, minimum size=1cm, right=of a] (b) {b};
+\draw[->] (a) -- (b);`).toSVG({ width: 400, height: 400 })
+    expect(plain).not.toBe(svg)
+  })
+
+  it('lowers edge items from the coordinate before them, with loops', () => {
+    const pic = run(String.raw`\node[draw, circle] (p) at (0,0) {p};
+\node[draw, circle] (q) at (3,0) {q};
+\path[->] (p) edge[bend left] node[above] {x} (q) edge[loop above] (p);`)
+    const svg = pic.toSVG({ width: 400, height: 400 })
+    expect(svg).toContain('>x<')
+    expect((svg.match(/<path/g) ?? []).length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('shifts a placed node by xshift/yshift and above=<length>', () => {
+    const pic = run(String.raw`\node[xshift=1cm, yshift=-2cm] (a) at (0,0) {a};
+\node[above=1cm, anchor=south] (b) at (0,0) {b};`)
+    expect(pic.resolve('a').x).toBeCloseTo(U)
+    expect(pic.resolve('a').y).toBeCloseTo(2 * U)
+    expect(pic.resolve('b.south').y).toBeCloseTo(-U)
+  })
+
+  it('shades with a gradient and fills with a pattern', () => {
+    const svg = run(String.raw`\shade[left color=red, right color=blue] (0,0) rectangle (1,1);
+\draw[pattern=dots, pattern color=blue] (2,0) rectangle (3,1);`).toSVG({ width: 400, height: 400 })
+    expect(svg).toContain('linearGradient')
+    expect(svg).toContain('jikz-pattern')
+  })
+
+  it('names the nearest known key on a typo', () => {
+    expect(() => run(String.raw`\node[minimum sze=1cm] at (0,0) {x};`)).toThrow(/did you mean "minimum size"/)
+  })
+
+  it('keeps styles across template calls on one picture', () => {
+    const pic = picture({ shapes: allShapes, frame: 'math', unit: U })
+    const t = tikz(pic)
+    t`\tikzset{big/.style={minimum size=2cm}}`
+    t`\node[draw, big] (a) at (0,0) {a};`
+    expect(pic.resolve('a.east').x - pic.resolve('a.west').x).toBeCloseTo(2 * U)
+  })
+})

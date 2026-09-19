@@ -1,0 +1,22 @@
+% Styles: \tikzset, /.style with #1, /.append style, every node, \tikzstyle, scope-local state.
+\tikzset{box/.style={draw, rectangle, minimum size=1cm}}
+\tikzset{tinted/.style={fill=#1!20, draw=#1}}
+\tikzset{box/.append style={thick}}
+\tikzstyle{old}=[circle, draw=gray]
+\node[box] (a) at (0,0) {a};
+\node[box, tinted=blue] (b) at (2,0) {b};
+\node[old] (c) at (4,0) {c};
+\tikzset{every node/.style={font=\small}}
+\node[box] (d) at (6,0) {d};
+\tikzset{>=stealth, node distance=2cm}
+\draw[->] (a) -- (b);
+\node[box, right=of d] (e) {e};
+\begin{scope}[every node/.style={draw, circle}, red]
+  \node (f) at (0,2) {f};
+  \draw (f) -- (a);
+\end{scope}
+\node (g) at (2,2) {g};
+\begin{scope}[box/.style={draw, dashed}]
+  \node[box] (h) at (4,2) {h};
+\end{scope}
+\node[box] (i) at (6,2) {i};

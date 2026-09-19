@@ -67,23 +67,39 @@ every §14 coordinate form incl. calc), `ast.ts`, `keys.ts` (TikZ keys
 the `dsl`/`file` gap policy), `ir.ts`, `interpret.ts`, `emit.ts`,
 `dsl.ts` (`tikz(pic)`), `precheck.ts` (file mode only).
 
-## Status: M2
+## Status: M3
 
 The statement parser is ours and complete for the plan's §4 grammar:
 all path operations, the coordinate forms (cartesian with units,
 polar, named with anchors, `|-`/`-|`, `++`, calc `($…$)`), inline
-`node`/`coordinate`, scopes, `\foreach` (lists, `...` ranges with a
-step, `/`-tuples, `count=`). Statements it cannot parse keep their
-source and name the construct.
+`node`/`coordinate`/`edge`, scopes, `\foreach` (lists, `...` ranges
+with a step, `/`-tuples, `count=`). Statements it cannot parse keep
+their source and name the construct.
 
-Lowering covers the core key set (paint, thickness, dashes, opacity,
-arrows incl. `{Stealth[…]}`, `bend`/`out`/`in`, node geometry and
-placement incl. `right=of`, `label=`, quotes, `pos`/`midway`, scope
-`shift`/`rotate`/`scale`). Arrow tips lower to `pic.edge()` on a
-single-segment path; the pen has no tips yet. Not lowered yet, by
-name: `+(…)`, `edge`, `plot`, `\shade`, `\clip`, `\tikzset`
-styles (M3), `pic`, decorations, pgfmath expressions (by design — the
-DSL has `${}`).
+The key registry (`keys.ts`) maps the §4 key list one to one onto the
+typed options: paint (colours through `color()`, lengths through
+`length()`, thickness, dashes incl. `dash pattern`, opacity, caps and
+joins, `rounded corners`, `double`, `even odd rule`, `help lines`),
+arrows (`->`, `<->`, `-stealth`, `{Stealth[…]}`, `arrows=`, `>=`),
+routing (`bend`, `out`/`in`, `looseness`, `loop`), nodes (shapes,
+sizes, seps, `text width`/`align`, `anchor`, `rotate`, `font`,
+`text=`, `xshift`/`yshift`, `above=2pt`, `right=of`, `label=`, `pin=`,
+the quotes syntax, `pos`/`midway`), shading (`\shade`, `top color` …
+`ball color`, `shading angle`), `pattern=`, `path fading`, and scope
+keys (`shift`/`rotate`/`scale`, `node distance`, `>=`).
+
+Styles are TikZ's: `\tikzset{name/.style={…}}` (with `#1`),
+`/.append style`, `\tikzstyle`, and `every node`/`every path`/`every
+label`/`every edge` — expanded inline when used, scoped to the scope
+that set them, and kept per picture across template calls. Unknown
+keys throw with the nearest known key as a hint.
+
+Arrow tips lower to `pic.edge()` on a single-segment path and on
+`edge` items; the pen has no tips yet. Not lowered yet, by name:
+`+(…)`, `plot`, `\clip`, `pic`, decorations, `/.code` handlers,
+pgfmath expressions (by design — the DSL has `${}`). Scope `scale`
+is a group transform in jikz, so it scales strokes too, where TikZ
+scales coordinates only.
 
 `parser/corpus/*.tex` is the fidelity suite: the oracle runs every
 statement through both back ends, and `conformance.test.ts` diffs the

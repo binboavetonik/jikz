@@ -19,7 +19,7 @@
  */
 import { JikzError, type Point } from 'jikz'
 import { interpret, type TikzHost } from './interpret'
-import { lower } from './lower'
+import { createState, lower, type TikzState } from './lower'
 import { parseStatements } from './parse'
 import { ScanError } from './scan'
 
@@ -31,15 +31,22 @@ export interface TikzTemplate {
   source(text: string): void
 }
 
-const counters = new WeakMap<object, number>()
+/** Per-host state: anonymous-node numbering and TikZ styles, across template calls. */
+const hosts = new WeakMap<object, { counter: number; state: TikzState }>()
+
+function stateOf(host: TikzHost): { counter: number; state: TikzState } {
+  let s = hosts.get(host)
+  if (!s) {
+    s = { counter: 0, state: createState() }
+    hosts.set(host, s)
+  }
+  return s
+}
 
 /** Bind the template to a picture or scope. */
 export function tikz(host: TikzHost): TikzTemplate {
-  const names = () => {
-    const n = (counters.get(host) ?? 0) + 1
-    counters.set(host, n)
-    return `tikz-${n}`
-  }
+  const own = stateOf(host)
+  const names = () => `tikz-${++own.counter}`
   const run = (text: string) => {
     let statements
     try {
@@ -48,7 +55,7 @@ export function tikz(host: TikzHost): TikzTemplate {
       if (e instanceof ScanError) throw new JikzError('unsupported', `tikz: line ${e.at.line}:${e.at.column}: ${e.message}`)
       throw e
     }
-    const ir = lower(statements, { mode: 'dsl', unit: host.frame.unit, names })
+    const ir = lower(statements, { mode: 'dsl', unit: host.frame.unit, names, state: own.state })
     interpret(ir, host)
   }
   const template = ((strings: TemplateStringsArray, ...values: readonly TikzValue[]) => {

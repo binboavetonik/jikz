@@ -1,0 +1,28 @@
+% The rest of the key list: pins, distances, shifts, shading, patterns, dashes, edges.
+\node[draw, pin=above:$p$] (a) at (0,0) {a};
+\node[draw, pin={[pin edge={red, thick}]30:$q$}, label={[label distance=4pt]below:$l$}] (b) at (3,0) {b};
+\node[draw, label distance=2pt, label=right:$r$] (c) at (6,0) {c};
+\node[draw, xshift=5pt, yshift=-1cm] (d) at (0,2) {d};
+\node[draw, above=2pt] (e) at (3,2) {e};
+\node[draw, text centered, text width=1.5cm, font=\bfseries\large, text=blue] (f) at (6,2) {f g h i};
+\shade (0,4) rectangle (1,5);
+\shade[top color=red, bottom color=blue] (2,4) rectangle (3,5);
+\shade[left color=red, right color=blue, middle color=white] (4,4) rectangle (5,5);
+\shade[inner color=white, outer color=gray] (6,4) circle (0.5);
+\shade[ball color=blue] (8,4) circle (0.5);
+\shadedraw[top color=white, bottom color=black, draw=red] (0,6) rectangle (1,7);
+\draw[pattern=north east lines, pattern color=blue] (2,6) rectangle (3,7);
+\draw[fill=red, path fading=east] (4,6) rectangle (5,7);
+\draw[dash pattern=on 2pt off 1pt on 4pt off 2pt, dash phase=1pt] (0,8) -- (2,8);
+\draw[double distance=2pt, double=yellow] (3,8) -- (5,8);
+\draw[help lines] (0,9) grid (2,10);
+\draw[even odd rule, fill=gray] (3,9) rectangle (5,10) (3.5,9.5) rectangle (4.5,10);
+\draw[line cap=rect, line join=bevel, miter limit=5] (6,9) -- (7,10) -- (8,9);
+\draw[arrows=<->] (0,11) -- (2,11);
+\draw[->>, >=latex] (3,11) -- (5,11);
+\draw[-{Stealth[length=4pt, width=3pt, open]}] (6,11) -- (8,11);
+\node[draw, circle] (p) at (0,13) {p};
+\node[draw, circle] (q) at (3,13) {q};
+\path[->] (p) edge[bend left] node[above] {x} (q) edge[loop above] node {y} (p);
+\draw (q) edge[->, red] (p);
+\draw[->, shorten >=2pt, shorten <=2pt] (p) to[out=-30, in=-150] (q);

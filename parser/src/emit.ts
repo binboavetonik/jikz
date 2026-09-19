@@ -29,6 +29,7 @@ export function emit(items: readonly IrItem[], options: EmitOptions = {}): strin
   emitItems(items, 'pic', '  ', body, used)
 
   const needsRef = body.some((l) => l.includes('ref('))
+  if (body.some((l) => l.includes('fillPatterns['))) used.add('fillPatterns')
   const imports = [...used].filter((n) => n !== 'ref').sort()
   const lines: string[] = [
     `import { ${imports.join(', ')} } from '${from}'`,
@@ -192,6 +193,7 @@ export function printValue(v: IrValue, indent: string): string {
   if (typeof v === 'number') return num(v)
   if (typeof v === 'boolean') return String(v)
   if (Array.isArray(v)) return `[${v.map((x) => printValue(x, indent)).join(', ')}]`
+  if ('$pattern' in v) return `fillPatterns[${str((v as { $pattern: string }).$pattern)}]`
   const fields = printFields(v as { readonly [k: string]: IrValue | undefined }, indent)
   return fields.length === 0 ? '{}' : `{ ${fields} }`
 }

@@ -28,8 +28,12 @@ export type IrPoint =
   /** `(A |- B)`: x of `a`, y of `b`. */
   | { readonly kind: 'perp'; readonly a: IrPoint; readonly b: IrPoint }
 
-/** Plain data — what an options object literal can hold. Never a point. */
-export type IrValue = string | number | boolean | readonly IrValue[] | IrRecord
+/**
+ * Plain data — what an options object literal can hold. Never a point.
+ * `{ $pattern }` names a `fillPatterns` entry, the one option value
+ * that is an object from the library rather than data.
+ */
+export type IrValue = string | number | boolean | readonly IrValue[] | IrRecord | { readonly $pattern: string }
 export interface IrRecord {
   readonly [key: string]: IrValue | undefined
 }

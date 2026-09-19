@@ -10,12 +10,18 @@
  * statement it cannot lower (the template is a jikz feature and a gap
  * is a bug), `file` turns it into a `skipped` item (decision 2 — the
  * eject path keeps the file compiling and names the gap).
+ *
+ * Styles are TikZ's: `name/.style={…}` records the options and using
+ * `name` inlines them, `#1` replaced by the value; `every node` and
+ * friends are styles the lowering applies by itself. That state is a
+ * {@link TikzState}, scoped like TikZ scopes it and, for the DSL, kept
+ * per picture across template calls.
  */
 import { JikzError, cm, length, pt } from 'jikz'
 import type { CalcExpr, Coordinate, Length, Option, PathItem, PictureAst, RelativeKind, Statement } from './ast'
 import type { IrItem, IrOp, IrPoint, IrRecord, IrValue } from './ir'
-import { KeyError, mapOptions, type MappedOptions } from './keys'
-import { parseStatements } from './parse'
+import { KeyError, mapOptions, opposite, type KeyContext, type MappedOptions } from './keys'
+import { parseOptionList, parseStatements } from './parse'
 
 export interface LowerOptions {
   /** `dsl` throws on a gap; `file` (default) records it as `skipped`. */
@@ -24,6 +30,22 @@ export interface LowerOptions {
   unit?: number
   /** Names for anonymous nodes. Default: `tikz-1`, `tikz-2`, … per call. */
   names?: () => string
+  /** Styles and defaults carried over from earlier statements (the DSL keeps one per picture). */
+  state?: TikzState
+}
+
+/** What `\tikzset` and scope options change: styles, `>=`, `node distance`. */
+export interface TikzState {
+  /** `name` → the option text of `name/.style={…}`. */
+  styles: Map<string, string>
+  /** What `>` stands for in `->`. */
+  tip?: string
+  /** `node distance`, px. TikZ's default is 1cm. */
+  nodeDistancePx: number
+}
+
+export function createState(): TikzState {
+  return { styles: new Map(), nodeDistancePx: cm(1) }
 }
 
 class Unsupported extends Error {
@@ -34,20 +56,32 @@ class Unsupported extends Error {
 }
 
 export function lower(ast: PictureAst | readonly Statement[], options: LowerOptions = {}): IrItem[] {
-  const statements = Array.isArray(ast) ? (ast as readonly Statement[]) : (ast as PictureAst).body
   let counter = 0
   const ctx: Ctx = {
     mode: options.mode ?? 'file',
     unit: options.unit ?? cm(1),
     names: options.names ?? (() => `tikz-${++counter}`),
+    state: options.state ?? createState(),
   }
-  return lowerStatements(statements, ctx)
+  if (Array.isArray(ast)) return lowerStatements(ast as readonly Statement[], ctx)
+  const picture = ast as PictureAst
+  if (picture.options.length === 0) return lowerStatements(picture.body, ctx)
+  // `\begin{tikzpicture}[opts]` is a scope around the body, as in TikZ.
+  const scope: Statement = {
+    kind: 'scope',
+    options: picture.options,
+    body: picture.body,
+    source: `\\begin{tikzpicture}[${picture.options.map((o) => (o.value === undefined ? o.key : `${o.key}=${o.value}`)).join(', ')}]`,
+    at: { line: 1, column: 1 },
+  }
+  return lowerStatements([scope], ctx)
 }
 
 interface Ctx {
   readonly mode: 'dsl' | 'file'
   readonly unit: number
   readonly names: () => string
+  readonly state: TikzState
 }
 
 function lowerStatements(statements: readonly Statement[], ctx: Ctx): IrItem[] {
@@ -74,22 +108,90 @@ function lowerStatement(stmt: Statement, ctx: Ctx): IrItem[] {
     case 'unsupported':
       throw new Unsupported(stmt.reason)
     case 'tikzset':
-      throw new Unsupported('\\tikzset is not supported yet (styles land in M3)')
+      applySet(stmt.options, ctx)
+      return []
     case 'scope':
       return [lowerScope(stmt, ctx)]
     case 'foreach':
       return lowerStatements(expandForeach(stmt), ctx)
     case 'path':
-      return [lowerPath(stmt, ctx)]
+      return lowerPath(stmt, ctx)
   }
+}
+
+// ─── styles ─────────────────────────────────────────────────────────
+
+const HANDLER = /^(.+?)\/\.(style|append style|code|initial|default|style 2 args|style n args|get|add|prefix style)$/
+
+/**
+ * Inline styles, as TikZ does when a key is used: a defined name is
+ * replaced by its options (with `#1` substituted), recursively; a
+ * `name/.style={…}` declaration records itself and produces nothing.
+ */
+function expand(options: readonly Option[], ctx: Ctx, depth = 0): Option[] {
+  if (depth > 32) throw new Unsupported('style expansion does not terminate')
+  const out: Option[] = []
+  for (const o of options) {
+    const handler = HANDLER.exec(o.key)
+    if (handler) {
+      const [, name, what] = handler
+      if (what === 'style') ctx.state.styles.set(name!, o.value ?? '')
+      else if (what === 'append style') ctx.state.styles.set(name!, [ctx.state.styles.get(name!), o.value ?? ''].filter(Boolean).join(', '))
+      else throw new Unsupported(`"${o.key}": only /.style and /.append style are supported`)
+      continue
+    }
+    const style = ctx.state.styles.get(o.key)
+    if (style !== undefined && !o.quoted) {
+      const text = style.replace(/#1/g, o.value ?? '')
+      out.push(...expand(parseOptionList(text), ctx, depth + 1))
+      continue
+    }
+    out.push(o)
+  }
+  return out
+}
+
+/** The options of an `every …` style, if defined. */
+function every(name: string, ctx: Ctx): Option[] {
+  const style = ctx.state.styles.get(`every ${name}`)
+  return style === undefined ? [] : expand(parseOptionList(style), ctx)
+}
+
+/** `\tikzset{…}` outside any path: declarations and scope state. */
+function applySet(options: readonly Option[], ctx: Ctx): void {
+  const rest = expand(options, ctx)
+  if (rest.length === 0) return
+  const mapped = mapOptions(rest, 'scope', env(ctx))
+  requireKnown(mapped, 'scope')
+  applyState(mapped, ctx)
+  if (mapped.style.length || mapped.transform || mapped.shiftPx || mapped.arrowEnd !== undefined) {
+    throw new Unsupported(`\\tikzset{${rest[0]!.key}}: only style definitions, >= and node distance are supported here — put paint on the statements or a scope`)
+  }
+}
+
+function applyState(mapped: MappedOptions, ctx: Ctx): void {
+  if (mapped.tip !== undefined) ctx.state.tip = mapped.tip
+  if (mapped.nodeDistancePx !== undefined) ctx.state.nodeDistancePx = mapped.nodeDistancePx
+}
+
+function env(ctx: Ctx): { tip?: string } {
+  return ctx.state.tip !== undefined ? { tip: ctx.state.tip } : {}
+}
+
+/** Map with styles expanded and the `every` defaults in front. */
+function mapped(options: readonly Option[], context: KeyContext, ctx: Ctx, everyName?: string): MappedOptions {
+  const defaults = everyName ? every(everyName, ctx) : []
+  const m = mapOptions([...defaults, ...expand(options, ctx)], context, env(ctx))
+  requireKnown(m, context)
+  return m
 }
 
 // ─── helpers ────────────────────────────────────────────────────────
 
-function requireKnown(mapped: MappedOptions, where: string): void {
-  if (mapped.unknown.length === 0) return
-  const o: Option = mapped.unknown[0]!
-  throw new Unsupported(`unknown ${where} key "${o.key}${o.value !== undefined ? '=' + o.value : ''}"`)
+function requireKnown(m: MappedOptions, where: string): void {
+  if (m.unknown.length === 0) return
+  const o = m.unknown[0]!
+  throw new Unsupported(`unknown ${where} key "${o.key}${o.value !== undefined ? '=' + o.value : ''}"${o.hint ? ` — ${o.hint}` : ''}`)
 }
 
 /** A TikZ length in frame units. */
@@ -103,10 +205,6 @@ function units(l: Length, ctx: Ctx): number {
 function round(n: number): number {
   const r = Math.round(n * 1e9) / 1e9
   return Object.is(r, -0) ? 0 : r
-}
-
-function styleValue(mapped: MappedOptions): IrValue[] {
-  return mapped.style
 }
 
 // ─── points ─────────────────────────────────────────────────────────
@@ -163,56 +261,91 @@ function lowerCalc(e: CalcExpr, ctx: Ctx): IrPoint {
   }
 }
 
+/** `p` moved by a px vector, in frame terms. */
+function shifted(p: IrPoint, shiftPx: { dx: number; dy: number }, ctx: Ctx): IrPoint {
+  if (p.kind === 'rel') throw new Unsupported('xshift/yshift on a relative coordinate')
+  const d = { kind: 'xy' as const, x: round(shiftPx.dx / ctx.unit), y: round(shiftPx.dy / ctx.unit) }
+  if (p.kind === 'xy') return { kind: 'xy', x: round(p.x + d.x), y: round(p.y + d.y) }
+  return { kind: 'sum', terms: [{ factor: 1, p }, { factor: 1, p: d }] }
+}
+
 // ─── nodes ──────────────────────────────────────────────────────────
 
 type NodeItem = Extract<PathItem, { kind: 'node' }>
 
+function styleOf(m: MappedOptions): IrValue[] {
+  const style: IrValue[] = [...m.style]
+  if (m.gradient) style.push({ gradient: m.gradient })
+  return style
+}
+
 /** The `pic.node()` option bag for a node item. */
-function nodeOptions(item: NodeItem, ctx: Ctx, onPath: boolean): { name: string; options: IrRecord; mapped: MappedOptions } {
-  const mapped = mapOptions(item.options, 'node')
-  requireKnown(mapped, 'node')
-  if (mapped.arrowStart !== undefined || mapped.arrowEnd !== undefined) throw new Unsupported('arrow tips on a node')
-  if (Object.keys(mapped.to).length) throw new Unsupported(`"${Object.keys(mapped.to)[0]}" on a node`)
-  const name = item.name ?? mapped.name ?? ctx.names()
+function nodeOptions(item: NodeItem, ctx: Ctx, onPath: boolean): { name: string; options: Record<string, IrValue | undefined>; mapped: MappedOptions } {
+  const m = mapped(item.options, 'node', ctx, 'node')
+  if (m.arrowStart !== undefined || m.arrowEnd !== undefined) throw new Unsupported('arrow tips on a node')
+  if (Object.keys(m.to).length || m.loop !== undefined) throw new Unsupported(`"${Object.keys(m.to)[0] ?? 'loop'}" on a node`)
+  const name = item.name ?? m.name ?? ctx.names()
   // A TikZ node paints nothing unless told to: no border, no fill.
-  const style: IrValue[] = [{ stroke: 'none', fill: 'none' }, ...styleValue(mapped)]
+  const style: IrValue[] = [{ stroke: 'none', fill: 'none' }, ...styleOf(m)]
+  const labels = m.labels.map((l) => withEvery(l, 'label', ctx))
+  const pins = m.pins.map((l) => withEvery(l, 'pin', ctx))
+  const node = { ...m.node }
+  if (typeof node.rightOf === 'string' || typeof node.leftOf === 'string' || typeof node.above === 'string' || typeof node.below === 'string' || typeof node.aboveLeft === 'string' || typeof node.aboveRight === 'string' || typeof node.belowLeft === 'string' || typeof node.belowRight === 'string') {
+    if (node.distance === undefined) node.distance = ctx.state.nodeDistancePx
+  }
   const options: Record<string, IrValue | undefined> = {
     text: item.text,
-    ...mapped.node,
+    ...node,
     style,
-    ...(Object.keys(mapped.textStyle).length ? { textStyle: mapped.textStyle } : {}),
-    ...(mapped.labels.length ? { labels: mapped.labels } : {}),
+    ...(Object.keys(m.textStyle).length ? { textStyle: m.textStyle } : {}),
+    ...(labels.length ? { labels } : {}),
+    ...(pins.length ? { pins } : {}),
   }
   if (onPath) {
-    if (mapped.pos !== undefined) options.pos = mapped.pos
-    if (mapped.sloped) throw new Unsupported('sloped on a path node is not supported yet')
-  } else if (mapped.pos !== undefined || mapped.sloped) {
+    if (m.pos !== undefined) options.pos = m.pos
+    if (m.sloped) throw new Unsupported('sloped on a path node is not supported yet')
+    if (m.shiftPx) throw new Unsupported('xshift/yshift on a path node is not supported yet')
+  } else if (m.pos !== undefined || m.sloped) {
     throw new Unsupported('pos/sloped on a node that is not on a path')
   }
-  void ctx
-  return { name, options, mapped }
+  return { name, options, mapped: m }
+}
+
+/** `every label` / `every pin` text style folded under a label's own. */
+function withEvery(label: IrRecord, kind: 'label' | 'pin', ctx: Ctx): IrRecord {
+  const defaults = every(kind, ctx)
+  if (defaults.length === 0) return label
+  const m = mapOptions(defaults, 'label', env(ctx))
+  requireKnown(m, 'label')
+  const style = { ...m.textStyle, ...(label.style as IrRecord | undefined) }
+  return { ...label, ...(Object.keys(style).length ? { style } : {}) }
 }
 
 // ─── path statements ────────────────────────────────────────────────
 
 type PathStmt = Extract<Statement, { kind: 'path' }>
+type CoordItem = Extract<PathItem, { kind: 'coord' }>
+type EdgeItem = Extract<PathItem, { kind: 'edge' }>
 
-function lowerPath(stmt: PathStmt, ctx: Ctx): IrItem {
-  const supportedVerb = stmt.verb === 'draw' || stmt.verb === 'fill' || stmt.verb === 'filldraw' || stmt.verb === 'path'
-  if (!supportedVerb) throw new Unsupported(`\\${stmt.verb} is not supported yet`)
-  const mode = stmt.verb
-  const mapped = mapOptions(stmt.options, 'path')
-  requireKnown(mapped, 'path')
+function lowerPath(stmt: PathStmt, ctx: Ctx): IrItem[] {
+  const verb = stmt.verb
+  if (verb === 'clip' || verb === 'pattern' || verb === 'useasboundingbox') throw new Unsupported(`\\${verb} is not supported yet`)
+  const mode = verb === 'shade' ? 'fill' : verb === 'shadedraw' ? 'filldraw' : verb
+  const m = mapped(stmt.options, 'path', ctx, 'path')
   const items = stmt.items
 
   // `\node …;` / `\coordinate …;` — a path whose only item is the node.
   if (items.length === 1 && items[0]!.kind === 'node') {
-    if (stmt.verb !== 'path') throw new Unsupported(`\\${stmt.verb} with only a node`)
+    if (verb !== 'path') throw new Unsupported(`\\${verb} with only a node`)
     const item = items[0]!
-    const { name, options } = nodeOptions(item, ctx, false)
-    const at = item.at ? lowerPoint(item.at, ctx) : undefined
+    const { name, options, mapped: nm } = nodeOptions(item, ctx, false)
+    let at = item.at ? lowerPoint(item.at, ctx) : undefined
     if (at?.kind === 'rel') throw new Unsupported('a node at a relative coordinate')
-    return { kind: 'node', source: stmt.source, name, ...(at ? { at } : {}), options }
+    if (nm.shiftPx) {
+      if (!at) throw new Unsupported('xshift/yshift on a placed node (right=of …) is not supported yet')
+      at = shifted(at, nm.shiftPx, ctx)
+    }
+    return [{ kind: 'node', source: stmt.source, name, ...(at ? { at } : {}), options }]
   }
   if (items.length === 1 && items[0]!.kind === 'coordinate') {
     const item = items[0]!
@@ -220,26 +353,32 @@ function lowerPath(stmt: PathStmt, ctx: Ctx): IrItem {
     if (item.options.length) throw new Unsupported('options on \\coordinate')
     const at = lowerPoint(item.at, ctx)
     if (at.kind === 'rel') throw new Unsupported('a coordinate at a relative position')
-    return { kind: 'coordinate', source: stmt.source, name: item.name, at }
+    return [{ kind: 'coordinate', source: stmt.source, name: item.name, at }]
   }
 
-  if (mapped.arrowStart !== undefined || mapped.arrowEnd !== undefined) {
-    return lowerEdge(stmt, mapped, ctx)
+  const hasEdges = items.some((i) => i.kind === 'edge')
+  if ((m.arrowStart !== undefined || m.arrowEnd !== undefined) && !hasEdges) {
+    return [lowerArrowPath(stmt, m, ctx)]
   }
-  if (Object.keys(mapped.to).length) throw new Unsupported(`"${Object.keys(mapped.to)[0]}" belongs on to[…]`)
+  if (Object.keys(m.to).length || m.loop !== undefined) throw new Unsupported(`"${Object.keys(m.to)[0] ?? 'loop'}" belongs on to[…] or edge[…]`)
+  if (verb === 'shade' || verb === 'shadedraw') {
+    if (!m.gradient) m.gradient = { type: 'linear', angle: 90, stops: [{ offset: 0, color: '#ffffff' }, { offset: 1, color: '#808080' }] }
+  }
 
   const penOptions: Record<string, IrValue | undefined> = {
     ...(mode !== 'draw' ? { mode } : {}),
-    ...(mapped.style.length ? { style: styleValue(mapped) } : {}),
-    ...(mapped.shortenStart !== undefined ? { shortenStart: mapped.shortenStart } : {}),
-    ...(mapped.shortenEnd !== undefined ? { shortenEnd: mapped.shortenEnd } : {}),
+    ...(m.style.length || m.gradient ? { style: styleOf(m) } : {}),
+    ...(m.shortenStart !== undefined ? { shortenStart: m.shortenStart } : {}),
+    ...(m.shortenEnd !== undefined ? { shortenEnd: m.shortenEnd } : {}),
   }
-  if (mapped.labels.length) throw new Unsupported('a quoted label on a path (use node{…})')
+  if (m.labels.length) throw new Unsupported('a quoted label on a path (use node{…})')
 
   const ops: IrOp[] = []
+  const edges: IrItem[] = []
   let pending: PathItem | undefined
   let pendingNodes: NodeItem[] = []
   let hasPen = false
+  let lastCoord: IrPoint | undefined
 
   const flushNodes = () => {
     for (const n of pendingNodes) {
@@ -264,6 +403,7 @@ function lowerPath(stmt: PathStmt, ctx: Ctx): IrItem {
           flushNodes()
         }
         hasPen = true
+        lastCoord = to.kind === 'rel' ? undefined : to
         break
       }
       case 'op':
@@ -290,6 +430,7 @@ function lowerPath(stmt: PathStmt, ctx: Ctx): IrItem {
       case 'arc':
         requirePen('arc')
         ops.push({ op: 'arc', options: arcOptions(item, ctx) })
+        lastCoord = undefined
         break
       case 'circle':
       case 'ellipse': {
@@ -320,21 +461,27 @@ function lowerPath(stmt: PathStmt, ctx: Ctx): IrItem {
         ops.push({ op: 'coordinate', name: item.name })
         break
       case 'options': {
-        const m = mapOptions(item.options, 'path')
-        requireKnown(m, 'path')
-        if (m.arrowStart !== undefined || m.arrowEnd !== undefined) throw new Unsupported('arrow tips mid-path')
-        ops.push({ op: 'push', options: { ...(m.style.length ? { style: styleValue(m) } : {}) } })
+        const o = mapped(item.options, 'path', ctx)
+        if (o.arrowStart !== undefined || o.arrowEnd !== undefined) throw new Unsupported('arrow tips mid-path')
+        ops.push({ op: 'push', options: { ...(o.style.length ? { style: styleOf(o) } : {}) } })
         break
       }
-      case 'edge':
-        throw new Unsupported('"edge" on a path is not supported yet — use \\draw[->] (a) -- (b)')
+      case 'edge': {
+        requirePen('edge')
+        if (pending !== undefined) throw new Unsupported('"edge" right after a path operation')
+        if (lastCoord === undefined) throw new Unsupported('"edge" needs a plain coordinate before it (not a relative one or an arc)')
+        edges.push(lowerEdgeItem(item, lastCoord, stmt, m, ctx))
+        break
+      }
       case 'plot':
         throw new Unsupported('"plot" is not supported yet')
     }
   }
   if (pending !== undefined) throw new Unsupported(`path ends after "${pending.kind === 'op' ? pending.op : pending.kind}"`)
   if (pendingNodes.length) flushNodes()
-  return { kind: 'pen', source: stmt.source, options: penOptions, ops }
+  // `\draw (a) edge (b);` — a path of bare moves paints nothing; skip the empty pen.
+  const paintsNothing = ops.every((op) => op.op === 'moveTo')
+  return [...(paintsNothing ? [] : [{ kind: 'pen' as const, source: stmt.source, options: penOptions, ops }]), ...edges]
 }
 
 function segment(pending: PathItem, to: IrPoint, ctx: Ctx): IrOp {
@@ -348,10 +495,9 @@ function segment(pending: PathItem, to: IrPoint, ctx: Ctx): IrOp {
       return { op: 'curveTo', c1, c2, to }
     }
     case 'to': {
-      const m = mapOptions(pending.options, 'to')
-      requireKnown(m, 'to')
-      if (m.style.length || m.arrowEnd !== undefined || m.arrowStart !== undefined) {
-        throw new Unsupported('style or arrow keys on to[…] inside a path')
+      const m = mapped(pending.options, 'to', ctx, 'to')
+      if (m.style.length || m.arrowEnd !== undefined || m.arrowStart !== undefined || m.loop !== undefined) {
+        throw new Unsupported('style, arrow or loop keys on to[…] inside a path')
       }
       return { op: 'to', to, options: m.to }
     }
@@ -366,8 +512,6 @@ function segment(pending: PathItem, to: IrPoint, ctx: Ctx): IrOp {
         if ((o.key === 'step' || o.key === 'xstep' || o.key === 'ystep') && o.value !== undefined) {
           options[o.key] = lengthUnits(o.value, ctx)
         } else if (o.key === 'help lines' && o.value === undefined) {
-          // TikZ `help lines` = thin, gray — a style on the whole path in
-          // TikZ too; the pen has no per-op style, so it is not modelled.
           throw new Unsupported('grid[help lines] — put "help lines" on the \\draw instead')
         } else throw new Unsupported(`unknown grid key "${o.key}"`)
       }
@@ -451,13 +595,51 @@ function radiiOptions(item: Extract<PathItem, { kind: 'circle' | 'ellipse' }>, c
   return o
 }
 
+// ─── edges ──────────────────────────────────────────────────────────
+
+/** A path node as an edge label. */
+function edgeLabel(item: NodeItem, defaultPos: number, ctx: Ctx): IrRecord {
+  const { options, mapped: nm } = nodeOptions(item, ctx, true)
+  const anchor = nm.node.anchor
+  return {
+    text: item.text,
+    pos: nm.pos ?? defaultPos,
+    ...(anchor !== undefined ? { at: opposite(String(anchor)) } : {}),
+    ...(options.textStyle !== undefined ? { style: options.textStyle } : {}),
+    ...(nm.sloped ? { sloped: true } : {}),
+  }
+}
+
+/** `pic.edge()` options from the path's paint, the routing and the labels. */
+function edgeOptions(paint: MappedOptions, routing: MappedOptions | undefined, labels: IrRecord[]): Record<string, IrValue | undefined> {
+  const r = routing?.to ?? {}
+  const bend = r.bend ?? paint.to.bend
+  const loop = routing?.loop ?? paint.loop
+  const style = [...styleOf(paint), ...(routing ? styleOf(routing) : [])]
+  const arrowStart = routing?.arrowStart ?? paint.arrowStart
+  const arrowEnd = routing?.arrowEnd ?? paint.arrowEnd
+  return {
+    ...(arrowStart !== undefined ? { arrowStart } : {}),
+    ...(arrowEnd !== undefined ? { arrowEnd } : {}),
+    ...(loop !== undefined ? { loop } : {}),
+    ...(bend !== undefined ? { bendAngle: bend as number } : {}),
+    ...(r.out !== undefined ? { out: r.out } : {}),
+    ...(r.in !== undefined ? { in: r.in } : {}),
+    ...(r.looseness !== undefined ? { looseness: r.looseness } : {}),
+    ...(paint.shortenStart !== undefined ? { shortenStart: paint.shortenStart } : {}),
+    ...(paint.shortenEnd !== undefined ? { shortenEnd: paint.shortenEnd } : {}),
+    ...(style.length ? { style } : {}),
+    ...(labels.length ? { labels } : {}),
+  }
+}
+
 /**
  * `\draw[->] (a) -- (b)` and `\draw[->] (a) to[bend left] (b)` — the
  * pen has no arrow tips, so a one-segment path with tips is an edge,
  * which has them. Path nodes become the edge's labels.
  */
-function lowerEdge(stmt: PathStmt, mapped: MappedOptions, ctx: Ctx): IrItem {
-  const coords = stmt.items.filter((i) => i.kind === 'coord')
+function lowerArrowPath(stmt: PathStmt, m: MappedOptions, ctx: Ctx): IrItem {
+  const coords = stmt.items.filter((i): i is CoordItem => i.kind === 'coord')
   const ops = stmt.items.filter((i) => i.kind === 'op' || i.kind === 'to')
   const others = stmt.items.filter((i) => i.kind !== 'coord' && i.kind !== 'op' && i.kind !== 'to' && i.kind !== 'node')
   if (coords.length !== 2 || ops.length !== 1 || others.length !== 0 || stmt.items[0]!.kind !== 'coord') {
@@ -465,73 +647,54 @@ function lowerEdge(stmt: PathStmt, mapped: MappedOptions, ctx: Ctx): IrItem {
   }
   const op = ops[0]!
   if (op.kind === 'op' && op.op !== '--') throw new Unsupported(`arrow tips on ${op.op}`)
-  const from = lowerPoint((coords[0] as Extract<PathItem, { kind: 'coord' }>).coord, ctx)
-  const to = lowerPoint((coords[1] as Extract<PathItem, { kind: 'coord' }>).coord, ctx)
+  const from = lowerPoint(coords[0]!.coord, ctx)
+  const to = lowerPoint(coords[1]!.coord, ctx)
   if (from.kind === 'rel' || to.kind === 'rel') throw new Unsupported('relative coordinates on an edge')
 
-  const routing = op.kind === 'to' ? mapOptions(op.options, 'to') : undefined
-  if (routing) requireKnown(routing, 'to')
-  const bend = routing?.to.bend ?? mapped.to.bend
-  const labels: IrRecord[] = []
+  const routing = op.kind === 'to' ? mapped(op.options, 'to', ctx, 'to') : undefined
   const secondCoord = stmt.items.indexOf(coords[1]!)
-  stmt.items.forEach((item, i) => {
-    if (item.kind !== 'node') return
-    const { options, mapped: nm } = nodeOptions(item, ctx, true)
-    const anchor = nm.node.anchor
-    labels.push({
-      text: item.text,
-      pos: nm.pos ?? (i < secondCoord ? 0.5 : 1),
-      ...(anchor !== undefined ? { at: oppositeAnchor(String(anchor)) } : {}),
-      ...(options.textStyle !== undefined ? { style: options.textStyle } : {}),
-      ...(nm.sloped ? { sloped: true } : {}),
-    })
-  })
-  const options: Record<string, IrValue | undefined> = {
-    ...(mapped.arrowStart !== undefined ? { arrowStart: mapped.arrowStart } : {}),
-    ...(mapped.arrowEnd !== undefined ? { arrowEnd: mapped.arrowEnd } : {}),
-    ...(bend !== undefined ? { bendAngle: bend as number } : {}),
-    ...(routing?.to.out !== undefined ? { out: routing.to.out } : {}),
-    ...(routing?.to.in !== undefined ? { in: routing.to.in } : {}),
-    ...(routing?.to.looseness !== undefined ? { looseness: routing.to.looseness } : {}),
-    ...(mapped.shortenStart !== undefined ? { shortenStart: mapped.shortenStart } : {}),
-    ...(mapped.shortenEnd !== undefined ? { shortenEnd: mapped.shortenEnd } : {}),
-    ...(mapped.style.length ? { style: styleValue(mapped) } : {}),
-    ...(labels.length ? { labels } : {}),
-  }
-  return { kind: 'edge', source: stmt.source, from, to, options }
+  const labels = stmt.items.flatMap((item, i) => (item.kind === 'node' ? [edgeLabel(item, i < secondCoord ? 0.5 : 1, ctx)] : []))
+  return { kind: 'edge', source: stmt.source, from, to, options: edgeOptions(m, routing, labels) }
 }
 
-function oppositeAnchor(anchor: string): string {
-  const table: Record<string, string> = {
-    south: 'north',
-    north: 'south',
-    east: 'west',
-    west: 'east',
-    'south east': 'north west',
-    'south west': 'north east',
-    'north east': 'south west',
-    'north west': 'south east',
-  }
-  return table[anchor] ?? anchor
+/** `(a) edge[opts] node{…} (b)` — an edge from the coordinate before it. */
+function lowerEdgeItem(item: EdgeItem, from: IrPoint, stmt: PathStmt, paint: MappedOptions, ctx: Ctx): IrItem {
+  const to = lowerPoint(item.target, ctx)
+  if (to.kind === 'rel') throw new Unsupported('a relative coordinate as an edge target')
+  const routing = mapped(item.options, 'edge', ctx, 'edge')
+  const labels = item.nodes.flatMap((n) => (n.kind === 'node' ? [edgeLabel(n, 0.5, ctx)] : []))
+  const source = `${stmt.source.split('\n')[0]}`
+  return { kind: 'edge', source, from, to, options: edgeOptions(paint, routing, labels) }
 }
 
 // ─── scopes ─────────────────────────────────────────────────────────
 
 function lowerScope(stmt: Extract<Statement, { kind: 'scope' }>, ctx: Ctx): IrItem {
-  const mapped = mapOptions(stmt.options, 'scope')
-  requireKnown(mapped, 'scope')
-  if (mapped.arrowStart !== undefined || mapped.arrowEnd !== undefined) throw new Unsupported('arrow tips on a scope are not supported yet')
+  // A scope's state is its own: styles and defaults set inside stay inside.
+  const inner: Ctx = { ...ctx, state: { ...ctx.state, styles: new Map(ctx.state.styles) } }
+  const m = mapped(stmt.options, 'scope', inner)
+  applyState(m, inner)
+  if (m.arrowStart !== undefined || m.arrowEnd !== undefined) throw new Unsupported('arrow tips on a scope are not supported yet')
+  if (m.labels.length || m.pins.length) throw new Unsupported('labels on a scope')
   const options: Record<string, IrValue | undefined> = {
-    ...(mapped.style.length ? { style: styleValue(mapped) } : {}),
+    ...(m.style.length || m.gradient ? { style: styleOf(m) } : {}),
   }
-  const transform = mapped.transform
+  const t = m.transform
+  const shift = t?.shift || m.shiftPx
     ? {
-        ...(mapped.transform.shift ? { shift: mapped.transform.shift } : {}),
-        ...(mapped.transform.rotate !== undefined ? { rotate: mapped.transform.rotate } : {}),
-        ...(mapped.transform.scale !== undefined ? { scale: mapped.transform.scale } : {}),
+        dx: round((t?.shift?.dx ?? 0) + (m.shiftPx?.dx ?? 0) / ctx.unit),
+        dy: round((t?.shift?.dy ?? 0) + (m.shiftPx?.dy ?? 0) / ctx.unit),
       }
     : undefined
-  const body = lowerStatements(stmt.body, ctx)
+  const transform =
+    shift || t?.rotate !== undefined || t?.scale !== undefined
+      ? {
+          ...(shift ? { shift } : {}),
+          ...(t?.rotate !== undefined ? { rotate: t.rotate } : {}),
+          ...(t?.scale !== undefined ? { scale: t.scale } : {}),
+        }
+      : undefined
+  const body = lowerStatements(stmt.body, inner)
   return { kind: 'scope', source: stmt.source.split('\n')[0]!, options, ...(transform ? { transform } : {}), body }
 }
 

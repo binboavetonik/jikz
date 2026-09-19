@@ -9,6 +9,7 @@
 import {
   Point,
   Transform,
+  fillPatterns,
   point,
   rel,
   type Frame,
@@ -19,7 +20,7 @@ import {
   type PointLike,
   type ScopeOptions,
 } from 'jikz'
-import type { IrItem, IrOp, IrPoint, IrRecord, IrTransform } from './ir'
+import type { IrItem, IrOp, IrPoint, IrRecord, IrTransform, IrValue } from './ir'
 
 /**
  * What the interpreter needs of a picture or scope — the verbs of
@@ -43,16 +44,16 @@ export function interpret(items: readonly IrItem[], host: TikzHost): void {
       case 'skipped':
         break
       case 'pen':
-        runPen(host.pen(item.options as never), item.ops, host)
+        runPen(host.pen(live(item.options) as never), item.ops, host)
         break
       case 'node':
-        host.node(item.name, { ...item.options, ...(item.at ? { at: resolve(item.at, host) } : {}) })
+        host.node(item.name, { ...live(item.options), ...(item.at ? { at: resolve(item.at, host) } : {}) })
         break
       case 'coordinate':
         host.coordinate(item.name, resolve(item.at, host))
         break
       case 'edge':
-        host.edge(endpoint(item.from, host), endpoint(item.to, host), item.options as never)
+        host.edge(endpoint(item.from, host), endpoint(item.to, host), live(item.options) as never)
         break
       case 'scope':
         host.scope(scopeOptions(item.options, item.transform, host), (s) => interpret(item.body, s))
@@ -98,16 +99,30 @@ function runPen(pen: Pen, ops: readonly IrOp[], host: TikzHost): void {
         pen.close()
         break
       case 'node':
-        pen.node(op.name, op.options as never)
+        pen.node(op.name, live(op.options) as never)
         break
       case 'coordinate':
         pen.coordinate(op.name)
         break
       case 'push':
-        pen.push(op.options as never)
+        pen.push(live(op.options) as never)
         break
     }
   }
+}
+
+/** IR data → the option object: `{ $pattern }` becomes the library's pattern. */
+export function live(v: IrRecord): Record<string, unknown> {
+  return liveValue(v) as Record<string, unknown>
+}
+
+function liveValue(v: IrValue | undefined): unknown {
+  if (v === undefined || typeof v !== 'object') return v
+  if (Array.isArray(v)) return v.map((x) => liveValue(x as IrValue))
+  if ('$pattern' in v) return fillPatterns[(v as { $pattern: string }).$pattern as keyof typeof fillPatterns]
+  const out: Record<string, unknown> = {}
+  for (const [k, x] of Object.entries(v as IrRecord)) if (x !== undefined) out[k] = liveValue(x)
+  return out
 }
 
 /** A pen target: names and `rel()` pass through; recipes evaluate. */
@@ -147,7 +162,7 @@ export function resolve(p: IrPoint, host: TikzHost): Point {
 }
 
 export function scopeOptions(options: IrRecord, transform: IrTransform | undefined, host: TikzHost): ScopeOptions {
-  return { ...(options as ScopeOptions), ...(transform ? { transform: scopeTransform(transform, host) } : {}) }
+  return { ...(live(options) as ScopeOptions), ...(transform ? { transform: scopeTransform(transform, host) } : {}) }
 }
 
 /**

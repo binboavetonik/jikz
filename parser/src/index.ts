@@ -10,7 +10,7 @@
  */
 import { precheck } from './precheck'
 import { parse } from './parse'
-import { lower, type LowerOptions } from './lower'
+import { lower, createState, type LowerOptions } from './lower'
 import { emit, type EmitOptions } from './emit'
 import { interpret } from './interpret'
 import type { PrecheckRefusal } from './precheck'
@@ -20,8 +20,9 @@ export { tikz } from './dsl'
 export type { TikzTemplate, TikzValue } from './dsl'
 export { precheck, parse, lower, emit, interpret }
 export { parseStatements, parseOptionList } from './parse'
-export { mapOptions } from './keys'
-export type { LowerOptions } from './lower'
+export { mapOptions, KNOWN_KEYS } from './keys'
+export { createState }
+export type { LowerOptions, TikzState } from './lower'
 export type { EmitOptions } from './emit'
 export type { TikzHost } from './interpret'
 export type * from './ast'
