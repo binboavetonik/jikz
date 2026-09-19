@@ -107,6 +107,7 @@ t`\node[box, tint=blue] (a) at (0,0) {a};`
 | `\begin{scope}[…]` | `host.scope({ style, transform }, s => …)` |
 | `\clip` | a scope with `clip: frame.renderable(shape)` around the rest of the body |
 | `\foreach` | expanded at lowering: lists, `...` ranges with a step, `/`-tuples, `count=` |
+| `\node {r} child {node {a}} …` | nodes at TikZ's own positions (`level distance`, `sibling distance`, `grow`, `level <n>`, `missing`) plus `host.edge(parent, child)` per `edge from parent`; anonymous children are `r-1`, `r-2`, … |
 | `($(A)!0.5!(B)$)` and friends | `Point` methods on resolved names |
 
 Anonymous nodes are named `tikz-1`, `tikz-2`, … per picture.
@@ -129,7 +130,7 @@ picture.
 
 ## Not lowered, by name
 
-`pic`, `let`, `plot` with `smooth` or a function, decorations,
+`pic`, `let`, `child foreach`, `plot` with `smooth` or a function, decorations,
 `/.code` handlers, `sloped` on path nodes, `->` on a path with more
 than one segment, `\clip` with options, `transform shape`, and
 pgfmath expressions. In a file (`convert`, the migration path) each

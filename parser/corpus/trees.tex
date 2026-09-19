@@ -1,0 +1,18 @@
+% Trees: child {…}, level styles, edge from parent, missing, grow.
+\node[draw] (r) at (0,0) {root}
+  child {node[draw] {a}}
+  child {node[draw] (b) {b}
+    child {node {b1}}
+    child[missing] {}
+    child {node {b3} edge from parent[red, thick] node[right] {x}}
+  }
+  child {node[draw, circle] {c} edge from parent[->]};
+\begin{scope}[level distance=1cm, sibling distance=2cm, every child node/.style={draw, circle}]
+  \node (s) at (6,0) {s} child {node {1}} child {node {2}};
+\end{scope}
+\tikzset{level 1/.style={sibling distance=3cm}, level 2/.style={sibling distance=1cm}, edge from parent/.style={draw, blue}}
+\node (t) at (0,-4) {t}
+  child {node {u} child {node {u1}} child {node {u2}}}
+  child {node {v} child {node {v1}} child {node {v2}}};
+\node[grow=right] (g) at (6,-4) {g} child {node {g1}} child {node {g2}};
+\node[grow'=right] (h) at (9,-4) {h} child {node {h1}} child {node {h2}};

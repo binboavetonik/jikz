@@ -108,6 +108,12 @@ for (or a whole module with `shape: 'module'`), TikZ lengths as
 corpus file ejects to; those files are typechecked with the parser,
 so the ejected code is proven to compile against the typed API.
 
+Trees (`child {…}`) lower to nodes at TikZ's own positions — the
+placement rule of `tikz.code.tex`, with `level distance`, `sibling
+distance`, `grow`/`grow'`, `level <n>` styles, `every child (node)`,
+`missing`, and an edge per `edge from parent` — not to jikz's packing
+`tree()` builder, so the picture is TikZ's picture.
+
 Arrow tips lower to `pic.edge()` on a single-segment path and on
 `edge` items; the pen has no tips yet. Not lowered yet, by name:
 `plot[smooth]`/function plots, `pic`, decorations, `/.code` handlers,

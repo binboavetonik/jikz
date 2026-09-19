@@ -43,10 +43,17 @@ export interface TikzState {
   tip?: string
   /** `node distance`. TikZ's default is 1cm. */
   nodeDistance: IrValue
+  /** Tree placement: `level distance`, `sibling distance` (15mm each), `grow` (down). */
+  tree: { levelDistance: IrValue; siblingDistance: IrValue; grow: number; swap: boolean }
 }
 
 export function createState(): TikzState {
-  return { styles: new Map(), nodeDistance: { $len: '1cm' } }
+  return {
+    // TikZ: `\tikzset{edge from parent/.style={draw}}`
+    styles: new Map([['edge from parent', 'draw']]),
+    nodeDistance: { $len: '1cm' },
+    tree: { levelDistance: { $len: '15mm' }, siblingDistance: { $len: '15mm' }, grow: -90, swap: false },
+  }
 }
 
 class Unsupported extends Error {
@@ -181,6 +188,16 @@ function applySet(options: readonly Option[], ctx: Ctx): void {
 function applyState(mapped: MappedOptions, ctx: Ctx): void {
   if (mapped.tip !== undefined) ctx.state.tip = mapped.tip
   if (mapped.nodeDistance !== undefined) ctx.state.nodeDistance = mapped.nodeDistance
+  if (mapped.tree) ctx.state.tree = treeState(ctx.state.tree, mapped.tree)
+}
+
+function treeState(base: TikzState['tree'], t: NonNullable<MappedOptions['tree']>): TikzState['tree'] {
+  return {
+    levelDistance: t.levelDistance ?? base.levelDistance,
+    siblingDistance: t.siblingDistance ?? base.siblingDistance,
+    grow: t.grow ?? base.grow,
+    swap: t.grow !== undefined ? (t.swap ?? false) : base.swap,
+  }
 }
 
 function env(ctx: Ctx, paint?: KeyEnv['paint']): KeyEnv {
@@ -431,6 +448,9 @@ function lowerPath(stmt: PathStmt, ctx: Ctx): IrItem[] {
     return [{ kind: 'coordinate', source: stmt.source, name: item.name, at }]
   }
 
+  if (items.some((i) => i.kind === 'child')) return lowerTree(stmt, m, ctx)
+  if (items.some((i) => i.kind === 'edgeFromParent')) throw new Unsupported('"edge from parent" outside a child')
+
   const hasEdges = items.some((i) => i.kind === 'edge')
   if ((m.arrowStart !== undefined || m.arrowEnd !== undefined) && !hasEdges) {
     return [lowerArrowPath(stmt, m, ctx)]
@@ -500,6 +520,9 @@ function lowerPath(stmt: PathStmt, ctx: Ctx): IrItem[] {
         place(target(item.coord))
         break
       }
+      case 'child':
+      case 'edgeFromParent':
+        throw new Unsupported(`"${item.kind}" here`)
       case 'plot': {
         const points = plotPoints(item, ctx)
         if (pending !== undefined && (pending.kind !== 'op' || pending.op !== '--')) throw new Unsupported(`plot after ${pending.kind}`)
@@ -773,6 +796,105 @@ function lowerEdgeItem(item: EdgeItem, from: IrPoint, stmt: PathStmt, paint: Map
   return { kind: 'edge', source, from, to, options: edgeOptions(paint, routing, labels) }
 }
 
+// ─── trees ──────────────────────────────────────────────────────────
+
+type ChildItem = Extract<PathItem, { kind: 'child' }>
+
+/**
+ * `\node {r} child {node {a}} child {node {b} child {…}};` — TikZ's
+ * own placement (tikz.code.tex, `\tikz@grow@direction`): a child sits
+ * at the parent plus `level distance` along the growth angle, plus
+ * `(i - (n+1)/2) × sibling distance` along the growth angle + 90°.
+ * Distances come from the state at each level (`level <n>` styles
+ * apply first), anonymous children are named `parent-i`, and each
+ * child's edge is `pic.edge(parent, child)` with `edge from parent`.
+ */
+function lowerTree(stmt: PathStmt, m: MappedOptions, ctx: Ctx): IrItem[] {
+  const items = stmt.items
+  const rootItem = items[0]
+  if (!rootItem || rootItem.kind !== 'node' || items.slice(1).some((i) => i.kind !== 'child')) {
+    throw new Unsupported('a tree is a node followed by child {…} items only')
+  }
+  if (m.style.length || m.arrowEnd !== undefined) throw new Unsupported('paint on the tree statement — put it on the nodes or on "edge from parent"')
+  const { name, options, mapped: nm } = nodeOptions(rootItem, ctx, false)
+  let at: IrPoint = rootItem.at ? lowerPoint(rootItem.at, ctx) : { kind: 'xy', x: 0, y: 0 }
+  if (at.kind === 'rel') throw new Unsupported('a tree root at a relative coordinate')
+  if (nm.shiftPx) at = shifted(at, nm.shiftPx, ctx)
+  const out: IrItem[] = [{ kind: 'node', source: stmt.source.split('\n')[0]!, name, at, options }]
+  const children = items.slice(1) as ChildItem[]
+  // Tree keys may sit on the statement or on the root node itself.
+  const tree = treeState(treeState(ctx.state.tree, m.tree ?? {}), nm.tree ?? {})
+  out.push(...lowerChildren(children, name, at, 1, { ...ctx, state: { ...ctx.state, tree } }))
+  return out
+}
+
+function lowerChildren(children: readonly ChildItem[], parent: string, parentAt: IrPoint, level: number, ctx: Ctx): IrItem[] {
+  const out: IrItem[] = []
+  const n = children.length
+  children.forEach((child, index) => {
+    const i = index + 1
+    // Level state: `level <n>` and `every child` may set the distances or growth.
+    const levelOptions = [...every('child', ctx), ...expand(parseOptionList(ctx.state.styles.get(`level ${level}`) ?? ''), ctx), ...expand(child.options, ctx)]
+    const cm = mapOptions(levelOptions, 'path', env(ctx))
+    requireKnown(cm, 'child')
+    const tree = treeState(ctx.state.tree, cm.tree ?? {})
+    const inner: Ctx = { ...ctx, state: { ...ctx.state, tree } }
+    const ld = lengthUnits((tree.levelDistance as { $len: string }).$len, ctx)
+    const sd = lengthUnits((tree.siblingDistance as { $len: string }).$len, ctx)
+    const grow = (tree.grow * Math.PI) / 180
+    const across = ((tree.swap ? -1 : 1) * (i - (n + 1) / 2) * sd)
+    const dx = round(ld * Math.cos(grow) + across * Math.cos(grow + Math.PI / 2))
+    const dy = round(ld * Math.sin(grow) + across * Math.sin(grow + Math.PI / 2))
+    const at = plus(parentAt, { kind: 'rel', dx, dy })
+    if (cm.missing) return
+
+    const nodeItem = child.body.find((b) => b.kind === 'node')
+    const edgeItem = child.body.find((b): b is Extract<PathItem, { kind: 'edgeFromParent' }> => b.kind === 'edgeFromParent')
+    const grandchildren = child.body.filter((b): b is ChildItem => b.kind === 'child')
+    if (child.body.some((b) => b.kind !== 'node' && b.kind !== 'child' && b.kind !== 'edgeFromParent')) {
+      throw new Unsupported('a child holds a node, children and "edge from parent" only')
+    }
+    if (!nodeItem) throw new Unsupported(`child ${i} of ${parent} has no node`)
+    if (nodeItem.at) throw new Unsupported('"at" on a child node')
+
+    // The child's node: every child node, the level's paint, its own options.
+    const paint = cm.style.length || Object.keys(cm.textStyle).length ? levelOptions.filter((o) => !/^(level distance|sibling distance|grow|grow'|missing)$/.test(o.key)) : []
+    const named: NodeItem = { ...nodeItem, options: [...every('child node', ctx), ...paint, ...nodeItem.options], name: nodeItem.name ?? `${parent}-${i}` }
+    const { name, options } = nodeOptions(named, inner, false)
+    out.push({ kind: 'node', source: `child ${i} of ${parent}`, name, at, options })
+
+    // The edge from the parent: the `edge from parent` style (TikZ: `draw`), then the child's own.
+    const edgeOptions = expand([{ key: 'edge from parent' }, ...(edgeItem?.options ?? [])], inner)
+    const em = mapOptions(edgeOptions, 'edge', env(inner))
+    requireKnown(em, 'edge from parent')
+    const labels = (edgeItem?.nodes ?? []).flatMap((l) => (l.kind === 'node' ? [edgeLabel(l, 0.5, inner)] : []))
+    const style = styleOf(em).filter((e) => !(typeof e === 'object' && 'stroke' in e && e.stroke === '#000000' && Object.keys(e).length === 1))
+    out.push({
+      kind: 'edge',
+      source: `edge from parent ${parent} -- ${name}`,
+      from: { kind: 'name', ref: parent },
+      to: { kind: 'name', ref: name },
+      options: edgeOptions.length ? edgeOptionsFor(em, style, labels) : {},
+    })
+    out.push(...lowerChildren(grandchildren, name, at, level + 1, inner))
+  })
+  return out
+}
+
+function edgeOptionsFor(em: MappedOptions, style: IrValue[], labels: IrRecord[]): Record<string, IrValue | undefined> {
+  return {
+    ...(em.arrowStart !== undefined ? { arrowStart: em.arrowStart } : {}),
+    ...(em.arrowEnd !== undefined ? { arrowEnd: em.arrowEnd } : {}),
+    ...(em.to.bend !== undefined ? { bendAngle: em.to.bend as number } : {}),
+    ...(em.to.out !== undefined ? { out: em.to.out } : {}),
+    ...(em.to.in !== undefined ? { in: em.to.in } : {}),
+    ...(em.shortenStart !== undefined ? { shortenStart: em.shortenStart } : {}),
+    ...(em.shortenEnd !== undefined ? { shortenEnd: em.shortenEnd } : {}),
+    ...(style.length ? { style } : {}),
+    ...(labels.length ? { labels } : {}),
+  }
+}
+
 // ─── scopes ─────────────────────────────────────────────────────────
 
 function lowerScope(stmt: Extract<Statement, { kind: 'scope' }>, ctx: Ctx): IrItem {
@@ -780,6 +902,7 @@ function lowerScope(stmt: Extract<Statement, { kind: 'scope' }>, ctx: Ctx): IrIt
   const inner: Ctx = { ...ctx, state: { ...ctx.state, styles: new Map(ctx.state.styles) } }
   const m = mapped(stmt.options, 'scope', inner)
   applyState(m, inner)
+  if (m.missing) throw new Unsupported('"missing" on a scope')
   if (m.arrowStart !== undefined || m.arrowEnd !== undefined) throw new Unsupported('arrow tips on a scope are not supported yet')
   if (m.labels.length || m.pins.length) throw new Unsupported('labels on a scope')
   const options: Record<string, IrValue | undefined> = {

@@ -126,7 +126,7 @@ before it means "write the jikz call".
 
 | TikZ | jikz | | TikZ notation |
 |---|---|---|---|
-| `chains`, `matrix of nodes`, `trees` (`child {…}`) | `chain()`, `matrix()`, `tree()` builders; `pic.add(result)` puts them in the picture | ✅ | ❌ |
+| `chains`, `matrix of nodes`, `trees` (`child {…}`) | `chain()`, `matrix()`, `tree()` builders; `pic.add(result)` puts them in the picture | ✅ | 🟡 `child {…}` with TikZ's own placement (`level distance`, `sibling distance`, `grow`, `level <n>`, `missing`, `edge from parent`); `chains`, `matrix` ❌ |
 | graphdrawing `layered layout`, `spring layout`, `simple necklace layout` | `layered()`, `graph().force()`, `graph().circular()` | ✅ | ❌ |
 | `\graph { a -> b }` DSL | builder calls | 🟡 no string DSL | ❌ |
 | `mindmap` | — | ❌ ext roadmap | ❌ |

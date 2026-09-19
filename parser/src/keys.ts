@@ -68,6 +68,10 @@ export interface MappedOptions {
   gradient?: IrRecord
   /** `step`/`xstep`/`ystep` on the path, for its `grid` operations. */
   grid?: IrRecord
+  /** Tree keys: `level distance`, `sibling distance`, `grow`, `grow'`. */
+  tree?: { levelDistance?: IrValue; siblingDistance?: IrValue; grow?: number; swap?: boolean }
+  /** `missing` on a child. */
+  missing?: boolean
   unknown: (Option & { hint?: string })[]
 }
 
@@ -186,6 +190,7 @@ export const KNOWN_KEYS: Record<KeyContext, readonly string[]> = (() => {
     'yshift', 'node distance', 'auto', 'swap',
   ]
   const scope = ['shift', 'xshift', 'yshift', 'rotate', 'scale', 'node distance', '>', 'every node', 'every path', 'every label', 'every edge']
+  paint.push('level distance', 'sibling distance', 'grow', "grow'", 'missing')
   return {
     path: [...paint, ...routing, 'step', 'xstep', 'ystep', '>'],
     node: [...paint, ...node],
@@ -463,6 +468,26 @@ export function mapOptions(options: readonly Option[], context: KeyContext, oute
     if (key === '>' && value !== undefined) continue // read above
     if ((key === 'step' || key === 'xstep' || key === 'ystep') && value !== undefined && context === 'path') {
       out.grid = { ...out.grid, [key]: len(value) }
+      continue
+    }
+    if (key === 'level distance' && value !== undefined) {
+      out.tree = { ...out.tree, levelDistance: len(value) }
+      continue
+    }
+    if (key === 'sibling distance' && value !== undefined) {
+      out.tree = { ...out.tree, siblingDistance: len(value) }
+      continue
+    }
+    if ((key === 'grow' || key === "grow'") && value !== undefined) {
+      const named: Record<string, number> = { down: -90, up: 90, left: 180, right: 0, south: -90, north: 90, west: 180, east: 0,
+        'south west': -135, 'south east': -45, 'north west': 135, 'north east': 45 }
+      const angle = named[value.trim()] ?? Number(value)
+      if (!Number.isFinite(angle)) throw new KeyError(`${key}=${value}: expected a direction or an angle`)
+      out.tree = { ...out.tree, grow: angle, swap: key === "grow'" }
+      continue
+    }
+    if (key === 'missing' && value === undefined) {
+      out.missing = true
       continue
     }
     if (key === 'arrows' && value !== undefined) {

@@ -70,6 +70,10 @@ export type PathItem =
   | { readonly kind: 'options'; readonly options: readonly Option[] }
   /** `edge[opts] node{…} (target)` */
   | { readonly kind: 'edge'; readonly options: readonly Option[]; readonly nodes: readonly PathItem[]; readonly target: Coordinate }
+  /** `child[opts] {…}` — a tree child: its node, its own children, its `edge from parent` */
+  | { readonly kind: 'child'; readonly options: readonly Option[]; readonly body: readonly PathItem[] }
+  /** `edge from parent[opts] node{…}` inside a child */
+  | { readonly kind: 'edgeFromParent'; readonly options: readonly Option[]; readonly nodes: readonly PathItem[] }
   /** `plot[opts] …` — recorded whole; not lowered in M2 */
   | { readonly kind: 'plot'; readonly options: readonly Option[]; readonly source: string }
 

@@ -206,3 +206,48 @@ describe('a bare colour follows the verb', () => {
     expect(both).toContain('stroke="#ff0000"')
   })
 })
+
+describe('trees (post-v1)', () => {
+  const mm = (v: number) => (v / 10) * U
+
+  it('places children as TikZ does: level distance down, siblings centred', () => {
+    const pic = run(String.raw`\node (r) at (0,0) {r} child {node {a}} child {node {b}} child {node {c}};`)
+    // Anonymous children are named parent-i.
+    for (const n of ['r-1', 'r-2', 'r-3']) expect(() => pic.resolve(n)).not.toThrow()
+    expect(pic.resolve('r-2').x).toBeCloseTo(0)
+    expect(pic.resolve('r-2').y).toBeCloseTo(mm(15))
+    expect(pic.resolve('r-1').x).toBeCloseTo(-mm(15))
+    expect(pic.resolve('r-3').x).toBeCloseTo(mm(15))
+  })
+
+  it('reads level distance, sibling distance and level styles', () => {
+    const pic = run(String.raw`\tikzset{level 1/.style={sibling distance=4cm}, level 2/.style={sibling distance=1cm}}
+\node[level distance=2cm] (r) at (0,0) {r} child {node (a) {a} child {node (a1) {}} child {node (a2) {}}} child {node (b) {b}};`)
+    expect(pic.resolve('a').x).toBeCloseTo(-2 * U)
+    expect(pic.resolve('a').y).toBeCloseTo(2 * U)
+    expect(pic.resolve('a1').x).toBeCloseTo(-2.5 * U)
+    expect(pic.resolve('a1').y).toBeCloseTo(4 * U)
+  })
+
+  it('grows in any direction, and grow\' swaps the order', () => {
+    const right = run(String.raw`\node[grow=right] (r) at (0,0) {r} child {node (a) {a}} child {node (b) {b}};`)
+    expect(right.resolve('a').x).toBeCloseTo(mm(15))
+    expect(right.resolve('a').y).toBeGreaterThan(right.resolve('b').y) // a below b on screen
+    const swapped = run(String.raw`\node[grow'=right] (r) at (0,0) {r} child {node (a) {a}} child {node (b) {b}};`)
+    expect(swapped.resolve('a').y).toBeLessThan(swapped.resolve('b').y)
+  })
+
+  it('leaves a slot for a missing child and draws no edge to it', () => {
+    const pic = run(String.raw`\node (r) at (0,0) {r} child {node (a) {a}} child[missing] {} child {node (c) {c}};`)
+    expect(pic.resolve('a').x).toBeCloseTo(-mm(15))
+    expect(pic.resolve('c').x).toBeCloseTo(mm(15))
+    expect(() => pic.resolve('r-2')).toThrow()
+  })
+
+  it('styles and labels the edge from parent', () => {
+    const svg = run(String.raw`\node (r) at (0,0) {r} child {node {a} edge from parent[red, ->] node[right] {x}};`).toSVG({ width: 300, height: 300 })
+    expect(svg).toContain('stroke="#ff0000"')
+    expect(svg).toContain('marker')
+    expect(svg).toContain('>x<')
+  })
+})

@@ -231,7 +231,16 @@ the escape hatch and is documented as one.
   corpus, errors shown with line and column. The playground imports
   `parser/src` directly and the corpus files as `?raw`, so it is the
   pipeline itself, not a copy.
-- **Post-v1, in order.** Trees (`child{}`, on `tree()`), pics
+- **Post-v1: trees — done (2026-09-19).** Not on `tree()` after all:
+  jikz's builder packs subtrees by contour, TikZ places children at
+  fixed `sibling distance` centred under the parent, and the parser's
+  job is TikZ's picture. `child {…}` lowers to nodes at positions
+  computed by TikZ's own rule (`\tikz@grow@direction`) and an edge per
+  `edge from parent`, so the ejected code is plain nodes and edges.
+  `level distance`, `sibling distance`, `grow`/`grow'`, `level <n>`,
+  `every child`/`every child node`, `missing`, per-child edge paint
+  and labels; anonymous children are `parent-i` as in TikZ.
+- **Post-v1, in order.** Pics
   (`angle`, `right angle` → `ext/angles`; `\usetikzlibrary` selects
   ext shape sets and helpers), decorations keys (`snake`, `zigzag`,
   `markings`, `footprints`, `shapes` → the path decorations), then

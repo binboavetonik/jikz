@@ -304,11 +304,27 @@ function parsePathItem(s: Scanner): PathItem {
       return { kind: 'parabola', options, ...(bend ? { bend } : {}) }
     }
     case 'edge': {
+      if (s.keyword('from')) {
+        if (!s.keyword('parent')) throw s.error('expected "edge from parent"')
+        const options = optionsOpt(s)
+        const nodes: PathItem[] = []
+        while (s.keyword('node')) nodes.push(parseNodeItem(s))
+        return { kind: 'edgeFromParent', options, nodes }
+      }
       const options = optionsOpt(s)
       const nodes: PathItem[] = []
       while (s.keyword('node')) nodes.push(parseNodeItem(s))
       const target = parseCoordinate(s)
       return { kind: 'edge', options, nodes, target }
+    }
+    case 'child': {
+      const options = optionsOpt(s)
+      if (s.keyword('foreach')) throw s.error('child foreach is not supported')
+      // The child path: a node, nested children, `edge from parent` — path items with no `;`.
+      const inner = new Scanner(s.balanced('{', '}'))
+      const body: PathItem[] = []
+      while (!inner.done) body.push(parsePathItem(inner))
+      return { kind: 'child', options, body }
     }
     case 'plot': {
       const start = s.pos - word.length
