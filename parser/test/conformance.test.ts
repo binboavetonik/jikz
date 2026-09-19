@@ -56,7 +56,9 @@ const LEZER_KINDS: Record<string, Kind> = {
   TikzStyleStatement: 'tikzset',
 }
 
-function theirs(src: string): Entry[] {
+function theirs(source: string): Entry[] {
+  // lezer-tikz knows tikzpicture only; circuitikz is the same environment to us.
+  const src = source.replace(/\\(begin|end)\{circuitikz\}/g, '\\$1{tikzpicture}')
   const tree = lezer.parse(src)
   let root: SyntaxNode = tree.topNode
   // A whole file: descend into the first tikzpicture environment.

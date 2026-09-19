@@ -20,7 +20,7 @@
 import { JikzError, cm, length, pt } from 'jikz'
 import type { CalcExpr, Coordinate, Length, Option, PathItem, PictureAst, RelativeKind, Statement } from './ast'
 import type { IrItem, IrOp, IrPoint, IrRecord, IrShape, IrValue } from './ir'
-import { KeyError, mapOptions, opposite, type KeyContext, type KeyEnv, type MappedOptions } from './keys'
+import { KeyError, mapOptions, opposite, type Bipole, type KeyContext, type KeyEnv, type MappedOptions } from './keys'
 import { coordinateOf, parseOptionList, parseStatements } from './parse'
 import { Scanner } from './scan'
 
@@ -479,6 +479,8 @@ function lowerPath(stmt: PathStmt, ctx: Ctx): IrItem[] {
 
   const ops: IrOp[] = []
   const edges: IrItem[] = []
+  /** Items a bipole splits the path into, in order, before the pen that remains. */
+  const segments: IrItem[] = []
   let pending: PathItem | undefined
   let pendingNodes: NodeItem[] = []
   let hasPen = false
@@ -526,6 +528,24 @@ function lowerPath(stmt: PathStmt, ctx: Ctx): IrItem[] {
   for (const item of items) {
     switch (item.kind) {
       case 'coord': {
+        if (pending?.kind === 'to') {
+          const routing = mapped(pending.options, 'to', ctx, 'to')
+          if (routing.bipole) {
+            // circuitikz `(a) to[R] (b)`: wire → symbol → wire, and the pen resumes at b.
+            const from = penPos
+            const to = target(item.coord)
+            if (!from || from.kind === 'rel' || to.kind === 'rel') throw new Unsupported('a bipole needs absolute end points')
+            pending = undefined
+            const before = ops.filter((op) => op.op !== 'moveTo').length > 0 ? [{ kind: 'pen' as const, source: stmt.source, options: penOptions, ops: [...ops] }] : []
+            segments.push(...before, ...bipoleItems(routing.bipole, from, to, m, ctx, stmt))
+            ops.length = 0
+            ops.push({ op: 'moveTo', to })
+            hasPen = true
+            lastCoord = to
+            flushNodes()
+            break
+          }
+        }
         place(target(item.coord))
         break
       }
@@ -632,7 +652,7 @@ function lowerPath(stmt: PathStmt, ctx: Ctx): IrItem[] {
   }
   const pre = m.preaction ? [decorated(m.preaction, m)] : []
   const post = m.postaction ? [decorated(m.postaction, m)] : []
-  return [...pre, ...(paintsNothing ? [] : [pen]), ...post, ...edges]
+  return [...segments, ...pre, ...(paintsNothing ? [] : [pen]), ...post, ...edges]
 }
 
 function segment(pending: PathItem, to: IrPoint, ctx: Ctx, pathGrid?: IrRecord): IrOp {
@@ -647,6 +667,7 @@ function segment(pending: PathItem, to: IrPoint, ctx: Ctx, pathGrid?: IrRecord):
     }
     case 'to': {
       const m = mapped(pending.options, 'to', ctx, 'to')
+      if (m.bipole) throw new Unsupported('a bipole after a relative coordinate')
       if (m.style.length || m.arrowEnd !== undefined || m.arrowStart !== undefined || m.loop !== undefined) {
         throw new Unsupported('style, arrow or loop keys on to[…] inside a path')
       }
@@ -805,6 +826,7 @@ function lowerArrowPath(stmt: PathStmt, m: MappedOptions, ctx: Ctx): IrItem {
   if (from.kind === 'rel' || to.kind === 'rel') throw new Unsupported('relative coordinates on an edge')
 
   const routing = op.kind === 'to' ? mapped(op.options, 'to', ctx, 'to') : undefined
+  if (routing?.bipole) throw new Unsupported('arrow tips on a bipole segment')
   const secondCoord = stmt.items.indexOf(coords[1]!)
   const labels = stmt.items.flatMap((item, i) => (item.kind === 'node' ? [edgeLabel(item, i < secondCoord ? 0.5 : 1, ctx)] : []))
   return { kind: 'edge', source: stmt.source, from, to, options: edgeOptions(m, routing, labels) }
@@ -818,6 +840,47 @@ function lowerEdgeItem(item: EdgeItem, from: IrPoint, stmt: PathStmt, paint: Map
   const labels = item.nodes.flatMap((n) => (n.kind === 'node' ? [edgeLabel(n, 0.5, ctx)] : []))
   const source = `${stmt.source.split('\n')[0]}`
   return { kind: 'edge', source, from, to, options: edgeOptions(paint, routing, labels) }
+}
+
+// ─── circuitikz bipoles ─────────────────────────────────────────────
+
+/**
+ * `(a) to[R, l=$R_1$, *-*] (b)`: the symbol node at the midpoint,
+ * rotated along the segment, a wire from `a` to its `in` port and one
+ * from its `out` port to `b`, terminals as junction dots. `short` is
+ * a plain wire, `open` a gap.
+ */
+function bipoleItems(bp: Bipole, from: IrPoint, to: IrPoint, m: MappedOptions, ctx: Ctx, stmt: PathStmt): IrItem[] {
+  const source = stmt.source.split('\n')[0]!
+  const wireStyle = m.style.length ? { style: styleOf(m) } : {}
+  const out: IrItem[] = []
+  const wire = (a: IrPoint, b: IrPoint) => ({ kind: 'edge' as const, source, from: a, to: b, options: { ...wireStyle } })
+  if (bp.shape === 'open') {
+    // nothing between the ends
+  } else if (bp.shape === 'short') {
+    out.push(wire(from, to))
+  } else {
+    const name = bp.name ?? ctx.names()
+    const at: IrPoint = { kind: 'toward', a: from, b: to, t: 0.5 }
+    const rotate: IrValue = from.kind === 'xy' && to.kind === 'xy' ? round((Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI) : { $angle: [from, to] }
+    const options: Record<string, IrValue | undefined> = {
+      shape: { $shape: bp.shape },
+      ...(bp.shapeOptions ? { shapeOptions: bp.shapeOptions } : {}),
+      ...(rotate !== 0 ? { rotate } : {}),
+      style: [{ fill: 'none' }, ...styleOf(m)],
+      ...(bp.label ? { labels: [{ text: bp.label.text, at: bp.label.side }] } : {}),
+    }
+    out.push({ kind: 'node', source, name, at, options })
+    out.push(wire(from, { kind: 'name', ref: `${name}.in` }), wire({ kind: 'name', ref: `${name}.out` }, to))
+  }
+  const dot = (p: IrPoint, kind: 'dot' | 'circle') => {
+    const radius = round(2 / ctx.unit)
+    const fill = kind === 'dot' ? { mode: 'fill', style: [{ fill: '#000000' }] } : { mode: 'filldraw', style: [{ stroke: '#000000', fill: '#ffffff' }] }
+    out.push({ kind: 'pen', source, options: fill, ops: [{ op: 'moveTo', to: p }, { op: 'circle', options: { radius } }] })
+  }
+  if (bp.terminals?.start) dot(from, bp.terminals.start)
+  if (bp.terminals?.end) dot(to, bp.terminals.end)
+  return out
 }
 
 // ─── decorations ────────────────────────────────────────────────────

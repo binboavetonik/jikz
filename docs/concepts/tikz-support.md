@@ -147,7 +147,7 @@ before it means "write the jikz call".
 
 | TikZ | jikz | | TikZ notation |
 |---|---|---|---|
-| `circuits.ee` | `@ozan.e/jikz/circuits` — 16 symbols, typed ports, `wire()` | ✅ | ❌ |
+| `circuits.ee` | `@ozan.e/jikz/circuits` — 16 symbols, typed ports, `wire()` | ✅ | 🟡 circuitikz: `to[R\|C\|L\|D\|V\|I\|battery1\|switch\|short\|open, l=, l_=, name=, *-*]`, `\node[ground]`, `\node[op amp]`, the `circuitikz` environment; `v=`/`i=` annotations and the other bipoles ❌ |
 | `shapes.gates.logic.US/IEC` | `@ozan.e/jikz/gates` | ✅ | ❌ |
 | `petri` | `@ozan.e/jikz/petri` | ✅ | ❌ |
 | `datavisualization` | `@ozan.e/jikz/dataviz` — `chart()`, `axes()`, `legend()`, nice ticks | ✅ | ❌ refused as pgfplots-like |

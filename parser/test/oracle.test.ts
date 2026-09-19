@@ -41,7 +41,8 @@ function corpusStatements(): { name: string; tex: string }[] {
   const out: { name: string; tex: string }[] = []
   for (const file of readdirSync(CORPUS).filter((f) => f.endsWith('.tex')).sort()) {
     const text = readFileSync(join(CORPUS, file), 'utf8')
-    if (file === 'structure.tex') {
+    // A file that is an environment runs whole; the others line by line.
+    if (/^\s*(%[^\n]*\n\s*)*\\begin\{/.test(text)) {
       out.push({ name: `${file} (whole picture)`, tex: text })
       continue
     }

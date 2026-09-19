@@ -45,11 +45,12 @@ const PATH_VERBS: Record<string, PathVerb> = {
  */
 export function parse(source: string): PictureAst {
   const s = new Scanner(source)
-  const begin = source.indexOf('\\begin{tikzpicture}')
-  if (begin === -1) return { options: [], body: parseStatements(s) }
-  s.pos = begin + '\\begin{tikzpicture}'.length
+  // `circuitikz` is a tikzpicture with the circuits keys loaded.
+  const env = /\\begin\{(tikzpicture|circuitikz)\}/.exec(source)
+  if (!env) return { options: [], body: parseStatements(s) }
+  s.pos = env.index + env[0].length
   const options = optionsOpt(s)
-  const body = parseStatements(s, '\\end{tikzpicture}')
+  const body = parseStatements(s, `\\end{${env[1]}}`)
   return { options, body }
 }
 

@@ -45,12 +45,6 @@ describe('the hopeless-file pre-check', () => {
       category: 'not-yet',
       tex: String.raw`\begin{axis}[axis lines=center]`,
     },
-    {
-      name: 'circuitikz',
-      marker: 'circuitikz',
-      category: 'not-yet',
-      tex: String.raw`\begin{circuitikz}[american voltages]`,
-    },
   ]
 
   for (const { name, tex, marker, category } of cases) {
@@ -76,7 +70,7 @@ describe('the hopeless-file pre-check', () => {
   it('points a `not-yet` refusal at where the work would live', () => {
     // A refusal that reads as "never" about work that is merely
     // unbuilt is the failure this category split exists to prevent.
-    expect(precheck(String.raw`\begin{circuitikz}`)?.reason).toContain('ext/circuits')
+    expect(precheck(String.raw`\begin{circuitikz}`)).toBeUndefined()
     expect(precheck(String.raw`\begin{axis}`)?.reason).toContain('ext/dataviz')
     expect(precheck(String.raw`\tdplotsetmaincoords{0}{0}`)?.reason).toContain('projection')
   })

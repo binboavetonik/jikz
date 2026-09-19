@@ -45,12 +45,14 @@ export function emit(items: readonly IrItem[], options: EmitOptions = {}): strin
     return `${lines.join('\n').replace(/^\n/, '')}\n`
   }
   used.add('picture').add('allShapes').add('cm')
-  // The angles extension is its own subpath.
+  // The angles and circuits extensions are their own subpaths.
   const angles = ['angle', 'rightAngle'].filter((n) => used.delete(n))
+  const circuits = ['circuitShapes'].filter((n) => used.delete(n))
   const imports = [...used].filter((n) => n !== 'ref').sort()
   const lines: string[] = [
     `import { ${imports.join(', ')} } from '${from}'`,
     ...(angles.length ? [`import { ${angles.join(', ')} } from '${from}/angles'`] : []),
+    ...(circuits.length ? [`import { ${circuits.join(', ')} } from '${from}/circuits'`] : []),
     '',
     'export function build() {',
     `  const ${host} = picture({ shapes: allShapes, frame: 'math', unit: ${unit} })`,
@@ -281,6 +283,15 @@ export function printValue(v: IrValue, indent: string, used: Set<string>): strin
   if (Array.isArray(v)) return `[${v.map((x) => printValue(x, indent, used)).join(', ')}]`
   if ('$pattern' in v) return `fillPatterns[${str((v as { $pattern: string }).$pattern)}]`
   if ('$len' in v) return printLength((v as { $len: string }).$len, used)
+  if ('$shape' in v) {
+    used.add('circuitShapes')
+    const name = (v as { $shape: string }).$shape
+    return /^[a-z]+$/.test(name) ? `circuitShapes.${name}` : `circuitShapes[${str(name)}]`
+  }
+  if ('$angle' in v) {
+    const [a, b] = (v as { $angle: readonly [IrPoint, IrPoint] }).$angle
+    return `${printPoint(a, used)}.angleTo(${printPoint(b, used)})`
+  }
   const fields = printFields(v as { readonly [k: string]: IrValue | undefined }, indent, used)
   return fields.length === 0 ? '{}' : `{ ${fields} }`
 }

@@ -1,0 +1,14 @@
+% circuitikz: bipoles on to[…], node shapes, terminals, labels.
+\begin{circuitikz}
+  \draw (0,0) to[V, l=$V_1$, name=V1] (0,3) to[R, l=$R_1$, *-*] (3,3) to[C, l_=$C_1$] (3,0) -- (0,0);
+  \draw (3,3) to[short, -o] (5,3);
+  \draw (3,0) to[open] (5,0);
+  \node[ground] at (0,0) {};
+  \draw (6,1) to[L, l=$L$] (9,1) to[D] (9,4) to[battery1] (6,4) to[cspst] (6,1);
+  \draw (10,0) to[pC] (10,3) to[zD] (13,3) to[I] (13,0) to[leD, name=D2] (10,0);
+  \node[op amp] (oa) at (15,2) {};
+  \draw (oa.out) -- (17,2);
+  \draw (13,2.5) -- (oa.-);
+  \draw (13,1.5) -- (oa.+);
+  \draw[thick] (0,-2) to[R] (2,-1);
+\end{circuitikz}

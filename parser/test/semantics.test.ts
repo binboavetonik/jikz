@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { picture, allShapes, cm, type Picture } from 'jikz'
-import { tikz } from '../src/index'
+import { tikz, tikzPicture } from '../src/index'
 
 const U = cm(1)
 
@@ -315,5 +315,46 @@ describe('decorations (post-v1)', () => {
   it('refuses what it cannot decorate, by name', () => {
     expect(() => run(String.raw`\draw[decorate, decoration=snake] (0,0) circle (1);`)).toThrow(/"circle" on a decorated path/)
     expect(() => run(String.raw`\draw[decorate, decoration={markings, mark=at position 0.5 with {\node {x};}}] (0,0) -- (1,0);`)).toThrow(/only "at position/)
+  })
+})
+
+describe('circuitikz (post-v1)', () => {
+  it('places the bipole at the midpoint, rotated along the segment, wired at its ports', () => {
+    const pic = run(String.raw`\draw (0,0) to[R, name=R1] (2,0) to[C, name=C1] (2,-2);`)
+    expect(pic.resolve('R1').x).toBeCloseTo(U)
+    expect(pic.resolve('R1').y).toBeCloseTo(0)
+    expect(pic.resolve('R1.in').x).toBeLessThan(pic.resolve('R1.out').x)
+    // C1 runs downward: its `in` port is at the top.
+    expect(pic.resolve('C1').x).toBeCloseTo(2 * U)
+    expect(pic.resolve('C1.in').y).toBeLessThan(pic.resolve('C1.out').y)
+    const svg = pic.toSVG({ width: 300, height: 300 })
+    expect((svg.match(/<path/g) ?? []).length).toBeGreaterThanOrEqual(4) // wires + symbols
+  })
+
+  it('names anonymous bipoles, puts l= labels north and l_= south', () => {
+    const pic = run(String.raw`\draw (0,0) to[R, l=$R$] (2,0) to[C, l_=$C$] (4,0);`)
+    const svg = pic.toSVG({ width: 300, height: 300 })
+    expect(svg).toContain('$R$')
+    expect(svg).toContain('$C$')
+    expect(() => pic.resolve('tikz-1.in')).not.toThrow()
+  })
+
+  it('short is a wire, open a gap, and terminals are dots', () => {
+    const shorted = run(String.raw`\draw (0,0) to[short, *-o] (2,0);`).toSVG({ width: 300, height: 300 })
+    expect((shorted.match(/<circle/g) ?? []).length + (shorted.match(/<path/g) ?? []).length).toBeGreaterThanOrEqual(3)
+    const open = run(String.raw`\draw (0,0) to[open] (2,0);`).toSVG({ width: 300, height: 300 })
+    expect(open).not.toContain('<path')
+  })
+
+  it('lowers ground and op amp nodes with their ports', () => {
+    const pic = run(String.raw`\node[ground] (g) at (0,0) {}; \node[op amp] (a) at (3,0) {}; \draw (a.out) -- (5,0);`)
+    expect(pic.resolve('g.in').x).toBeCloseTo(0)
+    expect(pic.resolve('g.in').y).toBeCloseTo(0)
+    expect(pic.resolve('a.out').x).toBeGreaterThan(pic.resolve('a.-').x)
+  })
+
+  it('reads the circuitikz environment and refuses v= annotations by name', () => {
+    expect(() => tikzPicture.source(String.raw`\begin{circuitikz} \draw (0,0) to[R] (2,0); \end{circuitikz}`)).not.toThrow()
+    expect(() => run(String.raw`\draw (0,0) to[R, v=$v$] (2,0);`)).toThrow(/voltage and current annotations/)
   })
 })

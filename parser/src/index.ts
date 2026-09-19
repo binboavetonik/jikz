@@ -21,7 +21,7 @@ export type { TikzTemplate, TikzValue, TikzResult, TikzPictureOptions, ToTypeScr
 export { namesOf } from './interpret'
 export { precheck, parse, lower, emit, interpret }
 export { parseStatements, parseOptionList } from './parse'
-export { mapOptions, KNOWN_KEYS } from './keys'
+export { mapOptions, knownKeys } from './keys'
 export { createState }
 export type { LowerOptions, TikzState } from './lower'
 export type { EmitOptions } from './emit'

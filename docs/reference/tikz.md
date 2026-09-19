@@ -111,6 +111,7 @@ t`\node[box, tint=blue] (a) at (0,0) {a};`
 | `($(A)!0.5!(B)$)` and friends | `Point` methods on resolved names |
 | `\pic[draw, "$\alpha$"] {angle=A--O--B}`, `right angle` | `host.draw/fill/filldraw(angle(A, O, B, { radius, eccentricity, label }))` from `@ozan.e/jikz/angles`; the verb or the pic's `draw`/`fill` keys paint |
 | `\draw[decorate, decoration={snake, …}]`, `brace`, `markings` | the path as `Path` geometry mapped once, `decoratePath()`/`markPath()` in screen px, drawn as given through `screen()`; `pre`/`postaction` decorations paint under/over the path |
+| `(a) to[R, l=$R_1$, *-*] (b)` (circuitikz) | the symbol from `circuitShapes` at the midpoint, rotated along the segment, `host.edge()` wires to its `in`/`out` ports, junction dots for terminals; `short` is a wire, `open` a gap |
 | `\usetikzlibrary{…}` | nothing — the notation has every library's constructs it supports already |
 
 Anonymous nodes are named `tikz-1`, `tikz-2`, … per picture.
@@ -140,5 +141,4 @@ pgfmath expressions. In a file (`convert`, the migration path) each
 becomes a `// TODO(jikz-tikz): …` comment; in a template each throws.
 
 Whole files the pre-check refuses before parsing: 3D (`\tdplot…`,
-`xyz cs:`), pgfplots, circuitikz, `remember picture`/`overlay`,
-surface plots.
+`xyz cs:`), pgfplots, `remember picture`/`overlay`, surface plots.

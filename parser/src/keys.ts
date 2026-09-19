@@ -74,6 +74,8 @@ export interface MappedOptions {
   missing?: boolean
   /** Pic keys (the angles library): `angle radius`, `angle eccentricity`, `pic text`. */
   pic?: { radius?: IrValue; eccentricity?: number; text?: string }
+  /** circuitikz: `to[R, l=$R$, *-*]` — the bipole, its label, its terminals. */
+  bipole?: Bipole
   /** `decorate`, `decoration={…}`; `preaction`/`postaction` carrying a decoration. */
   decorate?: boolean
   decoration?: Decoration
@@ -181,7 +183,11 @@ const SHAPE_ALIASES: Record<string, string> = {
 }
 
 /** Every key the registry answers to, per context, for the unknown-key hint. */
-export const KNOWN_KEYS: Record<KeyContext, readonly string[]> = (() => {
+export function knownKeys(): Record<KeyContext, readonly string[]> {
+  return (known ??= buildKnownKeys())
+}
+let known: Record<KeyContext, readonly string[]> | undefined
+function buildKnownKeys(): Record<KeyContext, readonly string[]> {
   const paint = [
     'draw', 'fill', 'color', 'text', 'line width', ...Object.keys(THICKNESS), ...Object.keys(DASHES), 'dash pattern',
     'dash phase', 'opacity', 'draw opacity', 'fill opacity', 'line cap', 'line join', 'miter limit', 'rounded corners',
@@ -189,11 +195,12 @@ export const KNOWN_KEYS: Record<KeyContext, readonly string[]> = (() => {
     'pattern', 'pattern color', 'path fading', 'even odd rule', 'nonzero rule', 'help lines', 'top color', 'bottom color',
     'left color', 'right color', 'middle color', 'inner color', 'outer color', 'ball color', 'shading', 'shading angle',
   ]
-  const routing = ['bend left', 'bend right', 'out', 'in', 'looseness', 'out looseness', 'in looseness', 'loop', 'loop above', 'loop below', 'loop left', 'loop right']
+  const routing = ['bend left', 'bend right', 'out', 'in', 'looseness', 'out looseness', 'in looseness', 'loop', 'loop above', 'loop below', 'loop left', 'loop right',
+    ...Object.keys(BIPOLES), 'l', 'l_', 'l^', 'name', '*-*', '-*', '*-', 'o-o', '-o', 'o-']
   const node = [
     'name', 'shape', ...Object.keys(SHAPE_ALIASES), 'minimum size', 'minimum width', 'minimum height', 'inner sep',
     'outer sep', 'text width', 'align', 'text centered', 'text ragged', 'anchor', 'rotate', 'sloped', 'pos',
-    ...Object.keys(POS), ...Object.keys(PLACEMENT_ANCHOR), 'label', 'pin', 'label distance', 'pin distance', 'xshift',
+    ...Object.keys(POS), ...Object.keys(PLACEMENT_ANCHOR), 'label', 'pin', 'label distance', 'pin distance', 'xshift', ...Object.keys(CIRCUIT_NODES),
     'yshift', 'node distance', 'auto', 'swap',
   ]
   const scope = ['shift', 'xshift', 'yshift', 'rotate', 'scale', 'node distance', '>', 'every node', 'every path', 'every label', 'every edge']
@@ -207,7 +214,51 @@ export const KNOWN_KEYS: Record<KeyContext, readonly string[]> = (() => {
     edge: [...paint, ...routing],
     scope: [...paint, ...scope],
   }
-})()
+}
+
+export interface Bipole {
+  /** A `circuitShapes` name, or `short`/`open` for a plain wire / a gap. */
+  shape: string
+  shapeOptions?: IrRecord
+  label?: { text: string; side: 'north' | 'south' }
+  terminals?: { start?: 'dot' | 'circle'; end?: 'dot' | 'circle' }
+  name?: string
+}
+
+/** circuitikz bipole names → `circuitShapes` entries (and their variants). */
+const BIPOLES: Record<string, { shape: string; shapeOptions?: IrRecord }> = {
+  R: { shape: 'resistor' },
+  resistor: { shape: 'resistor' },
+  'european resistor': { shape: 'resistor', shapeOptions: { variant: 'iec' } },
+  C: { shape: 'capacitor' },
+  capacitor: { shape: 'capacitor' },
+  pC: { shape: 'capacitor', shapeOptions: { variant: 'polarized' } },
+  L: { shape: 'inductor' },
+  inductor: { shape: 'inductor' },
+  D: { shape: 'diode' },
+  diode: { shape: 'diode' },
+  zD: { shape: 'diode', shapeOptions: { variant: 'zener' } },
+  leD: { shape: 'diode', shapeOptions: { variant: 'led' } },
+  led: { shape: 'diode', shapeOptions: { variant: 'led' } },
+  V: { shape: 'voltage source' },
+  vsource: { shape: 'voltage source' },
+  battery: { shape: 'voltage source' },
+  battery1: { shape: 'voltage source' },
+  sV: { shape: 'voltage source' },
+  I: { shape: 'current source' },
+  isource: { shape: 'current source' },
+  switch: { shape: 'switch' },
+  ospst: { shape: 'switch' },
+  cspst: { shape: 'switch', shapeOptions: { variant: 'closed' } },
+  short: { shape: 'short' },
+  open: { shape: 'open' },
+}
+
+/** circuitikz node shapes → `circuitShapes` entries, with the anchor circuitikz places them by. */
+const CIRCUIT_NODES: Record<string, { shape: string; anchor?: string }> = {
+  ground: { shape: 'ground', anchor: 'in' },
+  'op amp': { shape: 'op amp' },
+}
 
 export interface Decoration {
   name: string
@@ -536,6 +587,30 @@ export function mapOptions(options: readonly Option[], context: KeyContext, oute
       out.tree = { ...out.tree, grow: angle, swap: key === "grow'" }
       continue
     }
+    if (context === 'to' || context === 'edge') {
+      const bp = value === undefined ? BIPOLES[key] : undefined
+      if (bp) {
+        out.bipole = { ...out.bipole, shape: bp.shape, ...(bp.shapeOptions ? { shapeOptions: bp.shapeOptions } : {}) }
+        continue
+      }
+      const term = /^([*o]?)-([*o]?)$/.exec(key)
+      if (term && value === undefined && (term[1] || term[2])) {
+        const kind = (t: string) => (t === '*' ? 'dot' : t === 'o' ? 'circle' : undefined)
+        out.bipole = { shape: 'short', ...out.bipole, terminals: { ...(kind(term[1]!) ? { start: kind(term[1]!)! } : {}), ...(kind(term[2]!) ? { end: kind(term[2]!)! } : {}) } }
+        continue
+      }
+      if ((key === 'l' || key === 'l_' || key === 'l^') && value !== undefined) {
+        out.bipole = { shape: 'short', ...out.bipole, label: { text: value, side: key === 'l_' ? 'south' : 'north' } }
+        continue
+      }
+      if (key === 'name' && value !== undefined) {
+        out.bipole = { shape: 'short', ...out.bipole, name: value }
+        continue
+      }
+      if ((key === 'v' || key === 'i' || key === 'v_' || key === 'v^' || key === 'i_' || key === 'i^') && value !== undefined) {
+        throw new KeyError(`${key}=: voltage and current annotations are not supported — add a node`)
+      }
+    }
     if (key === 'decorate' && value === undefined) {
       out.decorate = true
       continue
@@ -602,6 +677,11 @@ export function mapOptions(options: readonly Option[], context: KeyContext, oute
     if (nodeish || context === 'path') {
       if (key === 'name' && value !== undefined) {
         out.name = value
+        continue
+      }
+      const circuitNode = value === undefined ? CIRCUIT_NODES[key] : undefined
+      if (circuitNode) {
+        out.node = { ...out.node, shape: { $shape: circuitNode.shape }, ...(circuitNode.anchor ? { anchor: circuitNode.anchor } : {}) }
         continue
       }
       const shape = value === undefined ? shapeNamed(key) : key === 'shape' ? shapeNamed(value) : undefined
@@ -764,7 +844,7 @@ export function mapOptions(options: readonly Option[], context: KeyContext, oute
       }
     }
 
-    out.unknown.push({ ...o, hint: nearest(key, KNOWN_KEYS[context]) })
+    out.unknown.push({ ...o, hint: nearest(key, knownKeys()[context]) })
   }
   if (transform) out.transform = transform
   if (pattern !== undefined) {

@@ -29,6 +29,7 @@ import {
 } from 'jikz'
 import { decoratePath, markPath, screen } from 'jikz'
 import { angle, rightAngle } from 'jikz/angles'
+import { circuitShapes } from 'jikz/circuits'
 import type { IrItem, IrOp, IrPoint, IrRecord, IrShape, IrTransform, IrValue } from './ir'
 
 /**
@@ -60,7 +61,7 @@ export function interpret(items: readonly IrItem[], host: TikzHost): void {
         runPen(host.pen(live(item.options) as never), item.ops, host)
         break
       case 'node':
-        host.node(item.name, { ...live(item.options), ...(item.at ? { at: resolve(item.at, host) } : {}) })
+        host.node(item.name, { ...live(item.options, host), ...(item.at ? { at: resolve(item.at, host) } : {}) })
         break
       case 'coordinate':
         host.coordinate(item.name, resolve(item.at, host))
@@ -190,17 +191,23 @@ export function namesOf(items: readonly IrItem[]): string[] {
 }
 
 /** IR data → the option object: `{ $pattern }` becomes the library's pattern. */
-export function live(v: IrRecord): Record<string, unknown> {
-  return liveValue(v) as Record<string, unknown>
+export function live(v: IrRecord, host?: TikzHost): Record<string, unknown> {
+  return liveValue(v, host) as Record<string, unknown>
 }
 
-function liveValue(v: IrValue | undefined): unknown {
+function liveValue(v: IrValue | undefined, host?: TikzHost): unknown {
   if (v === undefined || typeof v !== 'object') return v
-  if (Array.isArray(v)) return v.map((x) => liveValue(x as IrValue))
+  if (Array.isArray(v)) return v.map((x) => liveValue(x as IrValue, host))
   if ('$pattern' in v) return fillPatterns[(v as { $pattern: string }).$pattern as keyof typeof fillPatterns]
   if ('$len' in v) return lengthPx((v as { $len: string }).$len)
+  if ('$shape' in v) return circuitShapes[(v as { $shape: string }).$shape as keyof typeof circuitShapes]
+  if ('$angle' in v) {
+    if (!host) throw new Error('$angle needs the host')
+    const [a, b] = (v as { $angle: readonly [IrPoint, IrPoint] }).$angle
+    return resolve(a, host).angleTo(resolve(b, host))
+  }
   const out: Record<string, unknown> = {}
-  for (const [k, x] of Object.entries(v as IrRecord)) if (x !== undefined) out[k] = liveValue(x)
+  for (const [k, x] of Object.entries(v as IrRecord)) if (x !== undefined) out[k] = liveValue(x, host)
   return out
 }
 

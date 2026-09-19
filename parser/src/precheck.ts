@@ -13,7 +13,7 @@
  * - `cannot` — jikz has no model for this, and a parser cannot supply
  *   one. Depth-sorted surface meshes; page-relative positioning.
  * - `not-yet` — jikz can already draw it; the parser cannot yet read
- *   it. 3D *projection*, pgfplots axes, circuitikz bipoles. Each has
+ *   it. 3D *projection*, pgfplots axes. Each has
  *   a home in the library and a line in the roadmap.
  *
  * The distinction is not cosmetic. Three of the five markers here were
@@ -70,13 +70,6 @@ const MARKERS: readonly Marker[] = [
     category: 'not-yet',
     reason:
       'pgfplots axes map onto ext/dataviz (chart/axes/legend); the parser has no axis grammar yet',
-  },
-  {
-    pattern: /\\begin\{circuitikz\}/,
-    marker: 'circuitikz',
-    category: 'not-yet',
-    reason:
-      "circuitikz's to[…] bipole syntax maps onto ext/circuits; the parser has no bipole grammar yet, and ext/circuits carries seven components to circuitikz's hundreds",
   },
 ]
 

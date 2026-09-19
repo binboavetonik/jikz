@@ -42,6 +42,10 @@ export type IrValue =
   | { readonly $pattern: string }
   /** A TikZ length as written (`2cm`, `4pt`, a bare number of pt): px to the interpreter, `cm(2)` to the printer. */
   | { readonly $len: string }
+  /** A `circuitShapes` entry by name — a shape object, not a name the picture must know. */
+  | { readonly $shape: string }
+  /** The frame angle from one point to another, degrees — a bipole's rotation along its segment. */
+  | { readonly $angle: readonly [IrPoint, IrPoint] }
 export interface IrRecord {
   readonly [key: string]: IrValue | undefined
 }

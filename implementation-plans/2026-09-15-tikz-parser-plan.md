@@ -263,6 +263,20 @@ the escape hatch and is documented as one.
   `side: 'right'`); path nodes keep their positions through an
   invisible carrier pen. Not on arcs/circles/grids (the `Path`
   builder has no such ops); the markings guide is always stroked.
+- **Post-v1: circuitikz — done (2026-09-20).** The `to[…]` bipole
+  syntax onto `@ozan.e/jikz/circuits`: `(a) to[R, l=$R_1$, name=R1,
+  *-*] (b)` splits the path into a wire to the symbol's `in` port,
+  the symbol node at the midpoint rotated along the segment (`rotate`
+  computed at lowering for plain coordinates, `a.angleTo(b)` for
+  named ones), a wire from `out`, and junction dots; the pen resumes
+  at `b`. Bipoles: the names the extension has (R, C, pC, L, D, zD,
+  leD, V/battery1/sV, I, switch/cspst/ospst) plus `short` and `open`;
+  `\node[ground]` (placed by its `in` terminal), `\node[op amp]`
+  (ports `+`, `-`, `out` as circuitikz spells them). The `circuitikz`
+  environment is a picture; the pre-check no longer refuses it.
+  Refused by name: `v=`/`i=` annotations, the hundreds of other
+  bipoles. `circuitShapes` entries travel through the IR as
+  `{ $shape }`, like patterns.
 - **Post-v1, in order.** Pics
   (`angle`, `right angle` → `ext/angles`; `\usetikzlibrary` selects
   ext shape sets and helpers), decorations keys (`snake`, `zigzag`,

@@ -121,6 +121,13 @@ the path as geometry, map it once, decorate in screen px with
 — a new core helper that tells a math-frame picture the geometry is
 already in px.
 
+circuitikz: `to[R, l=$R$, *-*]` and the other bipoles the circuits
+extension has (`C`, `L`, `D`, `V`, `I`, `battery1`, `switch`, `short`,
+`open`, variants) lower to the symbol node at the segment's midpoint,
+rotated along it, with wires to its ports; `\node[ground]`, `\node[op
+amp]`; the `circuitikz` environment reads as a picture. `v=`/`i=`
+annotations and the bipoles the extension lacks are refused by name.
+
 Pics: the angles library's `angle` and `right angle` lower onto the
 angles extension's marks, painted by the verb or the pic's own
 `draw`/`fill` keys; `\usetikzlibrary` is accepted and ignored.
