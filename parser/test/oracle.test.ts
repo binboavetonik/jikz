@@ -3,92 +3,119 @@
  * must produce byte-identical SVG.
  *
  * This is why the IR has two back ends rather than one (plan §2, §7).
- * The printer is the shipped product and the interpreter is the thing
- * that proves it, so any drift between what the converter means and
- * what it writes shows up here, on the commit that causes it, rather
- * than in someone's diagram months later.
+ * The template is the product and the printer is the eject path, so
+ * any drift between what the converter means and what it writes shows
+ * up here, on the commit that causes it, rather than in someone's
+ * diagram months later.
  */
 import { describe, it, expect } from 'vitest'
-import { picture, point, allShapes, type Picture } from 'jikz'
-import { convert, interpret } from '../src/index'
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { picture, allShapes, cm, type Picture } from 'jikz'
+import { convert, interpret, type IrItem } from '../src/index'
+
+const CORPUS = join(__dirname, '..', 'corpus')
+const GENERATED = join(__dirname, '.generated')
+mkdirSync(GENERATED, { recursive: true })
+writeFileSync(join(GENERATED, '.gitignore'), '*\n')
 
 /**
- * Run emitted code without a bundler: strip the import line and the
- * `export` keyword, then call `build()` with the bindings injected.
- * The emitted module is a real module; this is only how a test runs
- * one in-process.
+ * Run emitted code the way a user would: as a module. Vitest transforms
+ * the TypeScript and resolves the `jikz` alias; the file lands in a
+ * gitignored folder next to this test.
  */
-function runEmitted(code: string): Picture<typeof allShapes> {
-  const body = code.replace(/^import .*$/m, '').replace('export function build', 'function build')
-  const factory = new Function('picture', 'point', 'allShapes', `${body}\nreturn build()`)
-  return factory(picture, point, allShapes) as Picture<typeof allShapes>
+let seq = 0
+async function runEmitted(code: string): Promise<Picture<typeof allShapes>> {
+  const file = join(GENERATED, `case-${++seq}.ts`)
+  writeFileSync(file, code)
+  const mod = (await import(/* @vite-ignore */ `${file}?t=${Date.now()}`)) as { build: () => Picture<typeof allShapes> }
+  return mod.build()
 }
 
-const CASES: readonly { readonly name: string; readonly tex: string }[] = [
-  { name: 'the M1 slice', tex: String.raw`\draw (0,0) -- (1,1);` },
-  { name: 'a multi-segment path', tex: String.raw`\draw (0,0) -- (2,0) -- (2,1) -- (0,1);` },
-  { name: 'negative and fractional coordinates', tex: String.raw`\draw (-1.5,0.25) -- (3,-2.75);` },
-  {
-    name: 'a tikzpicture body with comments',
-    tex: String.raw`\begin{tikzpicture}
-  % a comment, and a blank line follow
+function fresh(): Picture<typeof allShapes> {
+  return picture({ shapes: allShapes, frame: 'math', unit: cm(1) })
+}
 
-  \draw (0,0) -- (1,0);
-  \draw (1,0) -- (1,1);
-\end{tikzpicture}`,
-  },
-  {
-    name: 'a file mixing convertible and unsupported statements',
-    tex: String.raw`\draw (0,0) -- (1,1);
-\node at (2,2) {x};
-\draw (1,1) -- (2,0);`,
-  },
-]
+/** Every statement of every corpus file, as one case per statement. */
+function corpusStatements(): { name: string; tex: string }[] {
+  const out: { name: string; tex: string }[] = []
+  for (const file of readdirSync(CORPUS).filter((f) => f.endsWith('.tex')).sort()) {
+    const text = readFileSync(join(CORPUS, file), 'utf8')
+    if (file === 'structure.tex') {
+      out.push({ name: `${file} (whole picture)`, tex: text })
+      continue
+    }
+    const lines = text.split('\n').filter((l) => l.trim().length > 0 && !l.trim().startsWith('%'))
+    // Declarations feed later lines: run each file cumulatively.
+    for (let i = 0; i < lines.length; i++) {
+      out.push({ name: `${file}:${i + 1} ${lines[i]!.trim()}`, tex: lines.slice(0, i + 1).join('\n') })
+    }
+  }
+  return out
+}
 
 describe('oracle: interpreter and emitted code agree', () => {
-  for (const { name, tex } of CASES) {
-    it(name, () => {
-      const result = convert(tex)
+  for (const { name, tex } of corpusStatements()) {
+    it(name, async () => {
+      const result = convert(tex, { from: 'jikz' })
       expect(result.refused, 'should not be refused').toBeUndefined()
       expect(result.ir).toBeDefined()
 
-      const view = { width: 200, height: 200 }
-      const fromIr = interpret(result.ir!).toSVG(view)
-      const fromCode = runEmitted(result.code!).toSVG(view)
+      const view = { width: 400, height: 400 }
+      const pic = fresh()
+      interpret(result.ir!, pic)
+      const fromIr = pic.toSVG(view)
+      const fromCode = (await runEmitted(result.code!)).toSVG(view)
 
       expect(fromCode).toBe(fromIr)
     })
   }
+})
 
-  it('emits code that still compiles when statements are skipped', () => {
-    const result = convert(String.raw`\node at (0,0) {x};`)
-    expect(result.code).toContain('TODO(jikz-tikz)')
-    // No statements converted, but the module is still valid and runs.
-    expect(runEmitted(result.code!).toSVG({ width: 10, height: 10 })).toContain('<svg')
+describe('the file mode keeps unsupported statements as comments', () => {
+  it('names each gap, keeps the rest', () => {
+    const tex = readFileSync(join(CORPUS, 'unsupported.tex'), 'utf8')
+    const result = convert(tex, { from: 'jikz' })
+    expect(result.refused).toBeUndefined()
+    const kinds = result.ir!.map((i) => i.kind)
+    expect(kinds.filter((k) => k === 'pen')).toHaveLength(3)
+    expect(result.diagnostics.map((d) => d.reason)).toMatchInlineSnapshot(`
+      [
+        "\\usetikzlibrary is not supported",
+        "\\tikzset is not supported yet (styles land in M3)",
+        ""plot" is not supported yet",
+        ""2*\\x" is an expression — TikZ would evaluate it with pgfmath, which is not supported; write the value",
+        "3D coordinate (1,2,3) is not supported",
+        ""edge" on a path is not supported yet — use \\draw[->] (a) -- (b)",
+        "\\pic is not supported",
+        "+(dx,dy) (a relative coordinate that does not move the pen) is not supported yet — use ++(dx,dy)",
+        "\\shade is not supported yet",
+        "environment "pgfonlayer" is not supported",
+      ]
+    `)
+    for (const d of result.diagnostics) expect(result.code).toContain(`// TODO(jikz-tikz): ${d.reason}`)
   })
 })
 
-describe('the coordinate port', () => {
-  it('negates y so a ported figure is not upside-down', () => {
-    // TikZ (0,1) is ABOVE (0,0); in screen space that is a smaller y.
-    const { ir } = convert(String.raw`\draw (0,0) -- (0,1);`)
-    const segments = ir![0]!.kind === 'pen' ? ir![0]!.segments : []
-    expect(segments[0]!.y).toBe(0)
-    expect(segments[1]!.y).toBeLessThan(0)
+describe('the IR keeps TikZ numbers in the frame', () => {
+  const pen = (tex: string) => convert(tex).ir!.find((i): i is Extract<IrItem, { kind: 'pen' }> => i.kind === 'pen')!
+  it('does not port coordinates — the math frame does', () => {
+    const ops = pen(String.raw`\draw (1,2) -- (3,-4);`).ops
+    expect(ops).toEqual([
+      { op: 'moveTo', to: { kind: 'xy', x: 1, y: 2 } },
+      { op: 'lineTo', to: { kind: 'xy', x: 3, y: -4 } },
+    ])
   })
-
-  it('scales by the unit, and takes an override', () => {
-    const at = (tex: string, unit?: number) => {
-      const { ir } = convert(tex, unit === undefined ? {} : { unit })
-      return ir![0]!.kind === 'pen' ? ir![0]!.segments[1]! : undefined
-    }
-    expect(at(String.raw`\draw (0,0) -- (1,0);`)!.x).toBeCloseTo(37.8, 6)
-    expect(at(String.raw`\draw (0,0) -- (1,0);`, 10)!.x).toBe(10)
+  it('converts unit lengths to frame units', () => {
+    const ops = pen(String.raw`\draw (2cm,0) -- (1in,0);`).ops
+    expect(ops[0]).toEqual({ op: 'moveTo', to: { kind: 'xy', x: 2, y: 0 } })
+    expect((ops[1] as { to: { x: number } }).to.x).toBeCloseTo(2.54)
   })
-
-  it('never emits -0', () => {
-    const { code } = convert(String.raw`\draw (0,0) -- (1,0);`)
-    expect(code).not.toContain('-0)')
-    expect(code).not.toContain('-0,')
+  it('turns polar into cartesian without float noise', () => {
+    const ops = pen(String.raw`\draw (90:1) -- ++(180:2);`).ops
+    expect(ops).toEqual([
+      { op: 'moveTo', to: { kind: 'xy', x: 0, y: 1 } },
+      { op: 'lineTo', to: { kind: 'rel', dx: -2, dy: 0 } },
+    ])
   })
 })

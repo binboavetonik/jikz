@@ -229,6 +229,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
+    "@tikz-editor/lezer-tikz": "^0.5.1",
     "@types/jsdom": "^30.0.0",
     "@types/node": "^26.5.1",
     "@vitest/coverage-v8": "^2.1.9",

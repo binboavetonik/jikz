@@ -47,24 +47,48 @@ milestones.
 
 ## Shape
 
-    source ──▶ precheck ──▶ tokenize ──▶ parse ──▶ lower ──▶ IR
-                  │                        (AST)   (port)     │
-                  │                                     ┌─────┴─────┐
-             refuses the                            emit()     interpret()
-             whole file                            TS source    Picture
-             (3D, pgfplots)                        ── shipped ── oracle ──
+    template / .tex ──▶ (precheck) ──▶ scan + parse ──▶ lower ──▶ IR
+                            │              (AST)     (keys,      │
+                            │                        frame     ┌─┴──────────┐
+                       refuses the                   units)  interpret()  emit()
+                       whole file                            onto the     TS source
+                       (3D, pgfplots)                        caller's     — eject —
+                                                             container
 
-`emit` is the product; `interpret` exists to prove it. The oracle test
-asserts they render byte-identical SVG, so printer drift fails on the
-commit that causes it — verified by breaking the printer on purpose.
+`interpret` is the product (`tikz(pic)` ends there); `emit` is the
+eject path. The oracle test asserts they render byte-identical SVG for
+every corpus statement, so printer drift fails on the commit that
+causes it.
 
-## Status: M1
+Files, in pipeline order: `scan.ts` (cursor over TeX's three bracket
+kinds), `parse.ts` (recursive descent, statements and path items,
+every §14 coordinate form incl. calc), `ast.ts`, `keys.ts` (TikZ keys
+→ typed options, one to one), `lower.ts` (AST → IR, foreach expansion,
+the `dsl`/`file` gap policy), `ir.ts`, `interpret.ts`, `emit.ts`,
+`dsl.ts` (`tikz(pic)`), `precheck.ts` (file mode only).
 
-Grammar is `\draw (x,y) -- (x,y) [-- (x,y)]*;` plus the hopeless-file
-pre-check. Everything else reports itself rather than vanishing.
+## Status: M2
 
-Known stopgap: `parse` splits statements on `;`, which is wrong for a
-`;` inside braces. M2 replaces it with a real path grammar.
+The statement parser is ours and complete for the plan's §4 grammar:
+all path operations, the coordinate forms (cartesian with units,
+polar, named with anchors, `|-`/`-|`, `++`, calc `($…$)`), inline
+`node`/`coordinate`, scopes, `\foreach` (lists, `...` ranges with a
+step, `/`-tuples, `count=`). Statements it cannot parse keep their
+source and name the construct.
+
+Lowering covers the core key set (paint, thickness, dashes, opacity,
+arrows incl. `{Stealth[…]}`, `bend`/`out`/`in`, node geometry and
+placement incl. `right=of`, `label=`, quotes, `pos`/`midway`, scope
+`shift`/`rotate`/`scale`). Arrow tips lower to `pic.edge()` on a
+single-segment path; the pen has no tips yet. Not lowered yet, by
+name: `+(…)`, `edge`, `plot`, `\shade`, `\clip`, `\tikzset`
+styles (M3), `pic`, decorations, pgfmath expressions (by design — the
+DSL has `${}`).
+
+`parser/corpus/*.tex` is the fidelity suite: the oracle runs every
+statement through both back ends, and `conformance.test.ts` diffs the
+statement split against `@tikz-editor/lezer-tikz` (devDependency
+only). Differences are listed there with a reason each.
 
     npx vitest run parser
     npx tsc -p tsconfig.parser.json

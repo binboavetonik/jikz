@@ -9,16 +9,18 @@ export default tseslint.config(
   { ignores: ['dist/', 'coverage/', 'api-report/', 'docs/.vitepress/', 'docs/public/api/', 'docs/api/', 'node_modules/', 'scripts/', 'etc/', 'implementation-plans/'] },
   ...tseslint.configs.recommended,
   {
-    files: ['src/**/*.ts', 'test/**/*.ts', 'examples/**/*.ts'],
+    files: ['src/**/*.ts', 'test/**/*.ts', 'examples/**/*.ts', 'parser/**/*.ts'],
     rules: {
       // tsc already reports unused locals/params; keep one source of truth.
       '@typescript-eslint/no-unused-vars': 'off',
       // `{}` is used intentionally as "no options" in the shape registry types.
       '@typescript-eslint/no-empty-object-type': 'off',
+      // The TikZ template is a statement: `t\`\\draw (0,0) -- (1,1);\``.
+      '@typescript-eslint/no-unused-expressions': ['error', { allowTaggedTemplates: true }],
     },
   },
   {
-    files: ['test/**/*.ts'],
+    files: ['test/**/*.ts', 'parser/test/**/*.ts'],
     rules: {
       // Tests deliberately feed invalid input (`applyPreset('unknown' as any)`).
       '@typescript-eslint/no-explicit-any': 'off',

@@ -1,0 +1,28 @@
+% Path statements: the operations of manual §14.
+\draw (0,0) -- (1,1);
+\draw (0,0) -- (2,0) -- (2,1) -- (0,1) -- cycle;
+\draw (-1.5,0.25) -- (3,-2.75);
+\draw (0,0) -| (2,1);
+\draw (0,0) |- (2,1);
+\draw (0,0) .. controls (1,1) and (2,-1) .. (3,0);
+\draw (0,0) .. controls (1,1) .. (2,0);
+\draw (0,0) to[bend left] (2,0);
+\draw (0,0) to[out=30, in=150, looseness=1.2] (3,0);
+\draw (0,0) rectangle (2,1);
+\draw (1,1) circle (0.5);
+\draw (1,1) circle [radius=0.5];
+\draw (1,1) ellipse (1 and 0.5);
+\draw (1,1) ellipse [x radius=1, y radius=0.5];
+\draw (0,0) arc (0:90:1);
+\draw (0,0) arc [start angle=0, end angle=90, radius=1];
+\draw (0,0) arc [start angle=0, delta angle=45, x radius=2, y radius=1];
+\draw (0,0) grid (3,2);
+\draw[step=0.5] (0,0) grid (2,1);
+\draw (0,0) parabola (1,1);
+\draw (0,0) parabola bend (0.5,-0.5) (1,0);
+\draw (0,0) sin (1,1) cos (2,0);
+\draw (0,0) -- ++(1,0) -- ++(0,1);
+\draw (0,0) -- ++(45:1);
+\draw (30:2) -- (120:1cm);
+\draw (1cm,2pt) -- (3mm,-1in);
+\draw (0,0) -- (1,0) (2,0) -- (3,0);

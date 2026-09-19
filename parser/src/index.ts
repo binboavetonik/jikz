@@ -1,27 +1,40 @@
 /**
- * `@ozan.e/jikz-tikz` — a TikZ subset → jikz converter.
+ * `@ozan.e/jikz-tikz` — TikZ notation as a jikz feature.
  *
- * **Not "paste any TikZ."** Port a 2D diagram, keep what maps, get
- * told about the rest. The M0 spike measured roughly 10-15% of wild
- * TikZ converting cleanly, another 20-25% usefully with gaps flagged,
- * and ~40% out for reasons that have nothing to do with the parser —
- * 3D, pgfplots, LaTeX content inside nodes, animation.
+ * The product is {@link tikz}: a tagged template that puts TikZ
+ * statements into a jikz picture. {@link convert} is the eject path —
+ * the same pipeline, printed as TypeScript against the typed API.
  *
- * Status: M1. The grammar is `\draw (x,y) -- (x,y);` and the
- * hopeless-file pre-check. Everything else reports itself.
+ * Zero runtime dependencies. The parser is hand-written from the TikZ
+ * manual; `@tikz-editor/lezer-tikz` is a dev-only conformance oracle.
  */
 import { precheck } from './precheck'
 import { parse } from './parse'
-import { lower } from './lower'
+import { lower, type LowerOptions } from './lower'
 import { emit, type EmitOptions } from './emit'
 import { interpret } from './interpret'
 import type { PrecheckRefusal } from './precheck'
-import type { ConvertOptions, Diagnostic, IrItem } from './types'
+import type { Diagnostic, IrItem } from './ir'
 
+export { tikz } from './dsl'
+export type { TikzTemplate, TikzValue } from './dsl'
 export { precheck, parse, lower, emit, interpret }
-export * from './types'
+export { parseStatements, parseOptionList } from './parse'
+export { mapOptions } from './keys'
+export type { LowerOptions } from './lower'
+export type { EmitOptions } from './emit'
+export type { TikzHost } from './interpret'
+export type * from './ast'
+export type * from './ir'
 export type { PrecheckRefusal, RefusalCategory } from './precheck'
-export { tokenize } from './tokenize'
+
+export interface ConvertOptions extends Omit<LowerOptions, 'unit'>, Omit<EmitOptions, 'unit'> {
+  /**
+   * Px per frame unit, with how the emitted code should spell it.
+   * Default `{ px: cm(1), source: 'cm(1)' }`.
+   */
+  unit?: { px: number; source: string }
+}
 
 export interface ConvertResult {
   /** Generated TypeScript, or `undefined` when the file was refused. */
@@ -34,20 +47,16 @@ export interface ConvertResult {
   readonly refused?: PrecheckRefusal
 }
 
-export function convert(source: string, options: ConvertOptions & EmitOptions = {}): ConvertResult {
+/** A `.tex` file (or a bare body) → TypeScript. */
+export function convert(source: string, options: ConvertOptions = {}): ConvertResult {
   const refusal = precheck(source)
   if (refusal) return { diagnostics: [], refused: refusal }
 
-  const ir = lower(parse(source), options)
+  const { unit, from, ...lowerOptions } = options
+  const ir = lower(parse(source), { mode: 'file', ...lowerOptions, ...(unit ? { unit: unit.px } : {}) })
   const diagnostics: Diagnostic[] = ir
     .filter((i): i is Extract<IrItem, { kind: 'skipped' }> => i.kind === 'skipped')
     .map((i) => ({ line: i.line, source: i.source, reason: i.reason }))
 
-  return { code: emit(ir, options), ir, diagnostics }
-}
-
-/** Convert and render in one step — the playground path. */
-export function render(source: string, options: ConvertOptions = {}) {
-  const result = convert(source, options)
-  return result.ir ? interpret(result.ir) : undefined
+  return { code: emit(ir, { ...(from ? { from } : {}), ...(unit ? { unit: unit.source } : {}) }), ir, diagnostics }
 }

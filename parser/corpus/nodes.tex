@@ -1,0 +1,25 @@
+% Nodes and coordinates: manual §17.
+\node at (0,0) {origin};
+\node (a) at (1,1) {A};
+\node[draw] (b) at (2,2) {B};
+\node[draw, circle, fill=blue!20] (c) at (3,1) {C};
+\node[draw, minimum size=1cm, inner sep=2pt] (d) at (0,3) {D};
+\node[right=of a] (e) {E};
+\node[below=1cm of a, anchor=north] (f) {F};
+\node[anchor=west, text width=2cm, align=center] (g) at (0,-1) {some wrapped text};
+\node[label=above:$x$] (h) at (5,0) {H};
+\node[rotate=30, font=\small\bfseries, text=red] (i) at (6,0) {I};
+\coordinate (o) at (0,0);
+\coordinate (p) at (2,-1);
+\draw (o) -- (p);
+\draw (a) -- (b.north);
+\draw (a.south east) -- (c.30);
+\draw (o) -- (a |- p);
+\draw (o) -- (a -| p);
+\draw (0,0) -- (1,0) node[right] {end};
+\draw (0,0) -- node[above] {mid} (1,0);
+\draw (0,0) -- node[midway, below] {mid} (1,0) -- node[pos=0.25] {q} (2,0);
+\draw (0,0) -- (1,0) coordinate (m) -- (2,0);
+\draw (0,0) -- (1,0) node[draw, circle] (n) {n};
+\path (0,0) node {phantom};
+\node[draw] at (1,1) {no name; with a semicolon};

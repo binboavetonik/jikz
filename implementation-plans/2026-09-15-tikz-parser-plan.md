@@ -157,15 +157,25 @@ the escape hatch and is documented as one.
 
 - **M1 — done.** Skeleton, IR, the two back ends, the oracle, the
   pre-check.
-- **M2 — the statement parser, ours.** Grow `tokenize.ts` and
-  `parse.ts` from the M1 slice into the recursive-descent parser
-  above, keeping `pictureBody()`. Path grammar of §4 end to end: every
-  segment type, `arc`/`circle`/`rectangle`/`ellipse`/`grid`, `cycle`,
-  `++`/`+`, inline `node{}` as labels and as named nodes, all §4
-  coordinate forms including calc. Add `@tikz-editor/lezer-tikz` as a
-  devDependency and the conformance test over the corpus. Exit: every
-  corpus *statement* that the pre-check does not refuse parses, and
-  the conformance diff is empty or explained per entry.
+- **M2 — done (2026-09-19).** The statement parser, ours: `scan.ts`
+  + `parse.ts`, recursive descent over the §4 grammar — every segment
+  type, `arc`/`circle`/`rectangle`/`ellipse`/`grid`/`parabola`/
+  `sin`/`cos`, `cycle`, `++`/`+`, inline `node{}`/`coordinate`, all
+  coordinate forms including calc, scopes, `\foreach`. `\node` and
+  `\coordinate` parse as `\path node …` (as in `tikz.code.tex`).
+  Statement extent is consumed, not pre-split, so `;` in braces is
+  text. `@tikz-editor/lezer-tikz` is a devDependency and
+  `conformance.test.ts` diffs the statement split over the corpus:
+  boundaries must agree exactly, kind differences are explained per
+  entry (three: `\pic`, pgfmath expressions, 3D — all refused by
+  design). Pulled forward from M3/M4/M5 because the oracle needed
+  them to run: the IR in frame coordinates, a first key registry
+  (`keys.ts`), `interpret(ir, host)` onto a caller's container,
+  `emit` against `picture({ frame: 'math', unit: cm(1) })`, `tikz(pic)`
+  with `${}` and the line:column error policy, `\foreach` expansion.
+  Arrow tips on a single-segment path lower to `pic.edge()` (the pen
+  has no tips). Found and fixed in core: `Pen.coordinate` mapped its
+  point through the frame twice in a math-frame picture.
 - **M3 — the key registry, over the new API.** The §4 key list, now
   mapping to the typed options one to one: colours through `color()`,
   lengths through `length()`, `->`/`{Stealth[…]}` through the tip
