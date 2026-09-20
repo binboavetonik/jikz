@@ -501,14 +501,15 @@ export class Pen {
   /**
    * TikZ `node[…] (name) {text}` on a path: a real, named node placed
    * at the pen position — or riding the operation just drawn with
-   * `pos` — taking the same options as `pic.node()`. The pen does not
-   * move; the node paints after the path, as in TikZ.
+   * `pos` — taking the same options as `pic.node()`, plus `dx`/`dy`, a
+   * screen-px move after placement (TikZ `above=2pt`). The pen does
+   * not move; the node paints after the path, as in TikZ.
    */
-  node(name: string, options: Record<string, unknown> & { pos?: number; offset?: number } = {}): this {
+  node(name: string, options: Record<string, unknown> & { pos?: number; offset?: number; dx?: number; dy?: number } = {}): this {
     if (!this.host?.node) {
       throw new JikzError('invalid-argument', 'pen.node(): needs a picture — create pens via pic.pen().')
     }
-    const { pos, offset, ...rest } = options
+    const { pos, offset, dx, dy, ...rest } = options
     let at: Point
     if (pos !== undefined) {
       if (!this.lastOp) {
@@ -518,6 +519,8 @@ export class Pen {
     } else {
       at = this.requirePen('node')
     }
+    // `dx`/`dy`: a screen-px move after placement (TikZ `xshift`, `above=2pt` on a path node).
+    if (dx || dy) at = at.add(dx ?? 0, dy ?? 0)
     // The host maps `at` through the frame; hand it a frame coordinate.
     this.host.node(name, { ...rest, at: this.frame.unmap(at) })
     return this
@@ -557,7 +560,9 @@ export class Pen {
         'pen.coordinate(): needs a picture — create pens via pic.pen().'
       )
     }
-    this.host.coordinate(name, at)
+    // The host maps `at` through the frame; hand it a frame coordinate
+    // (as `node` does) so a math-frame picture does not flip it twice.
+    this.host.coordinate(name, this.frame.unmap(at))
     return this
   }
 

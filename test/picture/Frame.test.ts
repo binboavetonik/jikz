@@ -4,7 +4,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { picture } from '../../src/picture/Picture'
-import { rel } from '../../src/picture/Frame'
+import { rel, screen } from '../../src/picture/Frame'
 import { point, polar } from '../../src/core/Point'
 import { circle } from '../../src/geometry/Circle'
 import { rect } from '../../src/geometry/Rectangle'
@@ -23,6 +23,26 @@ describe('math frame', () => {
     expect(p.resolve('P')).toEqual(point(-10, -5))
     expect(p.point(3, 4)).toEqual(point(30, -40))
     expect(p.length(2)).toBe(20)
+  })
+
+  it('screen() geometry is drawn as given, not mapped', () => {
+    const p = pic()
+    const sp = p.frame.renderable(circle(point(1, 2), 1)) // screen: (10, -20), r 10
+    p.draw(screen(sp))
+    const q = pic().draw(circle(point(1, 2), 1))
+    expect(p.toSVG({ width: 100, height: 100 })).toBe(q.toSVG({ width: 100, height: 100 }))
+  })
+
+  it('a pen node moves by dx/dy in screen px after placement', () => {
+    const p = pic()
+    p.pen().moveTo(0, 0).lineTo(2, 0).node('n', { pos: 0.5, text: 'x', dx: 3, dy: -4 })
+    expect(p.resolve('n')).toEqual(point(13, -4))
+  })
+
+  it('a pen coordinate registers where the pen is, mapped once', () => {
+    const p = pic()
+    p.pen().moveTo(1, 2).lineTo(rel(1, 0)).coordinate('B')
+    expect(p.resolve('B')).toEqual(point(20, -20))
   })
 
   it('numeric anchors are counter-clockwise: A.90 is the top', () => {

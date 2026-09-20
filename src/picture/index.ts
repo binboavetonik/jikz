@@ -1,6 +1,6 @@
 export { Picture, picture, PATH_MODE_STYLE, mergePathMode, mergePathModeIn, ItemContainer, Scope, TransformedAnchorable } from './Picture'
 export { Pen } from './Pen'
-export { Frame, rel, isRelative, isFrameMappable } from './Frame'
+export { Frame, rel, screen, isRelative, isFrameMappable } from './Frame'
 export type { FrameOptions, FrameName, RelativePoint, FrameMappable } from './Frame'
 export type { NodeOptionsFor, AddableItems, AddOptions, EveryOptions, PictureEdgeOptions, PlacementOptions, AliasOptions } from './Container'
 export type { PenOptions, PenHost, PenPoint, ToOptions, PenArcOptions, PenGridOptions, PenCircleOptions } from './Pen'

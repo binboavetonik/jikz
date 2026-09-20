@@ -40,6 +40,20 @@ export interface FrameMappable {
   mapFrame(frame: Frame): Renderable
 }
 
+/**
+ * Geometry that is already in screen px, handed to a verb of a
+ * `frame: 'math'` picture: the frame leaves it alone. For results of
+ * screen-space operations — a decorated path, a mark set — built from
+ * `pic.frame.renderable(shape)`:
+ *
+ * ```ts
+ * pic.draw(screen(decoratePath(pic.frame.renderable(p), 'snake', { amplitude: 4 })))
+ * ```
+ */
+export function screen<T extends object>(obj: T): T {
+  return Object.assign(Object.create(obj) as T, { mapFrame: () => obj })
+}
+
 export function isFrameMappable(obj: unknown): obj is FrameMappable {
   return typeof obj === 'object' && obj !== null && typeof (obj as FrameMappable).mapFrame === 'function'
 }
@@ -149,7 +163,11 @@ export class Frame {
    * shapes, marked and text paths) throws — build those in px with
    * `pic.point()` and `pic.length()`.
    */
-  renderable(obj: Renderable): Renderable {
+  renderable<T extends Renderable>(obj: T): T {
+    return this.mapRenderable(obj) as T
+  }
+
+  private mapRenderable(obj: Renderable): Renderable {
     if (this.identity) return obj
     if (isFrameMappable(obj)) return obj.mapFrame(this)
     if (obj instanceof Point) return this.point(obj)
