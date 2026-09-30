@@ -10,6 +10,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    // Claude Code keeps sibling worktrees under .claude/; their tests
+    // are not this checkout's.
+    exclude: ['**/node_modules/**', '**/dist/**', '.claude/**'],
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],
