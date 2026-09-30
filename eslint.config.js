@@ -6,7 +6,7 @@
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['dist/', 'coverage/', 'api-report/', 'docs/.vitepress/', 'docs/public/api/', 'docs/api/', 'node_modules/', 'scripts/', 'etc/', 'implementation-plans/'] },
+  { ignores: ['dist/', 'coverage/', 'api-report/', 'docs/.vitepress/', 'docs/public/api/', 'docs/api/', 'node_modules/', 'scripts/', 'etc/', 'implementation-plans/', 'parser/test/.generated/', '.claude/'] },
   ...tseslint.configs.recommended,
   {
     files: ['src/**/*.ts', 'test/**/*.ts', 'examples/**/*.ts'],

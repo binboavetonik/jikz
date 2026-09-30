@@ -828,11 +828,27 @@ function growBounds(
     }
     for (const sub of item.scope.items) growBounds(sub, grow, next, onlyFlagged)
   } else {
-    const center = textCenter(item)
+    let center = textCenter(item)
     const { width, height } = estimateLabelSize(item.text, {
       fontSize: item.options?.style?.fontSize,
       fontFamily: item.options?.style?.fontFamily,
     })
+    // Bare text without a placement sits on its point as its anchors
+    // say: `textAnchor: 'start'` runs right from it, `'end'` left; a
+    // hanging baseline hangs below, an alphabetic one sits above.
+    // Measuring it as centred clipped half of every start-anchored
+    // label at a fitted viewBox's edge.
+    const o = item.options
+    if (o?.at === undefined) {
+      const dx = o?.textAnchor === 'start' ? width / 2 : o?.textAnchor === 'end' ? -width / 2 : 0
+      const dy =
+        o?.dominantBaseline === 'hanging'
+          ? height / 2
+          : o?.dominantBaseline === 'auto' || o?.dominantBaseline === 'alphabetic'
+            ? -height * 0.35
+            : 0
+      if (dx || dy) center = point(center.x + dx, center.y + dy)
+    }
     add([
       center.x - width / 2,
       center.y - height / 2,

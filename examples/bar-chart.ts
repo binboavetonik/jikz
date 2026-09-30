@@ -1,10 +1,12 @@
 import { picture, point } from 'jikz'
-import { axes, legend } from 'jikz/dataviz'
+import { chart } from 'jikz/dataviz'
 
-// The chart-library staple, now on ext/dataviz: axes() owns the y
-// gridlines and nice ticks, the x ticks are categorical (format maps
-// slot 1..4 to Q1..Q4), and the two series are bar groups shifted
-// half a slot left/right around each quarter's tick.
+// The chart-library staple on ext/dataviz. The x axis is a band axis —
+// one equal band per quarter, string samples resolve to their band —
+// and two unstacked bar series group side by side inside each band
+// automatically, with a 2px canvas gap between them. No hand-computed
+// bar x or width anywhere; the style sheet colours the series and the
+// legend below the axes shows the effective paint.
 
 const DATA: [label: string, a: number, b: number][] = [
   ['Q1', 42, 35],
@@ -13,41 +15,21 @@ const DATA: [label: string, a: number, b: number][] = [
   ['Q4', 71, 66],
 ]
 
-const BLUE = { stroke: '#2563eb', fill: '#2563eb', fillOpacity: 0.75, strokeWidth: 1 }
-const AMBER = { stroke: '#f59e0b', fill: '#f59e0b', fillOpacity: 0.75, strokeWidth: 1 }
-
 export default function render(container: HTMLElement) {
   const pic = picture()
 
-  const frame = axes(pic, {
+  chart(pic, {
     at: point(50, 220),
     width: 360,
     height: 180,
-    x: {
-      domain: [0.5, 4.5],
-      exact: true,
-      tickValues: [1, 2, 3, 4],
-      format: (v) => DATA[v - 1]?.[0] ?? '',
-    },
+    x: { categories: DATA.map((d) => d[0]) },
     y: { domain: [0, 80], grid: true },
-  })
-
-  // Grouped bars: each quarter's slot is 1 data unit (90px) wide; the
-  // two series sit ±0.2 units off the tick, 30px bars with a 6px gap.
-  frame.bars(DATA.map((d, i) => [i + 1 - 0.2, d[1]]), { width: 30, style: BLUE })
-  frame.bars(DATA.map((d, i) => [i + 1 + 0.2, d[2]]), { width: 30, style: AMBER })
-
-  // The legend is placed by hand here (axes() draws no legend of its
-  // own — chart() is the one-call builder that does). Framed, in the
-  // corner the short Q1 bars leave empty.
-  legend(pic, {
-    at: point(62, 50),
-    frame: true,
-    entries: [
-      { label: '2025', style: BLUE, sample: 'box' },
-      { label: '2026', style: AMBER, sample: 'box' },
+    series: [
+      { data: DATA.map((d) => [d[0], d[1]]), kind: 'bar', label: '2025', valueLabels: true },
+      { data: DATA.map((d) => [d[0], d[2]]), kind: 'bar', label: '2026', valueLabels: true },
     ],
+    legend: { place: 'below' },
   })
 
-  pic.mount(container, { width: 450, height: 250 })
+  pic.mount(container, { fit: true, padding: 12 })
 }

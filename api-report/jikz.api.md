@@ -2882,9 +2882,11 @@ function xorGate(options: LogicGateOptions = {}): BinaryGate;
 
 ## @ozan.e/jikz/dataviz
 
-26 exports
+124 exports
 
 ```ts
+type AboutStrategy = 'standard' | 'decimal' | 'half' | 'quarter' | 'int'
+function attachChart(svg: SVGElement, frame: ChartFrame, options: ChartInteractionOptions = {}): ChartController;
 function axes<S extends ShapeSet>(pic: ItemContainer<S>, options: AxesOptions): ChartFrame;
 interface AxesOptions
   at: PointLike
@@ -2892,86 +2894,447 @@ interface AxesOptions
   height: number
   x?: AxisOptions
   y?: AxisOptions
+  axisSystem?: AxisSystem
   arrows?: boolean
+  tickSide?: 'outer' | 'inner' | 'both'
+  labelStyle?: 'standard' | 'end'
+  clip?: boolean
   style?: StyleSpec
   tickStyle?: StyleSpec
   gridStyle?: StyleSpec
+  minorGridStyle?: StyleSpec
+  minorTickSize?: number
   fontSize?: number
   labelFontSize?: number
   tickSize?: number
+  textStyle?: TextStyle
+  styleSheet?: StyleSheetSpec | null
 interface AxisOptions
-  domain?: [ number, number ]
+  domain?: readonly [ number | Date, number | Date ]
+  time?: boolean | { timeZone?: TimeZone; locale?: string; }
+  categories?: readonly string[]
+  bandPadding?: number
+  logarithmic?: boolean
   ticks?: number
-  tickValues?: readonly number[]
+  tickValues?: readonly (number | Date)[]
+  alsoAt?: readonly (number | Date)[]
+  minorTicks?: number
+  about?: AboutStrategy
+  includeValue?: number | readonly number[]
+  padding?: number | readonly [ number, number ]
   exact?: boolean
   label?: string
-  grid?: boolean
+  grid?: boolean | 'major' | 'minor' | 'both'
   format?: (v: number) => string
   tickLabels?: boolean
+  labelEvery?: number
+  rotateLabels?: number
+  stackLabels?: boolean
+type AxisSystem = 'scientific' | 'schoolBook'
+function bandScale(categories: readonly string[], range: readonly [ number, number ], options: BandScaleOptions = {}): Scale;
+interface BandScaleOptions
+  padding?: number
+type Candle = readonly [ DataValue, number, number, number, number ]
+interface Categories
+  x?: readonly string[]
+  y?: readonly string[]
 function chart<S extends ShapeSet>(pic: ItemContainer<S>, options: ChartOptions): ChartFrame;
 interface ChartAxisOptions extends Omit<AxisOptions, 'domain'>
-  domain?: [ number, number ] | 'auto'
+  domain?: readonly [ number | Date, number | Date ] | 'auto'
+interface ChartBrushOptions
+  height?: number
+  gap?: number
+  live?: boolean
+interface ChartController
+  readonly svg: SVGElement
+  readonly frame: ChartFrame
+  readonly overlay: SVGGElement
+  readonly hidden: ReadonlySet<string>
+  readonly tooltipElement: HTMLElement | null
+  clientToUser(clientX: number, clientY: number): Point | null
+  hover(at: PointLike | null): HitResult | null
+  highlight(id: string | null): void
+  setVisible(id: string, visible: boolean): void
+  toggle(id: string): void
+  isVisible(id: string): boolean
+  destroy(): void
+interface ChartEnterOptions extends EnterOptions
+  stagger?: string | number
 class ChartFrame
-  constructor(private readonly pic: ItemContainer<any>, readonly area: [ number, number, number, number ], readonly xScale: Scale, readonly yScale: Scale, readonly xTicks: readonly number[], readonly yTicks: readonly number[], readonly xDomain: readonly [ number, number ], readonly yDomain: readonly [ number, number ])
-  x(v: number): number
-  y(v: number): number
-  point(xv: number, yv: number): Point
-  line(data: DataSeries, options: FrameLineOptions = {}): this
-  scatter(data: DataSeries, options: FrameScatterOptions = {}): this
-  bars(data: DataSeries, options: FrameBarOptions = {}): this
-type ChartLegendOptions = Omit<LegendOptions, 'at' | 'entries'> & { at?: PointLike; }
+  readonly plotArea: [ number, number, number, number ]
+  readonly xScale: Scale
+  readonly yScale: Scale
+  readonly xTicks: readonly number[]
+  readonly yTicks: readonly number[]
+  readonly xMinorTicks: readonly number[]
+  readonly yMinorTicks: readonly number[]
+  readonly xDomain: readonly [ number, number ]
+  readonly yDomain: readonly [ number, number ]
+  readonly outerArea: [ number, number, number, number ]
+  readonly styleSheet: StyleSheet | null
+  readonly overlayClass: string
+  constructor(private readonly pic: ItemContainer<any>, init: ChartFrameInit)
+  x(v: DataValue): number
+  y(v: DataValue): number
+  point(xv: DataValue, yv: DataValue): Point
+  invertX(px: number): number
+  invertY(py: number): number
+  contains(p: PointLike): boolean
+  get categories(): Categories
+  get series(): readonly SeriesRecord[]
+  seriesById(id: string): SeriesRecord | undefined
+  line<T>(data: DataInput<T>, options: FrameLineOptions = {}): this
+  area<T>(data: DataInput<T>, options: FrameAreaOptions = {}): this
+  scatter<T>(data: DataInput<T>, options: FrameScatterOptions = {}): this
+  bars<T>(data: DataInput<T>, options: FrameBarOptions = {}): this
+  candlestick(data: readonly Candle[], options: FrameCandlestickOptions = {}): this
+  errorBars(data: readonly ErrorSample[], options: FrameErrorBarOptions = {}): this
+  fn(f: (x: number) => number, options: FrameFnOptions = {}): this
+  referenceLine(options: ReferenceLineOptions): this
+  referenceArea(options: ReferenceAreaOptions): this
+  referenceDot(x: DataValue, y: DataValue, options: ReferenceDotOptions = {}): this
+  hitTest(p: PointLike, options: HitTestOptions = {}): HitResult | null
+interface ChartFrameInit
+  plotArea: [ number, number, number, number ]
+  xScale: Scale
+  yScale: Scale
+  xTicks: readonly number[]
+  yTicks: readonly number[]
+  xMinorTicks?: readonly number[]
+  yMinorTicks?: readonly number[]
+  styleSheet?: StyleSheet | null
+  margins?: { left: number; top: number; right: number; bottom: number; }
+  labelContainer?: ItemContainer<any>
+  overlayClass?: string
+interface ChartInteractionOptions
+  tooltip?: boolean | ChartTooltipOptions
+  crosshair?: 'x' | 'y' | 'both' | false
+  activeDots?: boolean
+  highlight?: boolean
+  legendToggle?: boolean
+  hitTest?: HitTestOptions
+  onHover?: (hit: HitResult | null) => void
+  onClick?: (hit: HitResult | null, event: MouseEvent) => void
+type ChartLegendOptions = Omit<LegendOptions, 'at' | 'entries'> & { at?: PointLike; place?: LegendPlacement; }
 interface ChartOptions extends Omit<AxesOptions, 'x' | 'y'>
   x?: ChartAxisOptions
   y?: ChartAxisOptions
-  series: readonly ChartSeriesSpec[]
+  series: readonly ChartSeriesSpec<any>[]
   legend?: boolean | ChartLegendOptions
-interface ChartSeriesSpec
-  data: DataSeries
-  kind?: 'line' | 'scatter' | 'bar'
-  style?: StyleSpec
+  enter?: EnterKind | ChartEnterOptions
+interface ChartSeriesSpec<T = unknown>
+  data: DataInput<T> | readonly Candle[]
+  id?: string
+  kind?: 'line' | 'scatter' | 'bar' | 'area' | 'candlestick'
+  style?: PointStyle
   marks?: PlotMark | PlotMarkSpec
+  interpolation?: Interpolation
   smooth?: boolean
+  closed?: boolean
   label?: string
   barWidth?: number
+  stack?: string
+  connectGaps?: boolean
+  labelInData?: LabelInData
+  valueLabels?: ValueLabels
+  up?: StyleSpec
+  down?: StyleSpec
+  enter?: EnterKind | EnterOptions
+interface ChartTooltipOptions
+  format?: (hit: HitResult, frame: ChartFrame) => string | Node
+  className?: string
+  offset?: number
+function chartView(container: HTMLElement, spec: ChartOptions, options: ChartViewOptions = {}): ChartView;
+interface ChartView
+  readonly container: HTMLElement
+  readonly svg: SVGElement
+  readonly frame: ChartFrame
+  readonly controller: ChartController
+  readonly spec: ChartOptions
+  readonly domain: readonly [ number, number ] | null
+  readonly fullDomain: readonly [ number, number ]
+  readonly hidden: ReadonlySet<string>
+  update(spec: ChartOptions): void
+  setDomain(domain: readonly [ number, number ] | null): void
+  resetZoom(): void
+  setVisible(id: string, visible: boolean): void
+  render(): void
+  destroy(): void
+interface ChartViewOptions extends ChartInteractionOptions
+  fit?: boolean
+  padding?: number
+  zoom?: 'x' | false
+  brush?: boolean | ChartBrushOptions
+  responsive?: boolean | { minWidth?: number; }
+  pictureOptions?: PictureOptions
+  onDomainChange?: (domain: readonly [ number, number ] | null) => void
+function chooseInterval(target: number): TimeInterval;
 function dataDomain(series: readonly (readonly (readonly [ number, number ])[])[], component: 0 | 1): [ number, number ];
+type DataInput<T = unknown> = readonly DataPair[] | DataRecords<T>
+type DataPair = readonly [ DataValue, DataValue ]
+interface DataRecords<T>
+  rows: readonly T[]
+  x: (keyof T & string) | ((row: T, index: number) => DataValue)
+  y: (keyof T & string) | ((row: T, index: number) => DataValue)
 type DataSeries = readonly (readonly [ number, number ])[]
+type DataValue = number | Date | string
+function defaultTooltip(hit: HitResult, frame: ChartFrame, mode: "x" | "y" | "nearest"): string;
+function drawIn(options: EnterOptions): SVGAnimation;
+function enterKeyframe(attributeName: string, from: string | number, to: string | number, options: EnterOptions): SVGAnimation;
+type EnterKind = 'draw' | 'grow' | 'fade'
+interface EnterOptions
+  enter: EnterKind
+  dur?: string | number
+  delay?: string | number
+  easing?: string
+type ErrorSample = readonly [ DataValue, number, number ] | readonly [ DataValue, number, number, number ]
+function fadeIn(options: EnterOptions): SVGAnimation;
+function floorTime(ms: number, interval: TimeInterval, tz: TimeZone = "utc"): number;
+function formatLogTick(v: number): string;
 function formatTick(v: number): string;
-interface FrameBarOptions
+function formatTime(ms: number, options: TimeFormatOptions = {}): string;
+interface FrameAreaOptions extends Omit<FrameLineOptions, 'closed'>
+  baseline?: number
+  stack?: string
+interface FrameBarOptions extends FrameSeriesOptions, FrameLabelOptions
   width?: number
   baseline?: number
+  group?: { index: number; count: number; }
+  stack?: string
+  gap?: number
+  style?: PointStyle
+interface FrameCandlestickOptions extends FrameSeriesOptions
+  width?: number
+  up?: StyleSpec
+  down?: StyleSpec
+interface FrameErrorBarOptions
+  capWidth?: number
   style?: StyleSpec
-interface FrameLineOptions extends DrawOptions
+  seriesId?: string
+interface FrameFnOptions extends FrameLineOptions
+  samples?: number
+  domain?: readonly [ number, number ]
+interface FrameLabelOptions
+  labelInData?: LabelInData
+  valueLabels?: ValueLabels
+  labelStyle?: TextStyle
+interface FrameLineOptions extends SeriesDrawOptions, FrameSeriesOptions, FrameLabelOptions
+  interpolation?: Interpolation
   smooth?: boolean
+  closed?: boolean
   marks?: PlotMark | PlotMarkSpec
-interface FrameScatterOptions extends DrawOptions
+  connectGaps?: boolean
+interface FrameScatterOptions extends Omit<SeriesDrawOptions, 'style'>, FrameSeriesOptions, FrameLabelOptions
   marks?: PlotMark | PlotMarkSpec
+  style?: PointStyle
+interface FrameSeriesOptions
+  id?: string
+  label?: string
+  enter?: EnterKind | EnterOptions
+function growIn(y0: number, y: number, height: number, options: EnterOptions): SVGAnimation[];
+interface HitResult
+  x: number
+  y: number
+  at: Point
+  samples: HitSample[]
+interface HitSample
+  seriesId: string
+  index: number
+  x: number
+  y: number
+  at: Point
+  distance: number
+interface HitTestOptions
+  mode?: 'x' | 'y' | 'nearest'
+  maxDistance?: number
+  ids?: readonly string[]
 function includeInDomain(domain: [ number, number ], v: number): [ number, number ];
+function interpolatePath(points: readonly Point[], mode: Interpolation = "linear", closed = false): string;
+type Interpolation = 'linear' | 'smooth' | 'step' | 'stepBefore' | 'stepAfter'
+function intervalMs(i: TimeInterval): number;
+type LabelInData = 'start' | 'end' | 'max' | 'min' | number | readonly number[]
 function legend<S extends ShapeSet>(pic: ItemContainer<S>, options: LegendOptions): void;
 interface LegendEntry
   label: string
+  id?: string
   style?: StyleSpec
   sample?: 'line' | 'box'
   mark?: PlotMark
+type LegendFillOrder = 'downThenRight' | 'rightThenDown'
 interface LegendOptions
   at: PointLike
   entries: readonly LegendEntry[]
+  columns?: number
+  rows?: number
+  fillOrder?: LegendFillOrder
   fontSize?: number
+  textStyle?: TextStyle
   rowHeight?: number
   sampleLength?: number
   gap?: number
+  columnGap?: number
   padding?: number
   frame?: boolean | StyleSpec
+type LegendPlacement = 'auto' | 'northEastInside' | 'northWestInside' | 'southEastInside' | 'southWestInside' | 'northInside' | 'southInside' | 'northEastOutside' | 'northWestOutside' | 'southEastOutside' | 'southWestOutside' | 'northOutside' | 'southOutside' | 'eastOutside' | 'westOutside' | 'above' | 'below' | 'left' | 'right'
 function legendSize(options: Omit<LegendOptions, "at"> & { at?: PointLike; }): { width: number; height: number; };
-function linearScale(domain: [ number, number ], range: [ number, number ]): Scale;
+function linearScale(domain: readonly [ number, number ], range: readonly [ number, number ], options: LinearScaleOptions = {}): Scale;
+interface LinearScaleOptions
+  format?: (v: number) => string
+function logScale(domain: readonly [ number, number ], range: readonly [ number, number ], options: LogScaleOptions = {}): Scale;
+interface LogScaleOptions
+  format?: (v: number) => string
+function logTicks(lo: number, hi: number, mantissas = true): { major: number[]; minor: number[]; };
 function mapSeries(data: DataSeries, x: Scale, y: Scale): PointLike[];
-function niceNumber(range: number, round: boolean): number;
-function niceTicks(min: number, max: number, count = 5): NiceTicks;
+function minorTicksBetween(majors: readonly number[], n: number): number[];
+function niceNumber(range: number, round: boolean, about: AboutStrategy = "standard"): number;
+function niceTicks(min: number, max: number, count = 5, about: AboutStrategy = "standard"): NiceTicks;
 interface NiceTicks
   ticks: number[]
   min: number
   max: number
   step: number
-type Scale = (v: number) => number
+function normalizeEnter(enter: EnterKind | EnterOptions | undefined): EnterOptions | undefined;
+function offsetTime(ms: number, interval: TimeInterval, n: number, tz: TimeZone = "utc"): number;
+function parseDuration(v: string | number | undefined, fallback = 0): number;
+function pie<S extends ShapeSet>(pic: ItemContainer<S>, options: PieOptions): PieResult;
+type PieLabels = 'percent' | 'value' | 'label' | false | ((slice: PieSlice, fraction: number) => string)
+interface PieOptions
+  at: PointLike
+  radius: number
+  innerRadius?: number
+  slices: readonly PieSlice[]
+  startAngle?: number
+  styleSheet?: StyleSheetSpec
+  gap?: number
+  labels?: PieLabels
+  minInsideFraction?: number
+  textStyle?: TextStyle
+interface PieResult
+  slices: readonly PieSliceResult[]
+  total: number
+interface PieSlice
+  value: number
+  label?: string
+  id?: string
+  style?: StyleSpec
+interface PieSliceResult
+  id: string
+  label?: string
+  value: number
+  fraction: number
+  startAngle: number
+  endAngle: number
+  style: StyleSpec
+type PointStyle = StyleSpec | ((sample: readonly [ number, number ], index: number) => StyleSpec)
+interface ReferenceAreaOptions
+  x1?: DataValue
+  x2?: DataValue
+  y1?: number
+  y2?: number
+  style?: StyleSpec
+  label?: string
+  labelStyle?: TextStyle
+interface ReferenceDotOptions
+  mark?: PlotMark
+  size?: number
+  style?: StyleSpec
+  label?: string
+  labelAt?: 'north' | 'south' | 'east' | 'west'
+  labelStyle?: TextStyle
+interface ReferenceLineOptions
+  x?: DataValue
+  y?: number
+  label?: string
+  style?: StyleSpec
+  labelStyle?: TextStyle
+function resolveStyleSheet(spec: StyleSheetSpec): StyleSheet;
+interface Scale
+  readonly kind: ScaleKind
+  readonly domain: readonly [ number, number ]
+  readonly range: readonly [ number, number ]
+  map(v: number): number
+  invert(px: number): number
+  ticks(count?: number): Tick[]
+  format(v: number): string
+  readonly categories?: readonly string[]
+  readonly bandwidth?: number
+type ScaleKind = 'linear' | 'log' | 'time' | 'band'
+function seriesColor(record: Pick<SeriesRecord, "style">): string;
+type SeriesDrawOptions = Omit<DrawOptions, 'label' | 'labels'>
+type SeriesKind = 'line' | 'scatter' | 'bar' | 'area' | 'candlestick'
+interface SeriesRecord
+  readonly id: string
+  readonly kind: SeriesKind
+  readonly label?: string
+  readonly style?: StyleSpec
+  readonly mark?: PlotMark
+  readonly stack?: string
+  readonly data: DataSeries
+  readonly points: readonly Point[]
+  readonly className: string
+interface SeriesSlot
+  color?: string
+  dash?: DashPatternName
+  width?: number
+  mark?: PlotMark
+  wrapped: boolean
+function slotOf(sheet: StyleSheet, index: number): SeriesSlot;
+function sparkline<S extends ShapeSet, T>(pic: ItemContainer<S>, data: DataInput<T> | readonly number[], options: SparklineOptions): SparklineResult;
+interface SparklineOptions
+  at: PointLike
+  width: number
+  height: number
+  style?: StyleSpec
+  fill?: boolean | StyleSpec
+  endMark?: boolean
+  band?: readonly [ number, number ]
+  bandStyle?: StyleSpec
+  domain?: readonly [ number, number ]
+  interpolation?: Interpolation
+  className?: string
+interface SparklineResult
+  xScale: Scale
+  yScale: Scale
+  points: readonly Point[]
+  last?: Point
+function stackedDomain(stacks: readonly (readonly DataSeries[])[]): [ number, number ];
+function staggered(options: ChartEnterOptions, index: number): EnterOptions;
+function stepPoints(points: readonly Point[], mode: Interpolation): Point[];
+interface StyleSheet
+  colors?: readonly string[]
+  dashes?: readonly DashPatternName[]
+  widths?: readonly number[]
+  marks?: readonly PlotMark[]
+type StyleSheetName = 'varyHue' | 'varyHueDark' | 'strongColors' | 'shadesOfBlue' | 'shadesOfRed' | 'grayScale' | 'varyDashing' | 'varyThickness' | 'crossMarks' | 'oMark' | 'starMark' | 'dotMark'
+const styleSheets: Readonly<Record<StyleSheetName, StyleSheet>>
+type StyleSheetSpec = StyleSheetName | StyleSheet | readonly (StyleSheetName | StyleSheet)[]
+interface Tick
+  value: number
+  label: string
+  minor?: boolean
+interface TimeFormatOptions
+  timeZone?: TimeZone
+  locale?: string
+interface TimeInterval
+  unit: 'second' | 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year'
+  step: number
+function timeScale(domain: readonly [ number, number ], range: readonly [ number, number ], options: TimeScaleOptions = {}): Scale;
+interface TimeScaleOptions extends TimeFormatOptions
+  format?: (v: number) => string
+function timeTicks(lo: number, hi: number, count = 5, tz: TimeZone = "utc"): TimeTicks;
+interface TimeTicks
+  ticks: number[]
+  interval: TimeInterval
+  min: number
+  max: number
+type TimeZone = 'utc' | 'local'
+function toNumber(v: DataValue, categories?: readonly string[]): number;
+function toSeries<T>(data: DataInput<T>, categories: Categories = {}): DataSeries;
+type ValueLabels = boolean | ((sample: readonly [ number, number ], index: number) => string)
+const VARY_HUE: readonly string[]
+const VARY_HUE_DARK: readonly string[]
+function viewBoxOf(svg: SVGElement): ViewBoxRect;
+function viewportTransformOf(svg: SVGElement): ViewTransform;
 ```
 
 ## @ozan.e/jikz/petri

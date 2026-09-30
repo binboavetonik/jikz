@@ -19,6 +19,14 @@ TikZ-style path verbs on raw geometry. `filldraw` strokes and fills; `draw` stro
 
 **Source:** [`examples/geometry.ts`](../../examples/geometry.ts)
 
+### A TikZ figure, line for line — the math frame
+
+![A TikZ figure, line for line — the math frame](img/tikz-frame.svg)
+
+picture({ frame: 'math', unit: cm(1) }) takes TikZ's own numbers: y up, counter-clockwise angles, centimetres. The pen's TikZ operations do the rest — grid, circle, arc[start angle, end angle, radius], ++(0,-0.5) as rel(0, -0.5) — plus a pin, a sloped midway label, xcolor mixing (gray!40) and a sized Stealth tip. Compare the six \draw lines in the comment with the six statements.
+
+**Source:** [`examples/tikz-frame.ts`](../../examples/tikz-frame.ts)
+
 ### Points & TikZ operators
 
 ![Points & TikZ operators](img/points-tikz.svg)
@@ -59,6 +67,14 @@ Built-in plotting: sampled cartesian functions and polar curves.
 
 **Source:** [`examples/plotting.ts`](../../examples/plotting.ts)
 
+### School book axes — function plot
+
+![School book axes — function plot](img/school-book-plot.svg)
+
+TikZ's `school book axes`: axes through the origin with arrow tips, centred ticks, end labels and a single 0. Two functions through frame.fn (TikZ's `function` data format) label themselves at their ends; the tangent at x = 1 is a third function and a reference dot, all in data space, clipped to the plot area.
+
+**Source:** [`examples/school-book-plot.ts`](../../examples/school-book-plot.ts)
+
 ### Pythagorean theorem
 
 ![Pythagorean theorem](img/pythagoras.svg)
@@ -75,6 +91,14 @@ Left-rule bars under a plotted curve. plot() maps y without flipping (screen coo
 
 **Source:** [`examples/riemann.ts`](../../examples/riemann.ts)
 
+### 3D projection — a cube under tdplot main coords
+
+![3D projection — a cube under tdplot main coords](img/projection-cube.svg)
+
+tikz-3dplot's \tdplotsetmaincoords{70}{110} as a projection stage: tdplot(70, 110, unit).point(x, y, z) gives the 2D point and the picture draws that. Axes with arrows, dashed back edges, a shaded top face and the front edges — ordered by hand, as TikZ's 3D always is.
+
+**Source:** [`examples/projection-cube.ts`](../../examples/projection-cube.ts)
+
 ### Venn diagram
 
 ![Venn diagram](img/venn.svg)
@@ -83,11 +107,11 @@ Two set circles as nodes with translucent fills — their labels are node labels
 
 **Source:** [`examples/venn.ts`](../../examples/venn.ts)
 
-### Angle marking (angles & quotes)
+### Angle marking (angles)
 
-![Angle marking (angles & quotes)](img/angle-marking.svg)
+![Angle marking (angles)](img/angle-marking.svg)
 
-The TikZ angles library idiom: rays from one vertex via polar() — one pen statement with mid-path moves, \draw (O) -- (A) (O) -- (B) (O) -- (C) — and each angle arc a pen statement whose KaTeX label rides the arc itself via pos/offset (TikZ's node[midway]) — everything derived from the ray angles, no hand-placed label points.
+TikZ's angles library: \pic [draw, fill, "$\alpha$"] {angle = A--O--B} is angle(A, O, B, { label }) handed to filldraw — the wedge takes the fill, the arc the stroke, the label sits at angle eccentricity × radius on the bisector. rightAngle() is the square marker. Everything derived from the rays; no hand-placed points.
 
 **Source:** [`examples/angle-marking.ts`](../../examples/angle-marking.ts)
 
@@ -131,13 +155,21 @@ Biology's favorite spiral: 250 florets on a Vogel spiral — radius c·√n, ang
 
 **Source:** [`examples/phyllotaxy.ts`](../../examples/phyllotaxy.ts)
 
-### Koch snowflake
+### Koch snowflake (lindenmayer systems)
 
-![Koch snowflake](img/koch-snowflake.svg)
+![Koch snowflake (lindenmayer systems)](img/koch-snowflake.svg)
 
-The texample fractal classic, at recursion depth 4. The whole construction is point arithmetic: toward() splits each segment in thirds, polar() at (direction − 60°) places the equilateral bump. One pen statement paints the 768-segment outline as a single filldraw path.
+The texample fractal classic, as TikZ's lindenmayersystems library writes it: axiom F--F--F, rule F → F+F--F+F, angle 60, order 4. lsystem() expands the string and walks it with a turtle into one Path; a single filldraw paints the 768-segment outline.
 
 **Source:** [`examples/koch-snowflake.ts`](../../examples/koch-snowflake.ts)
+
+### L-system plant and a turtle spiral (turtle)
+
+![L-system plant and a turtle spiral (turtle)](img/lsystem-plant.svg)
+
+Two path generators from TikZ's turtle and lindenmayersystems libraries: the bracketed plant (X → F+[[X]-X]-F[-FX]+X, F → FF, 25°) after five rewrites, where [ and ] push and pop the turtle to branch, and a hand-driven turtle — forward, right, a little farther each step — spiralling out.
+
+**Source:** [`examples/lsystem-plant.ts`](../../examples/lsystem-plant.ts)
 
 ### Euler line
 
@@ -348,15 +380,79 @@ Charts and distributions built from raw arrays — data in, diagram out, no char
 
 ![Grouped bar chart](img/bar-chart.svg)
 
-The chart-library staple on ext/dataviz: axes() owns the y gridlines and nice ticks, the x ticks are categorical (format maps slot 1..4 to Q1..Q4), two bar series group ±0.2 data units around each quarter's tick, and legend() draws the swatch chips. No hand-computed gridline or bar x anywhere.
+The chart-library staple on ext/dataviz: a band x axis (one equal band per quarter, string samples resolve to their band), two unstacked bar series that group side by side inside each band automatically with a 2px gap, value labels on every bar, and the legend below the axes. No hand-computed bar x or width anywhere.
 
 **Source:** [`examples/bar-chart.ts`](../../examples/bar-chart.ts)
+
+### Logarithmic axes
+
+![Logarithmic axes](img/log-axis-chart.svg)
+
+TikZ's `logarithmic` axis with `exponential steps`: both axes are linear in log10, major ticks at the decades with 2…9 as minor ticks and a minor grid, domains widened to whole decades. Three scaling laws that are one flat line and one wall on a linear axis read as three straight lines.
+
+**Source:** [`examples/log-axis-chart.ts`](../../examples/log-axis-chart.ts)
+
+### Enter animations
+
+![Enter animations](img/animated-chart.svg)
+
+Declarative SMIL entrances: `enter: 'draw'` on the chart makes each line draw itself in (pathLength 1, a unit dash, offset 1 → 0), the bars grow from their baseline, the dashed target fades, all staggered in paint order. The animations are children of the series elements, so the static SVG plays them on open.
+
+**Source:** [`examples/animated-chart.ts`](../../examples/animated-chart.ts)
+
+### Interactive chart — tooltip, zoom, brush
+
+![Interactive chart — tooltip, zoom, brush](img/interactive-chart.svg)
+
+chartView() over a chart() spec: tooltip and crosshair follow the pointer, active dots mark the samples under it, legend rows highlight on hover and toggle on click, a drag across the plot zooms the x domain (double-click resets), and the brush strip below pans and resizes the window. Every render is the same pure chart(); interaction is one thin DOM adapter over the frame's hitTest and data-series tags.
+
+**Source:** [`examples/interactive-chart.ts`](../../examples/interactive-chart.ts)
+
+### Time axis
+
+![Time axis](img/time-series-chart.svg)
+
+Dates on the x axis: ticks land on calendar boundaries (the Mondays of a quarter) and each label says only what changed — the month on the 1st, the day otherwise — in UTC, so the picture is the same wherever it renders. Weekend NaNs break the line; a reference area marks launch week.
+
+**Source:** [`examples/time-series-chart.ts`](../../examples/time-series-chart.ts)
+
+### Stacked area chart
+
+![Stacked area chart](img/stacked-area-chart.svg)
+
+Traffic by source as stacked areas: series with the same `stack` sit on each other and their samples are increments, so the top edge is the total and chart() widens the y domain to it. Smooth edges, a reference area marking the campaign weeks, the legend outside to the east.
+
+**Source:** [`examples/stacked-area-chart.ts`](../../examples/stacked-area-chart.ts)
+
+### Candlestick chart
+
+![Candlestick chart](img/candlestick-chart.svg)
+
+TikZ's `candle stick plot`: a wick from low to high and a body from open to close, hollow rising and solid falling. A stepAfter line traces the closes and a dashed reference line marks the moving average — all through chart(), whose y domain comes from the candles' lows and highs.
+
+**Source:** [`examples/candlestick-chart.ts`](../../examples/candlestick-chart.ts)
+
+### Donut chart
+
+![Donut chart](img/pie-chart.svg)
+
+pie() with the style sheet's colours, a 2px canvas gap between slices, percentages inside the slices with room and outside the one without, and a legend() built from the slices pie() returns.
+
+**Source:** [`examples/pie-chart.ts`](../../examples/pie-chart.ts)
+
+### Sparkline stat tiles
+
+![Sparkline stat tiles](img/sparklines.svg)
+
+TikZ's `datavisualization.sparklines`: word-sized lines with no axes, each with a normal band, a light fill and a dot on the last value, laid out as a row of stat tiles in one loop.
+
+**Source:** [`examples/sparklines.ts`](../../examples/sparklines.ts)
 
 ### chart() — ext/dataviz
 
 ![chart() — ext/dataviz](img/dataviz-chart.svg)
 
-The datavisualization extension: chart() infers domains from the series (nice 1/2/5 ticks, bar baselines pinned at 0), draws axes with gridlines and labels, paints line/scatter/bar series through the frame's scales, and collects labeled series into a legend at the north-east corner. axes() and legend() stay available separately for layouts the builder doesn't anticipate.
+The datavisualization extension: chart() infers domains from the series (nice 1/2/5 ticks, bar baselines pinned at 0), draws axes with gridlines and labels, paints bar/line series through the frame's scales, and collects labeled series into a legend placed below the axes. No series names a colour — the default style sheet (TikZ's `vary hue`, a CVD-validated eight-hue palette) assigns one per slot. axes() and legend() stay available separately for layouts the builder doesn't anticipate.
 
 **Source:** [`examples/dataviz-chart.ts`](../../examples/dataviz-chart.ts)
 
@@ -412,13 +508,21 @@ Quartiles computed in code; whiskers as one multi-subpath pen statement, boxes a
 
 State machines, trees, nets, and branch graphs — the diagrams CS textbooks run on.
 
-### DFA acceptor
+### DFA acceptor (automata)
 
-![DFA acceptor](img/dfa-acceptor.svg)
+![DFA acceptor (automata)](img/dfa-acceptor.svg)
 
-The automata-textbook DFA for strings ending in "01": double-circle acceptor (node + concentric ring), symbol-labeled bend transitions, self-loops, and a start arrow from a bare point — all three endpoint kinds in one card.
+The automata-textbook DFA for strings ending in "01", with TikZ's automata library verbatim: automata.state() at the 2.5em minimum, accepting: true for the double circle, initialArrow() for the start arrow from 3ex outside with "start" at its tail — plus bend transitions and self-loops with symbol labels.
 
 **Source:** [`examples/dfa-acceptor.ts`](../../examples/dfa-acceptor.ts)
+
+### Entity–relationship diagram (er)
+
+![Entity–relationship diagram (er)](img/er-diagram.svg)
+
+TikZ's er library: er.entity() rectangles at 4×2 baselineskips, a diamond er.relationship(), ellipse attributes and the italic er.keyAttribute() — every node placed with rightOf/above/aboveRight relative to the last, no coordinates past the seed.
+
+**Source:** [`examples/er-diagram.ts`](../../examples/er-diagram.ts)
 
 ### Binary search tree with search path
 
@@ -543,6 +647,22 @@ A build pipeline as a DAG: multi-parent milestones (test, package) and a config�
 Interfaces with multiple implementers — a DAG a tree layout cannot express. Weighted-median + transpose sweeps untangle the implements-edges; interfaces are dashed by name convention.
 
 **Source:** [`examples/class-hierarchy.ts`](../../examples/class-hierarchy.ts)
+
+### Magnifying glass (spy)
+
+![Magnifying glass (spy)](img/spy-magnifier.svg)
+
+TikZ's spy library: everything drawn before spy() is replayed into a lens — clipped to a circle, scaled ×4 about the point being watched — with the two outlines and the connecting line of `spy using outlines, connect spies`. The mechanism is the picture's own item list, replayed into a transformed scope.
+
+**Source:** [`examples/spy-magnifier.ts`](../../examples/spy-magnifier.ts)
+
+### Mind map (mindmap)
+
+![Mind map (mindmap)](img/mindmap.svg)
+
+TikZ's mindmap library, the manual's Computational Complexity map: concept circles sized by level, children fanned at the level's sibling angle, and every connection a circle connection bar filled with a gradient from the parent's concept color to the child's. One mindmap() call from a nested spec.
+
+**Source:** [`examples/mindmap.ts`](../../examples/mindmap.ts)
 
 ### rectFit — TikZ fit library
 
@@ -736,6 +856,14 @@ Any $...$ text renders through KaTeX (loaded from CDN on this page) inside a for
 
 **Source:** [`examples/katex-math.ts`](../../examples/katex-math.ts)
 
+### Fadings, footprints, shapes along a path
+
+![Fadings, footprints, shapes along a path](img/fadings-footprints.svg)
+
+Three TikZ libraries: `path fading=west` and `fade out` as opacity masks on fills (the fadings library), footprints alternating sides of a curve and toed out (decorations.footprints), and a diamond repeated every 14 px along a wave (decorations.shapes).
+
+**Source:** [`examples/fadings-footprints.ts`](../../examples/fadings-footprints.ts)
+
 ### Path operations — offset / double / smooth / sub
 
 ![Path operations — offset / double / smooth / sub](img/path-operations.svg)
@@ -828,7 +956,7 @@ The textbook pawn-skeleton diagram (French Advance structure), auto-derived from
 
 ![Chess prototype — rating history chart](img/chess-rating-chart.svg)
 
-Rapid rating over 12 months as a line chart with a dashed 1500 goal line: ext/dataviz owns the axes (nice y ticks every 50, month letters via the tick formatter), the series is frame.line with open-circle marks, and the goal line maps through the frame's scales so it can't drift from the grid.
+Rapid rating over 12 months as a line chart with a dashed 1500 goal line: ext/dataviz owns the axes (nice y ticks every 50, a band axis of month initials), the series is frame.line with open-circle marks and labels itself at its last sample, and the goal is frame.referenceLine, so it can't drift from the grid.
 
 **Source:** [`examples/chess-rating-chart.ts`](../../examples/chess-rating-chart.ts)
 

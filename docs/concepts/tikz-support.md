@@ -143,7 +143,10 @@ Legend: ✅ supported · 🟡 partial (note says what is missing) ·
 | `circuits.ee` | `@ozan.e/jikz/circuits` — 16 symbols, typed ports, `wire()` | ✅ |
 | `shapes.gates.logic.US/IEC` | `@ozan.e/jikz/gates` | ✅ |
 | `petri` | `@ozan.e/jikz/petri` | ✅ |
-| `datavisualization` | `@ozan.e/jikz/dataviz` — `chart()`, `axes()`, `legend()`, nice ticks | ✅ |
+| `datavisualization` | `@ozan.e/jikz/dataviz` — `chart()`, `axes()`, `legend()`; scientific and school-book axes, logarithmic and time axes, band axes, minor ticks, `also at`/`include value`/`about` strategies, style sheets (`vary hue`, `cross marks`, …), `label in data`, `function` data | ✅ |
+| `datavisualization.sparklines`, `.barcharts` (`candle stick plot`) | `@ozan.e/jikz/dataviz` — `sparkline()`, `candlestick()` | ✅ |
+| `datavisualization.polar` | — | 🔴 planned |
+| *(beyond TikZ)* tooltips, crosshair, legend toggles, zoom, brush, responsive, enter animations | `@ozan.e/jikz/dataviz` — `attachChart()`, `chartView()`, `enter` | ✅ |
 | `intersections`, `calc`, `through`, `positioning`, `fit`, `patterns`, `shadings`, `shadows`, `arrows` (legacy set), `svg.path`, `plotmarks` | core | ✅ |
 | `angles` | `@ozan.e/jikz/angles` — `angle()`, `rightAngle()` as one paintable value | ✅ |
 | `automata` | `@ozan.e/jikz/automata` — `state`, `accepting`, `state with output`, `initialArrow()` | ✅ |

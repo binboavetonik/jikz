@@ -16,15 +16,15 @@ import { chart } from '../../../src/ext/dataviz/chart'
 describe('linearScale', () => {
   it('maps domain to range linearly', () => {
     const s = linearScale([0, 10], [100, 300])
-    expect(s(0)).toBe(100)
-    expect(s(5)).toBe(200)
-    expect(s(10)).toBe(300)
+    expect(s.map(0)).toBe(100)
+    expect(s.map(5)).toBe(200)
+    expect(s.map(10)).toBe(300)
   })
 
   it('supports decreasing ranges (y-axis flip)', () => {
     const s = linearScale([0, 100], [200, 20])
-    expect(s(0)).toBe(200)
-    expect(s(100)).toBe(20)
+    expect(s.map(0)).toBe(200)
+    expect(s.map(100)).toBe(20)
   })
 
   it('throws on a degenerate domain', () => {
@@ -99,7 +99,7 @@ describe('axes', () => {
     expect(frame.y(0)).toBe(230)
     expect(frame.y(100)).toBe(30)
     expect(frame.point(5, 50)).toEqual(point(200, 130))
-    expect(frame.area).toEqual([50, 30, 350, 230])
+    expect(frame.plotArea).toEqual([50, 30, 350, 230])
   })
 
   it('widens domains to nice ticks unless exact', () => {
@@ -164,8 +164,9 @@ describe('ChartFrame series builders', () => {
     const pic = picture()
     frame(pic).line([[0, 0], [10, 10]], { marks: 'o', style: { stroke: '#2563eb' } })
     const svg = pic.toSVG({ width: 120, height: 120 })
-    // Two circle marks (open circles stroke the series color).
-    const circles = svg.match(/<path[^>]*A 2\.5/g) ?? []
+    // Two circle marks (open circles stroke the series color; a line
+    // mark is 6px, so radius 3).
+    const circles = svg.match(/<path[^>]*A 3 3/g) ?? []
     expect(circles.length).toBe(2)
   })
 
@@ -309,7 +310,23 @@ describe('review fixes', () => {
     expect(frame.yTicks).toEqual([3])
   })
 
-  it('a non-finite data point is skipped, not drawn into the path', () => {
+  it('a non-finite data point breaks the line, never reaching the path', () => {
+    const pic = picture()
+    const frame = axes(pic, {
+      at,
+      width: 100,
+      height: 100,
+      x: { domain: [0, 4], exact: true },
+      y: { domain: [0, 4], exact: true },
+    })
+    frame.line([[0, 0], [1, 1], [2, NaN], [3, 3], [4, 4]])
+    const svg = pic.toSVG({ width: 200, height: 220 })
+    expect(svg).not.toContain('NaN')
+    // Two subpaths: the run before the gap and the run after it.
+    expect(svg).toContain('M 50 200 L 75 175 M 125 125 L 150 100')
+  })
+
+  it('connectGaps joins the neighbours across a non-finite sample', () => {
     const pic = picture()
     const frame = axes(pic, {
       at,
@@ -318,10 +335,8 @@ describe('review fixes', () => {
       x: { domain: [0, 2], exact: true },
       y: { domain: [0, 2], exact: true },
     })
-    frame.line([[0, 0], [1, NaN], [2, 2]])
-    const svg = pic.toSVG({ width: 200, height: 220 })
-    expect(svg).not.toContain('NaN')
-    expect(svg).toContain('M 50 200 L 150 100') // endpoints survive
+    frame.line([[0, 0], [1, NaN], [2, 2]], { connectGaps: true })
+    expect(pic.toSVG({ width: 200, height: 220 })).toContain('M 50 200 L 150 100')
   })
 
   it('a bar series skips non-finite samples too', () => {
@@ -380,7 +395,7 @@ describe('review fixes', () => {
     frame.line([[0.5, 0.5]], { marks: 'o' })
     const svg = pic.toSVG({ width: 200, height: 220 })
     // The open-circle mark path renders even though no line can.
-    expect(svg).toMatch(/A 2\.5 2\.5/)
+    expect(svg).toMatch(/A 3 3/)
   })
 
   it('legend defaults survive explicit undefined fields', () => {
