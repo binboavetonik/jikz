@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — the 0.9 consolidation
+## 0.9.0 — 2026-10-01
 
 0.9 settles the vocabulary before 1.0 freezes it. It is one breaking
 release rather than several: every call takes one option bag, every
@@ -32,6 +32,10 @@ own examples, tests and docs, and the table below is what it does.
 | `applyPreset('nope')` → `{}` with a warning | throws |
 | `catch (e) { /* e.message */ }` | every jikz error is a `JikzError` with a `code`; `AnchorError` extends it |
 | `console.warn` from the library | `setWarningHandler(fn \| null)` to redirect or silence |
+| `frame.xScale(v)` (dataviz) | `frame.x(v)` — `Scale` is an object with `map`/`invert`/`ticks` |
+| `frame.area` (the plot rectangle) | `frame.plotArea` — `frame.area()` is now the area series builder |
+| a NaN sample in a line series was skipped and bridged | it breaks the line; `connectGaps: true` bridges |
+| unstyled dataviz series drew 1px black lines and slate bars | they take the style sheet's colour and a 2px line; `styleSheet: null` for the old ink |
 
 ### Breaking
 
@@ -61,6 +65,192 @@ own examples, tests and docs, and the table below is what it does.
   `/gates`, `/dataviz`, `/petri`, `/styles`), so `red`, `double`,
   `wire` and forty other short names no longer sit in the root
   namespace.
+
+### Added — datavisualization, the whole extension
+
+`@ozan.e/jikz/dataviz` grew from axes, three series kinds and a
+static legend into the chart library the plan in
+`implementation-plans/2026-09-30-dataviz-parity-and-interaction-plan.md`
+describes: a chart model with hit-testing, style sheets, band, log
+and time axes, grouped and stacked bars, areas, candlesticks,
+reference marks, sparklines, pies, an interactive layer (tooltip,
+crosshair, legend toggles, zoom, brush, responsive) and enter
+animations. The sections below are its phases, in the order they
+landed.
+
+### Added — the dataviz chart model (dataviz phase 0)
+
+The groundwork for tooltips, crosshairs, legend toggles, brush and
+zoom (`implementation-plans/2026-09-30-dataviz-parity-and-interaction-plan.md`):
+
+- **`Scale` is an object**, not a bare function: `kind`, `domain`,
+  `range`, `map(v)`, `invert(px)`, `ticks(count)`, `format(v)`.
+  `linearScale(domain, range, { format })` returns one;
+  `frame.invertX()`/`invertY()` and `frame.contains(p)` read through it.
+  **Breaking** for anyone who called `frame.xScale(v)` directly —
+  write `frame.x(v)` or `frame.xScale.map(v)`.
+- **The frame remembers its series.** Every builder takes `id` and
+  `label`; `frame.series` and `frame.seriesById(id)` return
+  `SeriesRecord`s (kind, style, samples in data and picture space).
+  Every painted element carries `class="jikz-series jikz-series-<id>"`
+  and `data-series`; marks and bars add `data-index`. `chart()` series
+  specs take `id` too. Duplicate ids throw.
+- **`frame.hitTest(p, { mode, maxDistance, ids })`** — the samples
+  nearest a picture point, per series along x or y, or the single
+  nearest in the plane. Pure and node-tested.
+- **Records as data.** Series builders and `chart()` accept
+  `{ rows, x, y }` with field names or accessor functions beside
+  `[x, y]` pairs; `Date`s become epoch ms. `toSeries()` is exported.
+- **A gap breaks the line.** A non-finite sample now splits a line
+  series into runs (TikZ `outlier`, recharts `connectNulls={false}`)
+  instead of being skipped and bridged. `connectGaps: true` restores
+  the bridge. **Breaking** in output for series with NaN samples.
+- `ChartFrame`'s constructor takes one `ChartFrameInit` bag.
+  `FrameLineOptions`/`FrameScatterOptions` no longer accept path
+  `label`/`labels` — on a series, `label` is the legend label.
+
+### Added — dataviz style sheets and legend layout (dataviz phase 3)
+
+- **Style sheets.** `styleSheet` on `axes()`/`chart()` — TikZ's
+  mechanism with TikZ's names: `varyHue` (default), `varyHueDark`,
+  `strongColors`, `shadesOfBlue`, `shadesOfRed`, `grayScale`,
+  `varyDashing`, `varyThickness`, `crossMarks`, `oMark`, `starMark`,
+  `dotMark`, a `{ colors, dashes, widths, marks }` value, or an array
+  to compose; `null` for none. Series without a `style` take the
+  slot's paint by kind; a series' own `style` layers over the slot.
+  The default palette is eight CVD-validated hues in fixed order; a
+  ninth series wraps with a dash pattern and a warning. `styleSheets`,
+  `resolveStyleSheet`, `slotOf`, `VARY_HUE`, `VARY_HUE_DARK` are
+  exported; `SeriesRecord` gains `mark`.
+- **Legend grids and placement.** `legend()` takes `columns`/`rows`,
+  `fillOrder` (`'downThenRight'` | `'rightThenDown'`), `columnGap`,
+  `textStyle`. `chart()` legends take `place`: the inside corners and
+  sides, `eastOutside` and the other outside placements, and the
+  `above`/`below`/`left`/`right` aliases; outside legends clear the
+  axis decorations (`frame.outerArea`) and are unframed by default;
+  above/below lay out in one row. Entries with an `id` (set by
+  `chart()`) tag their swatch and label with
+  `jikz-legend-entry jikz-legend-<id>` and `data-series`.
+- **Designer defaults.** Series lines 2px; scatter marks 8px, line
+  marks 6px; axes 1px recessive slate; tick labels secondary ink, axis
+  and legend labels primary ink; `textStyle` on `axes()`. **Output
+  changes** for every chart (four example snapshots).
+
+### Added — dataviz series parity and the chart staples (dataviz phase 2)
+
+- **Band axes.** `categories` on an axis makes it categorical: one
+  equal band per name, ticks labelled with the names, string samples
+  (`['Q1', 42]`, or records) resolving to their band. `bandScale()`,
+  `Scale.categories`/`bandwidth`, `toSeries(data, categories)`,
+  `toNumber()`.
+- **Grouped and stacked bars.** `bars()` takes `group: { index,
+  count }` and `stack`; `chart()` groups unstacked bar series side by
+  side automatically, stacks by `stack`, and widens y to the stack
+  totals (`stackedDomain()`). Canvas gaps of 2px between grouped
+  columns and stacked segments. Per-bar `style` functions.
+- **`area()`** with `baseline` and `stack` (stacked areas by
+  increments); the stroke is the top edge alone. `interpolation`
+  (`linear`/`smooth`/`step`/`stepBefore`/`stepAfter`) and `closed` on
+  lines; `interpolatePath()`/`stepPoints()` exported.
+- **`fn()`** (TikZ's `function` format), **`candlestick()`** (TikZ's
+  `candle stick plot`), **`errorBars()`**, per-point `style` on
+  `scatter()`.
+- **Reference marks**: `referenceLine`, `referenceArea`,
+  `referenceDot` on the frame.
+- **Direct labels**: `labelInData` (TikZ `label in data`) and
+  `valueLabels` on every series builder and `chart()` spec.
+- **`sparkline()`** (TikZ's `datavisualization.sparklines`) and
+  **`pie()`** (pie/donut with sheet colours, canvas gaps, inside/outside
+  labels, a result a `legend()` can be built from).
+- `chart()` series kinds `'area'` and `'candlestick'`; `SeriesRecord`
+  gains `stack`; `SeriesKind` gains `'area'` and `'candlestick'`.
+- **Breaking:** `ChartFrame.area` (the plot rectangle) is now
+  `plotArea`, freeing `area()` for the series builder;
+  `ChartFrameInit.area` likewise.
+- **Fixed (core):** `fit` measured bare text as centred whatever its
+  `textAnchor`/`dominantBaseline`, so a start-anchored label at the
+  right edge lost half its width to the viewBox. Bounds now follow the
+  anchors; a few example snapshots shift by a text width.
+- Gallery: `bar-chart` and `chess-rating-chart` rewritten on band
+  axes, grouping and reference lines; new `stacked-area-chart`,
+  `candlestick-chart`, `pie-chart`, `sparklines`.
+
+### Added — dataviz axis parity (dataviz phase 1)
+
+- **Logarithmic axes.** `logarithmic: true` on an axis — TikZ's
+  `logarithmic` with `exponential steps`: decades as major ticks, 2…9
+  as minor ticks, domains widened to whole decades, `10ⁿ` labels for
+  big and small decades; `chart()` drops non-positive samples from the
+  auto domain. `logScale()`, `logTicks()`, `formatLogTick()`.
+- **Minor ticks and grids.** `minorTicks: n` (TikZ `minor steps between
+  steps`), `grid: 'major' | 'minor' | 'both'`, `minorTickSize`,
+  `minorGridStyle`; `frame.xMinorTicks`/`yMinorTicks`;
+  `minorTicksBetween()`.
+- **Tick placement.** `alsoAt` (TikZ `also at`), `includeValue` (TikZ
+  `include value`), `padding` in data units, and `about` snap presets
+  (`'standard' | 'decimal' | 'half' | 'quarter' | 'int'`, TikZ's `about
+  strategy`) on `niceNumber`/`niceTicks` too.
+- **Axis systems.** `axisSystem: 'schoolBook'` — axes through the
+  origin with arrow tips, centred ticks, end labels and one 0; and
+  the pieces separately: `tickSide: 'outer' | 'inner' | 'both'`,
+  `labelStyle: 'standard' | 'end'`.
+- **Tick labels.** `labelEvery`, `rotateLabels`, `stackLabels` (TikZ
+  `stack`).
+- **`clip: true`** on `axes()`/`chart()`: everything drawn through the
+  frame lands in a scope clipped to the plot area.
+- Gallery: `log-axis-chart`, `school-book-plot`.
+- Not included, on purpose: a second y axis (two measures on two scales
+  read as a false correlation; use two charts) and TikZ `upright
+  labels` (jikz's y label is already upright).
+
+### Added — dataviz time axes (dataviz phase 4)
+
+- **`time: true` axes.** Samples as epoch ms or `Date`s; ticks on
+  calendar boundaries from a seconds-to-years interval ladder
+  (`chooseInterval`, `floorTime`, `offsetTime`, `timeTicks`); the
+  domain widened to the enclosing boundaries unless `exact`;
+  multi-scale labels (`formatTime`: year → month → day → `HH:mm` →
+  `HH:mm:ss`) through `Intl.DateTimeFormat`, UTC by default,
+  `{ timeZone: 'local', locale }` otherwise. `timeScale()` exported;
+  `domain`, `tickValues` and `alsoAt` accept `Date`s on every axis.
+- Gallery: `time-series-chart`.
+
+### Added — the dataviz interactive layer (dataviz phase 5)
+
+- **`attachChart(svg, frame, options)`** — tooltip (HTML, beside the
+  pointer, axes-formatted, `format` for your own), crosshair, active
+  dots, hover highlight of legend rows, legend click to hide/show a
+  series; `hover(at)` for linked charts, `highlight`, `setVisible`,
+  `toggle`, `clientToUser`, `overlay`, `destroy`. A thin DOM adapter
+  over `frame.hitTest` and the `data-series` tags; pan/zoom aware.
+  `axes()` now appends an empty `jikz-chart-overlay` group
+  (`frame.overlayClass`) for it — **every chart's output gains one
+  `<g>`** (14 example snapshots).
+- **`chartView(container, spec, options)`** — the stateful loop:
+  `zoom: 'x'` (drag to zoom, double-click to reset), `brush` (a strip
+  with a window and handles under the axes), `responsive`
+  (`ResizeObserver`), `update(spec)` with zoom and hidden series
+  persisting, `setDomain`, `resetZoom`, `destroy`.
+- `seriesColor(record)` exported; `viewBoxOf`, `viewportTransformOf`,
+  `defaultTooltip` too.
+- Gallery: `interactive-chart`.
+
+### Added — dataviz enter animations (dataviz phase 6)
+
+- **`enter`** on every series builder, on `chart()` series specs and
+  on `chart()` itself (staggered): `'draw'` (lines and area edges
+  draw themselves in via `pathLength="1"` + `stroke-dashoffset`; area
+  fills fade up), `'grow'` (bars from their baseline), `'fade'`; with
+  `dur`, `delay`, `easing`, `stagger`. Emitted as SMIL through the
+  `animate` render option, so static SVG output plays it and SMIL-less
+  renderers show the final state. `chartView` plays it on the first
+  render and after `update()` only. `parseDuration`, `enterKeyframe`,
+  `fadeIn`, `drawIn`, `growIn`, `staggered` exported.
+- **Fixed:** a string sample naming a category that appears more than
+  once in the axis (month initials, say) silently resolved to the first
+  match, piling bars onto the wrong band; it now throws with the
+  indices to use instead.
+- Gallery: `animated-chart`.
 
 ### Added — the rest of the extension backlog (Phase 4, second batch)
 
@@ -198,7 +388,14 @@ own examples, tests and docs, and the table below is what it does.
   `bounds` draws with the caller's style and fits (`CustomRenderable`);
   a `Paintable` with `paint(ctx)` paints itself — several fills,
   strokes and text — with the resolved style, its attributes and the
-  renderer in hand. No registration, no core type.
+  renderer in hand. No registration, no core type. `Frame.renderable`
+  is generic and keeps its argument's type (a `Rectangle` stays one,
+  so it can be a scope's clip), and `screen(obj)` marks geometry as
+  already in screen px — a decorated path or a mark set built from
+  `pic.frame.renderable(shape)` draws through the picture's verbs
+  without being mapped again.
+- **Pen node `dx`/`dy`**: a screen-px move after placement — TikZ's
+  `above=2pt` on a path node.
 - The gallery gains `tikz-frame`: six `\draw` lines ported line for
   line.
 
@@ -319,6 +516,11 @@ own examples, tests and docs, and the table below is what it does.
   own" true rather than decorative.
 
 ### Fixed
+
+- **`Pen.coordinate` mapped its point through a math frame twice.**
+  The pen handed screen px to a host that maps frame coordinates, so
+  a named coordinate in a `frame: 'math'` picture landed in the wrong
+  place; it now hands a frame coordinate, as the pen's node verb does.
 
 - **A node's multi-line text rendered on one line.** `measureText`
   sizes a node for every `\n`-separated line, but a newline inside
