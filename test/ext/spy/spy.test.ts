@@ -12,10 +12,10 @@ describe('spy', () => {
     pic.fill(circle(point(50, 80), 5), { style: { fill: '#2563eb' } }) // after the spy: not replayed
     const svg = pic.toSVG({ width: 260, height: 100 })
     // the clip is the region in scope coordinates; the transform carries it onto the lens
-    expect(svg).toMatch(/<clipPath id="jikz-clip-0"><path d="M 42.5 50 A 7.5 7.5/)
+    expect(svg).toMatch(/<clipPath id="jikz-clip-[0-9a-z]+"><path d="M 42.5 50 A 7.5 7.5/)
     // the replayed red disc, inside a clipped, transformed group
     // translate(in) ∘ scale(4) ∘ translate(−on): e = 200 − 4·50 = 0, f = 50 − 4·50 = −150
-    expect(svg).toContain('<g clip-path="url(#jikz-clip-0)" transform="matrix(4 0 0 4 0 -150)">')
+    expect(svg).toMatch(/<g clip-path="url\(#jikz-clip-[0-9a-z]+\)" transform="matrix\(4 0 0 4 0 -150\)">/)
     expect(svg.match(/fill="#dc2626"/g)).toHaveLength(2)
     expect(svg.match(/fill="#2563eb"/g)).toHaveLength(1)
     // outlines: the region (r 7.5) and the lens (r 30), and the connection

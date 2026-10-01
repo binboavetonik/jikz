@@ -6,7 +6,7 @@ import { JikzError } from '../../core/errors'
 import type { PointLike } from '../../core/types'
 
 /** What a {@link Scale} maps: the axis families dataviz knows. */
-export type ScaleKind = 'linear' | 'log' | 'time' | 'band'
+export type ScaleKind = 'linear' | 'log' | 'time' | 'band' | 'function'
 
 /** One tick of a {@link Scale}: its data value and printed label. */
 export interface Tick {
@@ -81,7 +81,7 @@ export function linearScale(
     map: (v) => r0 + (v - d0) * k,
     invert: (px) => d0 + (px - r0) / k,
     ticks: (count = 5) =>
-      niceTicks(lo, hi, count)
+      niceTicks(lo, hi, count, 'standard', { exact: true })
         .ticks.filter((t) => t >= lo && t <= hi)
         .map((value) => ({ value, label: format(value) })),
     format,
@@ -202,6 +202,146 @@ export function logScale(
   }
 }
 
+/**
+ * A custom axis function — TikZ's axis `function` key, of which
+ * `logarithmic` is one preset: `forward` takes a data value into the
+ * space where positions are linear, `inverse` takes it back.
+ *
+ * ```ts
+ * // winning chances: pawns squashed through a sigmoid
+ * const k = 0.368
+ * y: { scale: { forward: (p) => 2 / (1 + Math.exp(-k * p)) - 1,
+ *               inverse: (u) => -Math.log(2 / (u + 1) - 1) / k } }
+ * ```
+ */
+export interface AxisFunction {
+  forward(v: number): number
+  /**
+   * The inverse of `forward`. Optional: a monotone `forward` is
+   * inverted numerically over the axis's domain, which is all the
+   * scale needs it for (reading a value back from a pixel).
+   */
+  inverse?(u: number): number
+}
+
+/** Options for {@link functionScale}. */
+export interface FunctionScaleOptions extends AxisFunction {
+  /** Tick label formatter (default: {@link formatTick}). */
+  format?: (v: number) => string
+}
+
+/**
+ * A {@link Scale} through a custom function: positions are linear in
+ * `forward(value)`. Ticks are still chosen in data units — round
+ * values, unevenly spaced on the page, which is the point of such an
+ * axis.
+ */
+export function functionScale(
+  domain: readonly [number, number],
+  range: readonly [number, number],
+  options: FunctionScaleOptions
+): Scale {
+  const [d0, d1] = domain
+  const { forward } = options
+  const inverse = options.inverse ?? bisect(forward, Math.min(d0, d1), Math.max(d0, d1))
+  const f0 = forward(d0)
+  const f1 = forward(d1)
+  if (!Number.isFinite(f0) || !Number.isFinite(f1) || f0 === f1) {
+    throw new JikzError(
+      'invalid-argument',
+      `functionScale: forward() must be finite and distinct at the ends of [${d0}, ${d1}], got ${f0} and ${f1}.`
+    )
+  }
+  const [r0, r1] = range
+  const k = (r1 - r0) / (f1 - f0)
+  const format = options.format ?? formatTick
+  const lo = Math.min(d0, d1)
+  const hi = Math.max(d0, d1)
+  return {
+    kind: 'function',
+    domain: [lo, hi],
+    range: [r0, r1],
+    map: (v) => r0 + (forward(v) - f0) * k,
+    invert: (px) => inverse(f0 + (px - r0) / k),
+    ticks: (count = 5) => spreadTicks(lo, hi, count, forward).map((value) => ({ value, label: format(value) })),
+    format,
+  }
+}
+
+/** A monotone function's inverse on [lo, hi], by bisection. */
+function bisect(forward: (v: number) => number, lo: number, hi: number): (u: number) => number {
+  const rising = forward(hi) >= forward(lo)
+  return (u) => {
+    let a = lo
+    let b = hi
+    for (let i = 0; i < 60; i++) {
+      const mid = (a + b) / 2
+      if (forward(mid) < u === rising) a = mid
+      else b = mid
+    }
+    return (a + b) / 2
+  }
+}
+
+/** How many significant digits a tick value needs — its roundness. */
+function digits(v: number): number {
+  if (v === 0) return 0
+  return Number(Math.abs(v).toPrecision(12)).toExponential().replace(/e.*$/, '').replace('.', '').replace(/0+$/, '').length
+}
+
+/**
+ * About `count` round tick values on [lo, hi] spread **evenly on the
+ * page** of a function axis, rather than evenly in data units — on a
+ * sigmoid, data-even ticks bunch at the ends where the function is
+ * flat. Round candidates at several step sizes are drawn up, and for
+ * each of `count` evenly spaced positions in `forward` space the
+ * nearest candidate wins, rounder values breaking near ties: ±10 on a
+ * winning-chance axis give −10, −3, 0, 3, 10, not −10, −5, 0, 5, 10.
+ */
+export function spreadTicks(
+  lo: number,
+  hi: number,
+  count: number,
+  forward: (v: number) => number
+): number[] {
+  const n = Math.max(2, Math.floor(count))
+  const f0 = forward(lo)
+  const f1 = forward(hi)
+  const span = f1 - f0
+  if (!Number.isFinite(span) || span === 0) return niceTicks(lo, hi, n, 'standard', { exact: true }).ticks
+
+  // Round candidates: the standard rungs over three decades.
+  const rough = (hi - lo) / (n - 1)
+  const decade = Math.floor(Math.log10(rough))
+  const candidates = new Set<number>([lo, hi])
+  for (let e = decade - 2; e <= decade; e++) {
+    for (const rung of [1, 2, 2.5, 5]) {
+      const result = ticksAt(lo, hi, Number((rung * 10 ** e).toPrecision(12)), true)
+      if (result.ticks.length <= 400) for (const t of result.ticks) candidates.add(t)
+    }
+  }
+  const pool = [...candidates].filter((v) => Number.isFinite(forward(v)))
+
+  const spacing = Math.abs(span) / (n - 1)
+  const chosen = new Set<number>()
+  for (let i = 0; i < n; i++) {
+    const target = f0 + (span * i) / (n - 1)
+    let best: number | undefined
+    let bestScore = Infinity
+    for (const c of pool) {
+      // Distance on the page in tick spacings, plus a little for every
+      // digit the label needs.
+      const score = Math.abs(forward(c) - target) / spacing + 0.08 * Math.max(0, digits(c) - 1)
+      if (score < bestScore) {
+        bestScore = score
+        best = c
+      }
+    }
+    if (best !== undefined) chosen.add(best)
+  }
+  return [...chosen].sort((a, b) => a - b)
+}
+
 /** Options for {@link bandScale}. */
 export interface BandScaleOptions {
   /**
@@ -250,13 +390,24 @@ export function bandScale(
 }
 
 /**
- * How a rough tick step snaps to a round one — TikZ's `about
- * strategy` presets. `'standard'` is Heckbert's 1/2/5 × 10ⁿ;
- * `'decimal'` allows 1 × 10ⁿ only; `'half'` 1 and 5 × 10ⁿ;
- * `'quarter'` 1, 2.5 and 5 × 10ⁿ; `'int'` is standard but never
- * fractional (count axes).
+ * Which round steps a tick axis may use — TikZ's `about strategy`
+ * presets. `'standard'` is 1, 2 and 5 × 10ⁿ, with TikZ's 2.5 rung
+ * taken only when it gets clearly nearer the requested count;
+ * `'decimal'` allows 1 × 10ⁿ only; `'half'` 1 and 5; `'quarter'` 1,
+ * 2.5 and 5; `'int'` is standard but never fractional (count axes).
+ * `'heckbert'` is the pre-0.10 rule: the rough step rounded once
+ * through fixed thresholds, whatever count that yields.
  */
-export type AboutStrategy = 'standard' | 'decimal' | 'half' | 'quarter' | 'int'
+export type AboutStrategy = 'standard' | 'decimal' | 'half' | 'quarter' | 'int' | 'heckbert'
+
+/** The mantissas each strategy may step by. */
+const RUNGS: Record<Exclude<AboutStrategy, 'heckbert'>, readonly number[]> = {
+  standard: [1, 2, 2.5, 5],
+  int: [1, 2, 2.5, 5],
+  decimal: [1],
+  half: [1, 5],
+  quarter: [1, 2.5, 5],
+}
 
 /** The mantissa a rough step snaps to, per strategy. */
 function snapMantissa(fraction: number, about: AboutStrategy): number {
@@ -306,17 +457,50 @@ export interface NiceTicks {
   step: number
 }
 
+/** Options for {@link niceTicks}. */
+export interface NiceTicksOptions {
+  /**
+   * Keep [min, max] as given and count only the ticks inside it,
+   * instead of widening it to step boundaries.
+   */
+  exact?: boolean
+  /** Reject a step that leaves fewer ticks than this (default 2). */
+  minTicks?: number
+}
+
+/** The ticks a step puts on [min, max]: inside it, or on its widening. */
+function ticksAt(min: number, max: number, step: number, exact: boolean): NiceTicks {
+  const lo = exact ? Math.ceil(min / step - 1e-9) * step : Math.floor(min / step + 1e-9) * step
+  const hi = exact ? Math.floor(max / step + 1e-9) * step : Math.ceil(max / step - 1e-9) * step
+  const n = Math.max(-1, Math.round((hi - lo) / step))
+  const ticks: number[] = []
+  for (let i = 0; i <= n; i++) {
+    // Round against float drift (0.1 + 0.2 ≠ 0.3) so labels print clean.
+    ticks.push(Number((lo + i * step).toPrecision(12)))
+  }
+  return exact
+    ? { ticks, min, max, step }
+    : { ticks, min: Number(lo.toPrecision(12)), max: Number(hi.toPrecision(12)), step }
+}
+
 /**
- * "Nice" tick values covering [min, max] — pgfplots' `about` strategy:
- * the range widens to round step boundaries and ticks land on whole
- * multiples of a 1/2/5 step. `count` is the desired number of ticks;
- * the actual count may differ by one or two.
+ * "Nice" tick values for [min, max] — TikZ's `about` strategy: ticks
+ * land on whole multiples of a round step, and the range widens to
+ * step boundaries unless `exact`.
+ *
+ * The step is **searched for**, not rounded to: of the strategy's
+ * round steps near `range / (count − 1)`, the one whose tick count on
+ * this range is nearest `count` wins (a tie goes to the plainer rung,
+ * then to the step that widens the range least, then the larger one). So `count` means what it says — a padded
+ * hundred-point range asked for four ticks gets four at 25, not two
+ * at 50.
  */
 export function niceTicks(
   min: number,
   max: number,
   count = 5,
-  about: AboutStrategy = 'standard'
+  about: AboutStrategy = 'standard',
+  options: NiceTicksOptions = {}
 ): NiceTicks {
   // Non-finite input (NaN/±Infinity data) yields no ticks on a safe
   // default range rather than NaN poisoning every downstream scale.
@@ -329,17 +513,45 @@ export function niceTicks(
   } else if (min > max) {
     ;[min, max] = [max, min]
   }
-  const range = niceNumber(max - min, false)
-  const step = niceNumber(range / Math.max(1, count - 1), true, about)
-  const niceMin = Math.floor(min / step) * step
-  const niceMax = Math.ceil(max / step) * step
-  const n = Math.round((niceMax - niceMin) / step)
-  const ticks: number[] = []
-  for (let i = 0; i <= n; i++) {
-    // Round against float drift (0.1 + 0.2 ≠ 0.3) so labels print clean.
-    ticks.push(Number((niceMin + i * step).toPrecision(12)))
+  const exact = options.exact ?? false
+  const minTicks = options.minTicks ?? 2
+  const span = niceNumber(max - min, false)
+  if (about === 'heckbert') {
+    return ticksAt(min, max, niceNumber(span / Math.max(1, count - 1), true), exact)
   }
-  return { ticks, min: Number(niceMin.toPrecision(12)), max: Number(niceMax.toPrecision(12)), step }
+
+  // Candidate steps: every rung in the decades around the rough step.
+  const rough = (max - min) / Math.max(1, count - 1)
+  const decade = Math.floor(Math.log10(rough))
+  let best: { result: NiceTicks; score: number; plain: boolean; span: number } | undefined
+  let fallback: NiceTicks | undefined
+  for (let e = decade - 1; e <= decade + 1; e++) {
+    for (const rung of RUNGS[about]) {
+      const step = Number((rung * 10 ** e).toPrecision(12))
+      if (about === 'int' && !Number.isInteger(step)) continue
+      const result = ticksAt(min, max, step, exact)
+      if (result.ticks.length > 200) continue
+      // The most ticks any step managed, should every one fall short.
+      if (!fallback || result.ticks.length > fallback.ticks.length) fallback = result
+      if (result.ticks.length < minTicks) continue
+      // TikZ's 2.5 rung is a second choice: it must beat a plain rung
+      // by more than a tick to be taken.
+      const plain = rung !== 2.5 || about === 'quarter'
+      const score = Math.abs(result.ticks.length - count) + (plain ? 0 : 1)
+      // Ties: the plainer rung, then the step that widens the range
+      // least (two ticks on [0, 100] are 0 and 100, not 0 and 5000),
+      // then the larger step.
+      const span = result.max - result.min
+      const better =
+        !best ||
+        score < best.score ||
+        (score === best.score && plain && !best.plain) ||
+        (score === best.score && plain === best.plain && span < best.span) ||
+        (score === best.score && plain === best.plain && span === best.span && step > best.result.step)
+      if (better) best = { result, score, plain, span }
+    }
+  }
+  return best?.result ?? fallback ?? ticksAt(min, max, niceNumber(span / Math.max(1, count - 1), true), exact)
 }
 
 /**

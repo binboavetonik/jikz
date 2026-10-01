@@ -19,6 +19,7 @@ import type { StyleSpec } from '../../render/StyleMapper'
 import type { TextStyle } from '../../text/Label'
 import { pathFromSVG } from '../../path/svgPath'
 import { resolveStyleSheet, slotOf, type StyleSheetSpec } from './stylesheet'
+import { resolveTheme, type ThemeSpec } from './theme'
 import { formatTick } from './scale'
 
 /** One slice of a {@link pie}. */
@@ -52,8 +53,13 @@ export interface PieOptions {
   slices: readonly PieSlice[]
   /** Where the first slice starts, degrees clockwise from east (default -90: the top). */
   startAngle?: number
-  /** Slice paint for slices without a style (default `'varyHue'`). */
+  /** Slice paint for slices without a style (default: the theme's). */
   styleSheet?: StyleSheetSpec
+  /**
+   * The canvas colour the gaps are cut in and the label inks:
+   * `'light'` (default), `'dark'`, or overrides.
+   */
+  theme?: ThemeSpec
   /** Canvas gap between slices, px (default 2; 0 for none). */
   gap?: number
   /** Text on the slices (default `'percent'`). */
@@ -129,13 +135,13 @@ export function pie<S extends ShapeSet>(pic: ItemContainer<S>, options: PieOptio
     innerRadius = 0,
     slices,
     startAngle = -90,
-    styleSheet = 'varyHue',
     gap = 2,
     labels = 'percent',
     minInsideFraction = 0.08,
     textStyle,
   } = options
-  const sheet = resolveStyleSheet(styleSheet)
+  const theme = resolveTheme(options.theme)
+  const sheet = resolveStyleSheet(options.styleSheet ?? theme.styleSheet)
   const positive = slices.filter((s) => Number.isFinite(s.value) && s.value > 0)
   const total = positive.reduce((sum, s) => sum + s.value, 0)
   const results: PieSliceResult[] = []
@@ -158,8 +164,8 @@ export function pie<S extends ShapeSet>(pic: ItemContainer<S>, options: PieOptio
     angle = a1
     const slot = slotOf(sheet, i)
     const base: StyleSpec = {
-      fill: slot.color ?? '#64748b',
-      stroke: gap > 0 ? '#ffffff' : 'none',
+      fill: slot.color ?? theme.bar,
+      stroke: gap > 0 ? theme.surface : 'none',
       strokeWidth: gap,
     }
     const style: StyleSpec = slice.style
@@ -184,7 +190,7 @@ export function pie<S extends ShapeSet>(pic: ItemContainer<S>, options: PieOptio
       const p = polar(at, r, mid)
       const cos = Math.cos(mid * RAD)
       pic.text(point(p.x, p.y), text, {
-        style: { fill: inside ? '#ffffff' : '#334155', fontSize: 11, ...textStyle },
+        style: { fill: inside ? theme.onSeries : theme.labelText, fontSize: 11, ...textStyle },
         textAnchor: inside ? 'middle' : cos > 0.2 ? 'start' : cos < -0.2 ? 'end' : 'middle',
         dominantBaseline: 'middle',
         className: `jikz-pie-label jikz-series-${safe}`,

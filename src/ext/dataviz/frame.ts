@@ -32,7 +32,7 @@ import type { PointLike } from '../../core/types'
 import type { ShapeSet } from '../../geometry/ShapeKind'
 import type { ItemContainer, DrawOptions } from '../../picture/Container'
 import type { RenderStyle, StyleSpec } from '../../render/StyleMapper'
-import { resolveStyle } from '../../render/StyleMapper'
+import { resolveStyle, styleList } from '../../render/StyleMapper'
 import type { TextStyle } from '../../text/Label'
 import { estimateLabelSize } from '../../text/placeText'
 import { line } from '../../geometry/Line'
@@ -48,12 +48,15 @@ import {
   linearScale,
   bandScale,
   logScale,
+  functionScale,
   logTicks,
+  spreadTicks,
   niceTicks,
   minorTicksBetween,
   formatTick,
   formatLogTick,
   type AboutStrategy,
+  type AxisFunction,
   isFiniteSample,
   toSeries,
   toNumber,
@@ -79,6 +82,7 @@ function enterKeyframeOpacity(to: number, e: EnterOptions) {
   return enterKeyframe('fill-opacity', 0, to, e)
 }
 import { timeScale, timeTicks, type TimeZone } from './time'
+import { lightTheme, resolveTheme, type ChartTheme, type ThemeSpec } from './theme'
 import {
   resolveStyleSheet,
   slotOf,
@@ -120,6 +124,15 @@ export interface AxisOptions {
    * from the auto domain.
    */
   logarithmic?: boolean
+  /**
+   * A custom axis function — TikZ's axis `function` key: positions are
+   * linear in `forward(value)`, ticks stay round data values (so they
+   * crowd where the function is flat — a winning-chance axis puts
+   * ±1, ±2, ±5 pawns where they belong). Give the guides with
+   * `tickValues`, or let the usual search pick them. See
+   * {@link AxisFunction}.
+   */
+  scale?: AxisFunction
   /** Desired number of tick intervals anchor (default 5). */
   ticks?: number
   /** Explicit tick values — overrides {@link ticks} and nice widening of positions. */
@@ -132,8 +145,13 @@ export interface AxisOptions {
    * minors unless this is 0).
    */
   minorTicks?: number
-  /** How a rough step snaps to a round one (default `'standard'`). See {@link AboutStrategy}. */
+  /** Which round steps the ticks may use (default `'standard'`). See {@link AboutStrategy}. */
   about?: AboutStrategy
+  /**
+   * The fewest ticks a step may leave on the axis (default 2) — a
+   * padded exact range never comes out with one lonely tick.
+   */
+  minTicks?: number
   /** Widen the domain to include these values — TikZ `include value`. */
   includeValue?: number | readonly number[]
   /** Extra room beyond the domain, in data units: one value for both ends or `[min, max]`. */
@@ -217,22 +235,22 @@ export interface AxesOptions {
   textStyle?: TextStyle
   /**
    * Paint for series drawn without a `style` — TikZ's `style sheet`.
-   * Default `'varyHue'`, the categorical palette; `null` for none
-   * (unstyled lines paint ink, bars slate). See {@link StyleSheetSpec}.
+   * Default: the theme's (`'varyHue'`, the categorical palette);
+   * `null` for none (unstyled lines paint ink, bars slate). See
+   * {@link StyleSheetSpec}.
    */
   styleSheet?: StyleSheetSpec | null
+  /**
+   * Every ink that is not a series colour — axes, grid, text,
+   * reference marks, and the interactive layer's tooltip and brush:
+   * `'light'` (default), `'dark'`, or overrides. The explicit style
+   * options above still win. See {@link ChartTheme}.
+   */
+  theme?: ThemeSpec
 }
 
-const DEFAULT_AXIS_STYLE: Partial<RenderStyle> = { stroke: '#94a3b8', strokeWidth: 1 }
-const DEFAULT_GRID_STYLE: Partial<RenderStyle> = { stroke: '#e2e8f0', strokeWidth: 1 }
-const DEFAULT_MINOR_GRID_STYLE: Partial<RenderStyle> = { stroke: '#f1f5f9', strokeWidth: 0.5 }
-/** Tick labels: secondary ink. */
-const TICK_TEXT: TextStyle = { fill: '#475569' }
-/** Axis labels: primary ink. */
-const LABEL_TEXT: TextStyle = { fill: '#334155' }
-const INK = '#0f172a'
-const BAR_SLATE = '#64748b'
-const REFERENCE_SLATE = '#64748b'
+/** The ink of last resort, where no theme is in reach. */
+const INK = lightTheme.ink
 /** Series lines without a width of their own, px. */
 const SERIES_LINE_WIDTH = 2
 /** Default mark extents, px: a scatter mark is the datum, a line mark an adornment. */
@@ -242,8 +260,6 @@ const LINE_MARK_SIZE = 6
 const BAR_GAP = 2
 /** Area fills under their line, so overlapping areas stay readable. */
 const AREA_FILL_OPACITY = 0.25
-const CANDLE_UP = '#1baf7a'
-const CANDLE_DOWN = '#e34948'
 
 interface ResolvedAxis {
   ticks: number[]
@@ -335,7 +351,7 @@ function resolveAxis(o: AxisOptions): ResolvedAxis {
           max: first.max,
         }
   } else {
-    const nice = niceTicks(lo, hi, o.ticks ?? 5, o.about)
+    const nice = niceTicks(lo, hi, o.ticks ?? 5, o.about, { exact: o.exact, minTicks: o.minTicks })
     resolved = o.exact
       ? { ticks: nice.ticks.filter((t) => t >= lo && t <= hi), minor: [], min: lo, max: hi }
       : { ...nice, minor: [] }
@@ -351,19 +367,49 @@ function resolveAxis(o: AxisOptions): ResolvedAxis {
       max: resolved.max + 0.5,
     }
   }
+  // A function axis keeps its (data-space) domain but spreads its
+  // ticks evenly on the page, through the function.
+  if (o.scale && !log && !time && !o.tickValues) {
+    resolved.ticks = mergeTicks(spreadTicks(resolved.min, resolved.max, o.ticks ?? 5, o.scale.forward), alsoAt)
+  }
   if (!log && (o.minorTicks ?? 0) > 0) {
     resolved.minor = minorTicksBetween(resolved.ticks, o.minorTicks!)
   }
   return resolved
 }
 
+/**
+ * The data range an axis with these options covers — after
+ * `includeValue`, `padding` and nice widening — without drawing it.
+ * What `frame.xDomain` / `yDomain` will be.
+ */
+export function axisDomain(options: AxisOptions): [number, number] {
+  const resolved = resolveAxis(options)
+  return [resolved.min, resolved.max]
+}
+
 /** Normalize the marks shorthand: a bare name is `{ name }`. */
 function normalizeMarkSpec(
-  marks: PlotMark | PlotMarkSpec | undefined
-): PlotMarkSpec | undefined {
+  marks: PlotMark | ChartMarkSpec | undefined
+): ChartMarkSpec | undefined {
   if (marks === undefined) return undefined
   return typeof marks === 'string' ? { name: marks } : marks
 }
+
+/**
+ * A plot mark on a chart: the core spec plus a **ring** — a band of
+ * the canvas colour round a filled mark, so overlapping marks and
+ * marks on a line read as separate dots. The ring is drawn *outside*
+ * the mark: `size` stays the diameter of the visible dot. (An SVG
+ * stroke straddles its outline, which is why a hand-drawn ring eats
+ * into the dot.) `true` is 2px.
+ */
+export interface ChartMarkSpec extends PlotMarkSpec {
+  ring?: boolean | number
+}
+
+/** A mark spec with the ring's colour resolved from the theme. */
+type MarkPaint = ChartMarkSpec & { ringColor?: string }
 
 /** The identifying attributes a series' elements carry (and an entrance, when marks animate). */
 type SeriesTag = Pick<DrawOptions, 'className' | 'attributes' | 'animate'>
@@ -376,12 +422,20 @@ export function seriesColor(record: Pick<SeriesRecord, 'style'>): string {
   return colorOf(record.style, INK)
 }
 
+/**
+ * What a style itself says, with no defaults underneath — so "no
+ * stroke given" can be told from the default black one.
+ */
+function ownStyle(style: StyleSpec | undefined): Partial<RenderStyle> {
+  return Object.assign({}, ...styleList(style))
+}
+
 /** The colour a series style paints with: its stroke, else its fill. */
 function colorOf(style: StyleSpec | undefined, fallback = INK): string {
   const pick = (c: string | undefined): string | undefined =>
     c !== undefined && c !== 'none' ? c : undefined
-  const resolved = style ? resolveStyle(style) : undefined
-  return pick(resolved?.stroke) ?? pick(resolved?.fill) ?? fallback
+  const own = ownStyle(style)
+  return pick(own.stroke) ?? pick(own.fill) ?? fallback
 }
 
 /**
@@ -400,7 +454,7 @@ function colorOf(style: StyleSpec | undefined, fallback = INK): string {
 export function drawMarks<S extends ShapeSet>(
   pic: ItemContainer<S>,
   pts: readonly Point[],
-  spec: PlotMarkSpec,
+  spec: MarkPaint,
   style: StyleSpec | undefined,
   tag?: SeriesTag,
   defaultSize = LINE_MARK_SIZE,
@@ -409,11 +463,15 @@ export function drawMarks<S extends ShapeSet>(
   const d = plotMarkPath(spec.name, spec.size ?? defaultSize)
   if (!d) return
   const filled = plotMarkFilled(spec.name)
+  // The ring is a stroke twice its width painted UNDER the fill
+  // (paint-order), so only its outer half shows: the dot keeps its size.
+  const ring = filled && spec.ring ? (spec.ring === true ? 2 : spec.ring) : 0
   const paintFor = (s: StyleSpec | undefined): Partial<RenderStyle> => {
     const color = colorOf(s, '#000000')
-    return filled
-      ? { fill: color, stroke: 'none' }
-      : { stroke: color, fill: 'none', strokeWidth: 1.5 }
+    if (!filled) return { stroke: color, fill: 'none', strokeWidth: 1.5 }
+    return ring > 0
+      ? { fill: color, stroke: spec.ringColor ?? '#ffffff', strokeWidth: ring * 2 }
+      : { fill: color, stroke: 'none' }
   }
   const paint = paintFor(style)
   const every = Math.max(1, spec.every ?? 1)
@@ -423,13 +481,16 @@ export function drawMarks<S extends ShapeSet>(
   pts.forEach((p, i) => {
     if (i % every !== 0) return
     const own = styleAt?.(i)
+    const ringAttr = ring > 0 ? { 'paint-order': 'stroke' } : undefined
     pic.filldraw(glyph.translate(p.x, p.y), {
       style: own ? paintFor(own) : paint,
-      ...(tag && {
-        className: tag.className,
-        attributes: { ...tag.attributes, 'data-index': i },
-        animate: tag.animate,
-      }),
+      ...(tag
+        ? {
+            className: tag.className,
+            attributes: { ...tag.attributes, 'data-index': i, ...ringAttr },
+            animate: tag.animate,
+          }
+        : ringAttr && { attributes: ringAttr }),
     })
   })
 }
@@ -530,18 +591,34 @@ export interface FrameLineOptions extends SeriesDrawOptions, FrameSeriesOptions,
   /** Close the path back to its first sample — TikZ `smooth cycle` / `polygon`. */
   closed?: boolean
   /** Scatter markers at each (or every Nth) data point. */
-  marks?: PlotMark | PlotMarkSpec
+  marks?: PlotMark | ChartMarkSpec
   /**
    * A non-finite sample (NaN, ±Infinity, a missing field) breaks the
    * line — TikZ's `outlier`, recharts' `connectNulls={false}`. Set
    * true to join the neighbours across the gap instead.
    */
   connectGaps?: boolean
+  /**
+   * Paint for the part of the series **above** {@link baseline},
+   * layered over its own — Chart.js's fill target, an eval ribbon's
+   * white half. It changes only what it names: a `fill` recolours
+   * the area, a `stroke` the line and its marks. The split is exact
+   * at the baseline whatever the interpolation: each half is the
+   * whole series, clipped.
+   */
+  above?: StyleSpec
+  /** Paint for the part **below** {@link baseline}. */
+  below?: StyleSpec
+  /** Where {@link above} and {@link below} divide, in data units (default 0). */
+  baseline?: number
 }
 
 /** Options for {@link ChartFrame.area}. */
 export interface FrameAreaOptions extends Omit<FrameLineOptions, 'closed'> {
-  /** Where the fill starts, in data units (default 0, clamped into the y domain). */
+  /**
+   * Where the fill starts, in data units (default 0, clamped into the
+   * y domain) — and where `above`/`below` divide.
+   */
   baseline?: number
   /**
    * Stack name: the area sits on top of the previous series in the
@@ -556,7 +633,7 @@ export interface FrameScatterOptions
     FrameSeriesOptions,
     FrameLabelOptions {
   /** Marker (default: the style sheet's, else `circleFilled`). */
-  marks?: PlotMark | PlotMarkSpec
+  marks?: PlotMark | ChartMarkSpec
   /** Paint: one spec, or a function of the sample for per-point colour. */
   style?: PointStyle
 }
@@ -661,6 +738,8 @@ export interface ReferenceDotOptions {
   /** Marker (default `circleFilled`, 8px). */
   mark?: PlotMark
   size?: number
+  /** A canvas-coloured ring round the dot, outside its size (`true` is 2px). */
+  ring?: boolean | number
   /** Paint (default: slate). */
   style?: StyleSpec
   /** Text beside the dot. */
@@ -742,7 +821,28 @@ export interface ChartFrameInit {
   labelContainer?: ItemContainer<any>
   /** Class of the empty group `axes()` leaves for the interaction overlay. */
   overlayClass?: string
+  /** Whether the frame's container is clipped to the plot area (`clip: true`). */
+  clipped?: boolean
+  /** The resolved theme (default: light). */
+  theme?: ChartTheme
 }
+
+/** A style spec as a list of entries. */
+function entries(style: StyleSpec | undefined): (Partial<RenderStyle> | string)[] {
+  return style === undefined ? [] : Array.isArray(style) ? [...style] : [style as Partial<RenderStyle> | string]
+}
+
+/**
+ * A series' paint with one half's layered over it. The half changes
+ * only what it names: `above: { fill: green }` recolours the fill and
+ * leaves the line the series' own; add `stroke` to recolour that too.
+ */
+function halfPaint(base: StyleSpec | undefined, half: StyleSpec | undefined): StyleSpec {
+  return [...entries(base), ...entries(half)]
+}
+
+/** Far enough that a half-plane clip never cuts an unclipped series short. */
+const FAR = 1e5
 
 function joinClass(a: string, b: string | undefined): string {
   return b ? `${a} ${b}` : a
@@ -767,17 +867,23 @@ function nearestSorted(
   return Math.abs(key(before) - target) <= Math.abs(key(here) - target) ? before : here
 }
 
-/** Sample indices a {@link LabelInData} names. */
-function labelIndices(data: DataSeries, at: LabelInData): number[] {
-  if (data.length === 0) return []
-  if (typeof at === 'number') return at >= 0 && at < data.length ? [at] : []
-  if (typeof at !== 'string') return at.filter((i) => i >= 0 && i < data.length)
-  if (at === 'start') return [0]
-  if (at === 'end') return [data.length - 1]
-  let best = 0
-  data.forEach(([, y], i) => {
-    if (at === 'max' ? y > data[best]![1] : y < data[best]![1]) best = i
-  })
+/**
+ * Sample indices a {@link LabelInData} names, among those `visible`
+ * allows — so on a clipped, zoomed frame `'end'` is the last sample
+ * on the plot, not one far off it.
+ */
+function labelIndices(data: DataSeries, at: LabelInData, visible: (i: number) => boolean): number[] {
+  const inRange = (i: number): boolean => i >= 0 && i < data.length && visible(i)
+  if (typeof at === 'number') return inRange(at) ? [at] : []
+  if (typeof at !== 'string') return at.filter(inRange)
+  const candidates = data.map((_, i) => i).filter(visible)
+  if (candidates.length === 0) return []
+  if (at === 'start') return [candidates[0]!]
+  if (at === 'end') return [candidates[candidates.length - 1]!]
+  let best = candidates[0]!
+  for (const i of candidates) {
+    if (at === 'max' ? data[i]![1] > data[best]![1] : data[i]![1] < data[best]![1]) best = i
+  }
   return [best]
 }
 
@@ -789,8 +895,9 @@ function labelSide(at: LabelInData): 'north' | 'south' | 'east' | 'west' {
   return 'north'
 }
 
-const DIRECT_LABEL_TEXT: TextStyle = { fill: '#334155', fontSize: 11 }
-const VALUE_LABEL_TEXT: TextStyle = { fill: '#475569', fontSize: 10 }
+/** Direct series labels: primary text. Value labels: secondary. */
+const DIRECT_LABEL_SIZE = 11
+const VALUE_LABEL_SIZE = 10
 
 type Run = { data: (readonly [number, number])[]; points: Point[] }
 
@@ -827,12 +934,29 @@ export class ChartFrame {
    */
   readonly overlayClass: string
 
+  /**
+   * The theme the frame was built with — what its builders, the
+   * legend and the interactive layer take their inks from.
+   */
+  readonly theme: ChartTheme
+  /**
+   * Whether what the frame draws is clipped to the plot area. A
+   * clipped frame also drops what the clip cannot reach — labels are
+   * drawn outside it — and keeps hits on the plot: a label, reference
+   * label or hit whose anchor lies off the plot area is skipped.
+   */
+  readonly clipped: boolean
+
   /** Text that must not be clipped goes here. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private readonly labels: ItemContainer<any>
   private readonly registry: SeriesRecord[] = []
   private warnedWrap = false
-  /** Per series id: sample indices sorted by picture x, and by picture y. */
+  /**
+   * Per series id: the sample indices a hit may land on — all of
+   * them, or on a clipped frame those on the plot area — sorted by
+   * picture x, and by picture y.
+   */
   private readonly orders = new Map<string, { byX: number[]; byY: number[] }>()
   /** Per stack name, per x: the running positive and negative totals. */
   private readonly stacks = new Map<string, Map<number, { pos: number; neg: number }>>()
@@ -847,6 +971,8 @@ export class ChartFrame {
     this.yScale = init.yScale
     this.labels = init.labelContainer ?? pic
     this.overlayClass = init.overlayClass ?? ''
+    this.clipped = init.clipped ?? false
+    this.theme = init.theme ?? lightTheme
     this.xTicks = init.xTicks
     this.yTicks = init.yTicks
     this.xMinorTicks = init.xMinorTicks ?? []
@@ -857,7 +983,9 @@ export class ChartFrame {
     const [x0, y0, x1, y1] = init.plotArea
     this.outerArea = [x0 - m.left, y0 - m.top, x1 + m.right, y1 + m.bottom]
     this.styleSheet =
-      init.styleSheet === undefined ? resolveStyleSheet('varyHue') : init.styleSheet
+      init.styleSheet === undefined
+        ? resolveStyleSheet((init.theme ?? lightTheme).styleSheet)
+        : init.styleSheet
   }
 
   /** Map an x data value to a picture x coordinate. */
@@ -889,6 +1017,17 @@ export class ChartFrame {
   contains(p: PointLike): boolean {
     const [x0, y0, x1, y1] = this.plotArea
     return p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1
+  }
+
+  /**
+   * Whether an anchor is drawable on this frame: anywhere when it is
+   * not clipped, on the plot area (half a pixel of slack for edge
+   * samples) when it is.
+   */
+  private onPlot(p: PointLike): boolean {
+    if (!this.clipped) return true
+    const [x0, y0, x1, y1] = this.plotArea
+    return p.x >= x0 - 0.5 && p.x <= x1 + 0.5 && p.y >= y0 - 0.5 && p.y <= y1 + 0.5
   }
 
   /** The category lists string samples resolve through. */
@@ -947,12 +1086,12 @@ export class ChartFrame {
     let base: Partial<RenderStyle> | undefined
     if (kind === 'line') {
       base = {
-        stroke: slot?.color ?? INK,
+        stroke: slot?.color ?? this.theme.ink,
         strokeWidth: slot?.width ?? SERIES_LINE_WIDTH,
         ...(slot?.dash && slot.dash !== 'solid' && { dash: slot.dash }),
       }
     } else if (kind === 'area') {
-      const color = slot?.color ?? INK
+      const color = slot?.color ?? this.theme.ink
       base = {
         stroke: color,
         strokeWidth: slot?.width ?? SERIES_LINE_WIDTH,
@@ -961,7 +1100,7 @@ export class ChartFrame {
         ...(slot?.dash && slot.dash !== 'solid' && { dash: slot.dash }),
       }
     } else if (kind === 'bar') {
-      base = { fill: slot?.color ?? BAR_SLATE, stroke: 'none' }
+      base = { fill: slot?.color ?? this.theme.bar, stroke: 'none' }
     } else if (kind === 'scatter' && slot?.color) {
       base = { stroke: slot.color }
     }
@@ -986,7 +1125,7 @@ export class ChartFrame {
     }
     // Sorted in PICTURE space, which is what hitTest searches — the y
     // range is flipped, so data order and picture order differ there.
-    const indices = data.map((_, i) => i)
+    const indices = data.map((_, i) => i).filter((i) => this.onPlot(pts[i]!))
     this.orders.set(id, {
       byX: [...indices].sort((a, b) => pts[a]!.x - pts[b]!.x),
       byY: [...indices].sort((a, b) => pts[a]!.y - pts[b]!.y),
@@ -1002,6 +1141,35 @@ export class ChartFrame {
       className: joinClass(tag.className!, draw.className),
       attributes: { ...draw.attributes, ...tag.attributes },
     }
+  }
+
+  /**
+   * Paint a series once, or — when it has `above`/`below` paints —
+   * once per side of the baseline, each pass clipped to its
+   * half-plane. No zero crossings are computed: both passes draw the
+   * whole series, so the split is exact for any interpolation.
+   */
+  private halves(
+    baseline: number,
+    above: StyleSpec | undefined,
+    below: StyleSpec | undefined,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    paint: (target: ItemContainer<any>, half: StyleSpec | undefined, split: boolean) => void
+  ): void {
+    if (above === undefined && below === undefined) {
+      paint(this.pic, undefined, false)
+      return
+    }
+    const [x0, y0, x1, y1] = this.plotArea
+    const yb = this.y(baseline)
+    const left = x0 - FAR
+    const width = x1 - x0 + 2 * FAR
+    // "Above" in data is towards the top of the plot area.
+    const upper = rect(left, y0 - FAR, width, Math.max(0, yb - (y0 - FAR)))
+    const lower = rect(left, yb, width, Math.max(0, y1 + FAR - yb))
+    const dataUp = this.y(baseline + 1) <= yb || !Number.isFinite(this.y(baseline + 1))
+    this.pic.scope({ clip: dataUp ? upper : lower, className: 'jikz-above' }, (s) => paint(s, above, true))
+    this.pic.scope({ clip: dataUp ? lower : upper, className: 'jikz-below' }, (s) => paint(s, below, true))
   }
 
   /** Draw options with an enter animation added to the caller's own. */
@@ -1065,11 +1233,12 @@ export class ChartFrame {
     if (labelInData !== undefined) {
       const side = labelSide(labelInData)
       const text = record.label ?? record.id
-      for (const i of labelIndices(record.data, labelInData)) {
+      const visible = (i: number): boolean => this.onPlot(record.points[i]!)
+      for (const i of labelIndices(record.data, labelInData, visible)) {
         this.labels.text(record.points[i]!, text, {
           at: side,
           distance: 6,
-          style: { ...DIRECT_LABEL_TEXT, ...labelStyle },
+          style: { fill: this.theme.labelText, fontSize: DIRECT_LABEL_SIZE, ...labelStyle },
           className: joinClass('jikz-series-label', tag.className),
           attributes: tag.attributes,
         })
@@ -1082,10 +1251,11 @@ export class ChartFrame {
           : (s: readonly [number, number]) => formatTick(s[1])
       record.data.forEach((sample, i) => {
         const where = valueAt?.(i) ?? { at: record.points[i]!, side: 'north' as const }
+        if (!this.onPlot(where.at)) return
         this.labels.text(where.at, format(sample, i), {
           at: where.side,
           distance: 4,
-          style: { ...VALUE_LABEL_TEXT, ...labelStyle },
+          style: { fill: this.theme.tickText, fontSize: VALUE_LABEL_SIZE, ...labelStyle },
           className: joinClass('jikz-value-label', tag.className),
           attributes: { ...tag.attributes, 'data-index': i },
         })
@@ -1110,6 +1280,9 @@ export class ChartFrame {
       closed = false,
       marks,
       connectGaps = false,
+      above,
+      below,
+      baseline = 0,
       id,
       label,
       enter,
@@ -1135,17 +1308,39 @@ export class ChartFrame {
       .filter(Boolean)
       .join(' ')
     if (d) {
-      const { options: lineDraw, animation } = this.strokeEnter(this.tagged(tag, draw), enter)
-      this.pic.draw(pathFromSVG(d), this.animated(lineDraw, animation))
+      this.halves(baseline, above, below, (target, half, split) => {
+        const style = split ? halfPaint(record.style, half) : record.style
+        const { options: lineDraw, animation } = this.strokeEnter(this.tagged(tag, { ...draw, style }), enter)
+        target.draw(pathFromSVG(d), this.animated(lineDraw, animation))
+      })
     }
 
     if (record.mark) {
-      const spec = { ...markSpec, name: record.mark }
+      const spec = { ...markSpec, name: record.mark, ringColor: this.theme.surface }
       const e = normalizeEnter(enter)
-      drawMarks(this.pic, record.points, spec, record.style, this.animated(this.tagged(tag, draw), e && fadeIn(e)), LINE_MARK_SIZE)
+      drawMarks(
+        this.pic,
+        record.points,
+        spec,
+        record.style,
+        this.animated(this.tagged(tag, draw), e && fadeIn(e)),
+        LINE_MARK_SIZE,
+        this.markHalves(record, baseline, above, below)
+      )
     }
     this.directLabels(record, { labelInData, valueLabels, labelStyle }, tag)
     return this
+  }
+
+  /** Per-mark paint for a sign-split series: each mark takes its side's. */
+  private markHalves(
+    record: SeriesRecord,
+    baseline: number,
+    above: StyleSpec | undefined,
+    below: StyleSpec | undefined
+  ): ((index: number) => StyleSpec | undefined) | undefined {
+    if (above === undefined && below === undefined) return undefined
+    return (i) => halfPaint(record.style, record.data[i]![1] >= baseline ? above : below)
   }
 
   /**
@@ -1193,6 +1388,8 @@ export class ChartFrame {
       connectGaps = false,
       baseline = 0,
       stack,
+      above,
+      below,
       id,
       label,
       enter,
@@ -1204,6 +1401,9 @@ export class ChartFrame {
     const raw = this.samples(data)
     const [yMin, yMax] = this.yDomain
     const base = Math.min(yMax, Math.max(yMin, Number.isFinite(baseline) ? baseline : 0))
+    // A stacked area has no sign to split on: its samples are increments.
+    const splitAbove = stack === undefined ? above : undefined
+    const splitBelow = stack === undefined ? below : undefined
 
     // Resolve the vertical extent of every sample first: a stacked
     // area's samples are increments on the running total.
@@ -1260,26 +1460,37 @@ export class ChartFrame {
     })
     flush()
     if (fills.length) {
-      const paint = Array.isArray(record.style) ? record.style : record.style ? [record.style] : []
       const e = normalizeEnter(enter)
-      // The fill fades to its own opacity while the edge draws in.
-      const fillOpacity = record.style ? (resolveStyle(record.style).fillOpacity ?? 1) : 1
-      const fillAnim = e && (e.enter === 'draw' ? enterKeyframeOpacity(fillOpacity, e) : fadeIn(e))
-      this.pic.fill(
-        pathFromSVG(fills.join(' ')),
-        this.animated(this.tagged(tag, { ...draw, style: [...paint, { stroke: 'none' }] }), fillAnim)
-      )
-      const { options: edgeDraw, animation } = this.strokeEnter(
-        this.tagged(tag, { ...draw, style: [...paint, { fill: 'none' }] }),
-        enter
-      )
-      this.pic.draw(pathFromSVG(edges.join(' ')), this.animated(edgeDraw, animation))
+      this.halves(base, splitAbove, splitBelow, (target, half, split) => {
+        const fillStyle = split ? halfPaint(record.style, half) : record.style
+        const edgeStyle = fillStyle
+        // The fill fades to its own opacity while the edge draws in.
+        const fillOpacity = fillStyle ? (resolveStyle(fillStyle).fillOpacity ?? 1) : 1
+        const fillAnim = e && (e.enter === 'draw' ? enterKeyframeOpacity(fillOpacity, e) : fadeIn(e))
+        target.fill(
+          pathFromSVG(fills.join(' ')),
+          this.animated(this.tagged(tag, { ...draw, style: [...entries(fillStyle), { stroke: 'none' }] }), fillAnim)
+        )
+        const { options: edgeDraw, animation } = this.strokeEnter(
+          this.tagged(tag, { ...draw, style: [...entries(edgeStyle), { fill: 'none' }] }),
+          enter
+        )
+        target.draw(pathFromSVG(edges.join(' ')), this.animated(edgeDraw, animation))
+      })
     }
 
     if (record.mark) {
-      const spec = { ...markSpec, name: record.mark }
+      const spec = { ...markSpec, name: record.mark, ringColor: this.theme.surface }
       const e = normalizeEnter(enter)
-      drawMarks(this.pic, record.points, spec, record.style, this.animated(this.tagged(tag, draw), e && fadeIn(e)), LINE_MARK_SIZE)
+      drawMarks(
+        this.pic,
+        record.points,
+        spec,
+        record.style,
+        this.animated(this.tagged(tag, draw), e && fadeIn(e)),
+        LINE_MARK_SIZE,
+        this.markHalves(record, base, splitAbove, splitBelow)
+      )
     }
     this.directLabels(record, { labelInData, valueLabels, labelStyle }, tag)
     return this
@@ -1304,7 +1515,7 @@ export class ChartFrame {
       mark: markSpec?.name,
     })
     const draw: SeriesDrawOptions = { ...rest, style: record.style }
-    const spec = { ...markSpec, name: record.mark! }
+    const spec = { ...markSpec, name: record.mark!, ringColor: this.theme.surface }
     const styleAt =
       typeof style === 'function' ? (i: number) => style(record.data[i]!, i) : undefined
     const e = normalizeEnter(enter)
@@ -1447,8 +1658,9 @@ export class ChartFrame {
     const candles = data
       .map(([x, open, high, low, close]) => [toNumber(x, cats), open, high, low, close] as const)
       .filter((c) => c.every(Number.isFinite))
-    const upStyle: StyleSpec = up ?? { stroke: CANDLE_UP, strokeWidth: 1.5, fill: '#ffffff' }
-    const downStyle: StyleSpec = down ?? { stroke: CANDLE_DOWN, strokeWidth: 1.5, fill: CANDLE_DOWN }
+    const { candle, surface } = this.theme
+    const upStyle: StyleSpec = up ?? { stroke: candle.up, strokeWidth: 1.5, fill: surface }
+    const downStyle: StyleSpec = down ?? { stroke: candle.down, strokeWidth: 1.5, fill: candle.down }
     const closes = candles.map(([x, , , , close]) => [x, close] as const)
     const { record, tag } = this.register('candlestick', closes, { id, label, style: upStyle })
     const w = width ?? this.xScale.bandwidth ?? this.defaultBarWidth(closes)
@@ -1482,7 +1694,7 @@ export class ChartFrame {
    * ```
    */
   errorBars(data: readonly ErrorSample[], options: FrameErrorBarOptions = {}): this {
-    const { capWidth = 6, style = { stroke: REFERENCE_SLATE, strokeWidth: 1 }, seriesId } = options
+    const { capWidth = 6, style = { stroke: this.theme.reference, strokeWidth: 1 }, seriesId } = options
     const cats = this.xScale.categories
     const tag: SeriesTag = seriesId
       ? {
@@ -1541,12 +1753,16 @@ export class ChartFrame {
   referenceLine(options: ReferenceLineOptions): this {
     const { x, y, label, style, labelStyle } = options
     const [x0, y0, x1, y1] = this.plotArea
-    const paint: StyleSpec = style ?? { stroke: REFERENCE_SLATE, strokeWidth: 1, dash: 'dashed' }
-    const text: TextStyle = { ...VALUE_LABEL_TEXT, fill: colorOf(paint, REFERENCE_SLATE), ...labelStyle }
+    const paint: StyleSpec = style ?? { stroke: this.theme.reference, strokeWidth: 1, dash: 'dashed' }
+    const text: TextStyle = {
+      fontSize: VALUE_LABEL_SIZE,
+      fill: colorOf(paint, this.theme.reference),
+      ...labelStyle,
+    }
     if (y !== undefined) {
       const py = this.y(y)
       this.pic.draw(line(point(x0, py), point(x1, py)), { style: paint, className: 'jikz-reference' })
-      if (label) {
+      if (label && this.onPlot(point(x1, py))) {
         this.labels.text(point(x1, py), label, {
           at: 'north west',
           distance: 3,
@@ -1558,7 +1774,7 @@ export class ChartFrame {
     if (x !== undefined) {
       const px = this.x(x)
       this.pic.draw(line(point(px, y1), point(px, y0)), { style: paint, className: 'jikz-reference' })
-      if (label) {
+      if (label && this.onPlot(point(px, y0))) {
         this.labels.text(point(px, y0), label, {
           at: 'north east',
           distance: 3,
@@ -1591,14 +1807,25 @@ export class ChartFrame {
     const w = Math.abs(px1 - px0)
     const h = Math.abs(py1 - py0)
     this.pic.filldraw(rect(left, top, w, h), {
-      style: style ?? { fill: '#94a3b8', fillOpacity: 0.15, stroke: 'none' },
+      style: style ?? { fill: this.theme.referenceArea, fillOpacity: 0.15, stroke: 'none' },
       className: 'jikz-reference',
     })
     if (label) {
-      this.labels.text(point(left + w / 2, top + h / 2), label, {
-        style: { ...VALUE_LABEL_TEXT, ...labelStyle },
-        className: 'jikz-reference-label',
-      })
+      // On a clipped frame the label sits in the part of the area that
+      // shows, and goes with it when none does.
+      let [lx0, ly0, lx1, ly1] = [left, top, left + w, top + h]
+      if (this.clipped) {
+        lx0 = Math.max(lx0, ax0)
+        ly0 = Math.max(ly0, ay0)
+        lx1 = Math.min(lx1, ax1)
+        ly1 = Math.min(ly1, ay1)
+      }
+      if (lx1 > lx0 && ly1 > ly0) {
+        this.labels.text(point((lx0 + lx1) / 2, (ly0 + ly1) / 2), label, {
+          style: { fill: this.theme.tickText, fontSize: VALUE_LABEL_SIZE, ...labelStyle },
+          className: 'jikz-reference-label',
+        })
+      }
     }
     return this
   }
@@ -1618,15 +1845,18 @@ export class ChartFrame {
       label,
       labelAt = 'north',
       labelStyle,
+      ring,
     } = options
     const p = this.point(x, y)
-    const paint: StyleSpec = style ?? { stroke: REFERENCE_SLATE, fill: REFERENCE_SLATE }
-    drawMarks(this.pic, [p], { name: mark, size }, paint, { className: 'jikz-reference' })
-    if (label) {
+    const paint: StyleSpec = style ?? { stroke: this.theme.reference, fill: this.theme.reference }
+    drawMarks(this.pic, [p], { name: mark, size, ring, ringColor: this.theme.surface }, paint, {
+      className: 'jikz-reference',
+    })
+    if (label && this.onPlot(p)) {
       this.labels.text(p, label, {
         at: labelAt,
         distance: size / 2 + 3,
-        style: { ...DIRECT_LABEL_TEXT, ...labelStyle },
+        style: { fill: this.theme.labelText, fontSize: DIRECT_LABEL_SIZE, ...labelStyle },
         className: 'jikz-reference-label',
       })
     }
@@ -1659,10 +1889,11 @@ export class ChartFrame {
     if (mode === 'nearest') {
       let best: HitSample | undefined
       for (const s of series) {
-        s.points.forEach((q, i) => {
+        for (const i of this.orders.get(s.id)!.byX) {
+          const q = s.points[i]!
           const distance = Math.hypot(q.x - p.x, q.y - p.y)
           if (!best || distance < best.distance) best = sampleAt(s, i, distance)
-        })
+        }
       }
       if (!best || best.distance > maxDistance) return null
       return { x: best.x, y: best.y, at: best.at, samples: [best] }
@@ -1672,8 +1903,10 @@ export class ChartFrame {
     const probe = mode === 'x' ? p.x : p.y
     const samples: HitSample[] = []
     for (const s of series) {
-      if (s.data.length === 0) continue
       const order = this.orders.get(s.id)!
+      // No sample to hit: an empty series, or on a clipped frame one
+      // whose samples all lie off the plot.
+      if (order.byX.length === 0) continue
       const key = (i: number): number =>
         component === 0 ? s.points[i]!.x : s.points[i]!.y
       const index = nearestSorted(component === 0 ? order.byX : order.byY, key, probe)
@@ -1703,6 +1936,9 @@ function scaleFor(
   if (o.time) {
     const opts = typeof o.time === 'object' ? o.time : {}
     return timeScale([resolved.min, resolved.max], range, { ...opts, format })
+  }
+  if (o.scale) {
+    return functionScale([resolved.min, resolved.max], range, { ...o.scale, format })
   }
   return linearScale([resolved.min, resolved.max], range, { format: format ?? formatTick })
 }
@@ -1737,8 +1973,9 @@ export function axes<S extends ShapeSet>(
   const arrows = options.arrows ?? school
   const tickSide = options.tickSide ?? (school ? 'both' : 'outer')
   const labelStyle = options.labelStyle ?? (school ? 'end' : 'standard')
-  const tickText: TextStyle = { ...TICK_TEXT, ...textStyle, fontSize }
-  const labelText: TextStyle = { ...LABEL_TEXT, ...textStyle, fontSize: labelFontSize }
+  const theme = resolveTheme(options.theme)
+  const tickText: TextStyle = { fill: theme.tickText, ...textStyle, fontSize }
+  const labelText: TextStyle = { fill: theme.labelText, ...textStyle, fontSize: labelFontSize }
   const xo = options.x ?? {}
   const yo = options.y ?? {}
 
@@ -1764,10 +2001,11 @@ export function axes<S extends ShapeSet>(
   const sharedOrigin =
     school && xa.ticks.includes(0) && ya.ticks.includes(0) && xAxisY === yScale.map(0) && yAxisX === xScale.map(0)
 
-  const axisPaint: StyleSpec = style ?? DEFAULT_AXIS_STYLE
-  const tickPaint: StyleSpec = tickStyle ?? style ?? DEFAULT_AXIS_STYLE
-  const gridPaint: StyleSpec = gridStyle ?? DEFAULT_GRID_STYLE
-  const minorGridPaint: StyleSpec = minorGridStyle ?? DEFAULT_MINOR_GRID_STYLE
+  const axisDefault: Partial<RenderStyle> = { stroke: theme.axis, strokeWidth: 1 }
+  const axisPaint: StyleSpec = style ?? axisDefault
+  const tickPaint: StyleSpec = tickStyle ?? style ?? axisDefault
+  const gridPaint: StyleSpec = gridStyle ?? { stroke: theme.grid, strokeWidth: 1 }
+  const minorGridPaint: StyleSpec = minorGridStyle ?? { stroke: theme.minorGrid, strokeWidth: 0.5 }
   const gridOf = (g: AxisOptions['grid']): { major: boolean; minor: boolean } => ({
     major: g === true || g === 'major' || g === 'both',
     minor: g === 'minor' || g === 'both',
@@ -1949,6 +2187,8 @@ export function axes<S extends ShapeSet>(
     margins,
     labelContainer: pic,
     overlayClass,
+    clipped: clip,
+    theme,
     styleSheet: styleSheet === undefined ? undefined : styleSheet && resolveStyleSheet(styleSheet),
   })
 }

@@ -17,7 +17,8 @@ import { pathFromSVG } from '../../path/svgPath'
 import { drawMarks } from './frame'
 import { interpolatePath, type Interpolation } from './interpolate'
 import { linearScale, dataDomain, toSeries, type DataInput, type Scale, type DataSeries } from './scale'
-import { VARY_HUE } from './stylesheet'
+import { resolveStyleSheet } from './stylesheet'
+import { resolveTheme, type ThemeSpec } from './theme'
 
 /** Options for {@link sparkline}. */
 export interface SparklineOptions {
@@ -42,6 +43,8 @@ export interface SparklineOptions {
   interpolation?: Interpolation
   /** CSS class on the line (and `-fill`, `-band`, `-end` suffixes on the rest). */
   className?: string
+  /** Line and band inks: `'light'` (default), `'dark'`, or overrides. */
+  theme?: ThemeSpec
 }
 
 /** What {@link sparkline} returns: its scales and the drawn points. */
@@ -95,14 +98,15 @@ export function sparkline<S extends ShapeSet, T>(
   const xScale = linearScale(xMin === xMax ? [xMin - 0.5, xMax + 0.5] : [xMin, xMax], [x0, x0 + width])
   const yScale = linearScale([yMin, yMax], [yBase, yBase - height])
   const points = finite.map(([x, y]) => point(xScale.map(x), yScale.map(y)))
-  const color = VARY_HUE[0]!
+  const theme = resolveTheme(options.theme)
+  const color = resolveStyleSheet(theme.styleSheet).colors?.[0] ?? theme.ink
   const linePaint: StyleSpec = style ?? { stroke: color, strokeWidth: 1.5 }
   const cls = (suffix: string): string | undefined => (className ? `${className}${suffix}` : undefined)
 
   if (band) {
     const top = yScale.map(band[1])
     pic.filldraw(rect(x0, top, width, yScale.map(band[0]) - top), {
-      style: bandStyle ?? { fill: '#94a3b8', fillOpacity: 0.15, stroke: 'none' },
+      style: bandStyle ?? { fill: theme.referenceArea, fillOpacity: 0.15, stroke: 'none' },
       className: cls('-band'),
     })
   }

@@ -235,6 +235,13 @@ to plain text and the diagram still works.
 | `katexAdapter(katex)` | HTML, in a `foreignObject` | a live document only |
 | `mathjaxAdapter(MathJax)` | SVG glyph paths, inlined | anywhere an SVG renders |
 
+`mathjaxAdapter` takes MathJax as it comes — the browser bundle's
+`MathJax` global with `tex-svg.js`, or `mathjax-full` wrapped as `{
+tex2svg }` — unwraps the `<mjx-container>` it returns, and sizes the
+formula from MathJax's own measurement. Configure MathJax with `svg: {
+fontCache: 'none' }`, so each formula carries its glyphs instead of
+referencing a page-level cache.
+
 A `foreignObject` needs the page's CSS and web fonts, so KaTeX math
 survives in the browser and **not** in a standalone `.svg` opened
 through an `<img>` tag — there it loses its stylesheet, and the MathML

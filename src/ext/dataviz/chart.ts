@@ -26,10 +26,12 @@ import type { PointLike } from '../../core/types'
 import type { ShapeSet } from '../../geometry/ShapeKind'
 import type { ItemContainer } from '../../picture/Container'
 import type { StyleSpec } from '../../render/StyleMapper'
-import type { PlotMark, PlotMarkSpec } from '../../geometry/PlotMark'
+import type { PlotMark } from '../../geometry/PlotMark'
 import {
   axes,
+  axisDomain,
   ChartFrame,
+  type ChartMarkSpec,
   type AxisOptions,
   type AxesOptions,
   type Candle,
@@ -72,7 +74,7 @@ export interface ChartSeriesSpec<T = unknown> {
   /** Series paint — also the legend swatch. Bars and scatter take a per-point function too. */
   style?: PointStyle
   /** Scatter markers (line/area/scatter series). */
-  marks?: PlotMark | PlotMarkSpec
+  marks?: PlotMark | ChartMarkSpec
   /** How samples join (line/area series; default `'linear'`). */
   interpolation?: Interpolation
   /** Alias for `interpolation: 'smooth'`. */
@@ -94,6 +96,11 @@ export interface ChartSeriesSpec<T = unknown> {
   labelInData?: LabelInData
   /** Print each sample's value beside it. */
   valueLabels?: ValueLabels
+  /** Paint for the parts above and below {@link baseline} (line/area series). */
+  above?: StyleSpec
+  below?: StyleSpec
+  /** Where an area starts and `above`/`below` divide (default 0). */
+  baseline?: number
   /** Rising/falling candle paint (candlestick series). */
   up?: StyleSpec
   down?: StyleSpec
@@ -289,15 +296,15 @@ function isCandles(data: ChartSeriesSpec['data']): data is readonly Candle[] {
 }
 
 /**
- * Draw a complete chart: axes + series + optional legend. Returns the
- * {@link ChartFrame} so further custom drawing can map through the
- * same scales.
+ * The x and y domains a chart's data asks for, before the axes niced
+ * them: the series' extents, bar baselines, stack totals, half a slot
+ * of room for bars, and whatever the spec pins.
  */
-export function chart<S extends ShapeSet>(
-  pic: ItemContainer<S>,
-  options: ChartOptions
-): ChartFrame {
-  const { series, legend: legendOpt, x: xo, y: yo, ...axesRest } = options
+function requestedDomains(options: ChartOptions): {
+  x: readonly [number | Date, number | Date]
+  y: readonly [number | Date, number | Date]
+} {
+  const { series, x: xo, y: yo } = options
   const categories = { x: xo?.categories, y: yo?.categories }
 
   // The numeric samples each series contributes to the extents: pairs
@@ -340,8 +347,51 @@ export function chart<S extends ShapeSet>(
   }
   if (pinsBaseline) yAuto = includeInDomain(yAuto, 0)
 
-  const xDomain = resolveDomain(xo?.domain, dataDomain(extents, 0))
-  const yDomain = resolveDomain(yo?.domain, yAuto)
+  // Bars and candles are centred on their x, so on a continuous axis
+  // the first and last need half a slot of room or they straddle the
+  // plot's edges. (A band axis has that room built in.)
+  let xAuto = dataDomain(extents, 0)
+  if (!xo?.categories && !xo?.logarithmic) {
+    const slotted = extents.filter((_, i) => series[i]!.kind === 'bar' || series[i]!.kind === 'candlestick')
+    const xs = [...new Set(slotted.flat().map((p) => p[0]).filter(Number.isFinite))].sort((a, b) => a - b)
+    if (xs.length > 0) {
+      let gap = Infinity
+      for (let i = 1; i < xs.length; i++) gap = Math.min(gap, xs[i]! - xs[i - 1]!)
+      const pad = Number.isFinite(gap) && gap > 0 ? gap / 2 : 0.5
+      xAuto = [Math.min(xAuto[0], xs[0]! - pad), Math.max(xAuto[1], xs[xs.length - 1]! + pad)]
+    }
+  }
+  return { x: resolveDomain(xo?.domain, xAuto), y: resolveDomain(yo?.domain, yAuto) }
+}
+
+/**
+ * The domains a chart with this spec will have — `frame.xDomain` and
+ * `frame.yDomain` — worked out without drawing anything: no picture,
+ * no axes, no series. For a host that needs the data's extent (a
+ * brush, a zoom clamp, a linked chart) and not the chart.
+ */
+export function chartDomains(options: ChartOptions): {
+  x: readonly [number, number]
+  y: readonly [number, number]
+} {
+  const requested = requestedDomains(options)
+  return {
+    x: axisDomain({ ...options.x, domain: requested.x }),
+    y: axisDomain({ ...options.y, domain: requested.y }),
+  }
+}
+
+/**
+ * Draw a complete chart: axes + series + optional legend. Returns the
+ * {@link ChartFrame} so further custom drawing can map through the
+ * same scales.
+ */
+export function chart<S extends ShapeSet>(
+  pic: ItemContainer<S>,
+  options: ChartOptions
+): ChartFrame {
+  const { series, legend: legendOpt, x: xo, y: yo, ...axesRest } = options
+  const { x: xDomain, y: yDomain } = requestedDomains(options)
 
   const frame = axes(pic, {
     ...axesRest,
@@ -396,6 +446,9 @@ export function chart<S extends ShapeSet>(
         interpolation: s.interpolation,
         connectGaps: s.connectGaps,
         stack: s.stack,
+        above: s.above,
+        below: s.below,
+        baseline: s.baseline,
       })
     } else {
       frame.line(data, {
@@ -407,6 +460,9 @@ export function chart<S extends ShapeSet>(
         interpolation: s.interpolation,
         closed: s.closed,
         connectGaps: s.connectGaps,
+        above: s.above,
+        below: s.below,
+        baseline: s.baseline,
       })
     }
   })
@@ -438,7 +494,7 @@ export function chart<S extends ShapeSet>(
       atOpt ?? (place === 'auto' ? freestCorner(frame, size) : placeLegend(frame, place, size))
     // A legend inside the plot area sits on top of the data, so it is
     // framed unless the caller opts out; outside, it is bare.
-    legend(pic, { frame: !outside, ...lo, at, entries })
+    legend(pic, { frame: !outside, theme: frame.theme, ...lo, at, entries })
   }
 
   return frame

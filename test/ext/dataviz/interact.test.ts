@@ -8,9 +8,9 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { point } from '../../../src/core/Point'
 import { picture } from '../../../src/picture/Picture'
-import { chart, type ChartOptions } from '../../../src/ext/dataviz/chart'
+import { chart, chartDomains, type ChartOptions } from '../../../src/ext/dataviz/chart'
 import { attachChart, viewBoxOf, viewportTransformOf, defaultTooltip } from '../../../src/ext/dataviz/interact'
-import { chartView } from '../../../src/ext/dataviz/view'
+import { chartView, windowSamples } from '../../../src/ext/dataviz/view'
 
 const SPEC: ChartOptions = {
   at: point(50, 200),
@@ -169,6 +169,61 @@ describe('legend toggle and highlight', () => {
   })
 })
 
+describe('cursor', () => {
+  it('setCursor draws a persistent line and a dot per series at that x; null removes it', () => {
+    const { svg, frame } = mounted()
+    const c = attachChart(svg, frame)
+    expect(c.cursor).toBeNull()
+    expect(c.overlay.querySelector('line.jikz-cursor')!.getAttribute('display')).toBe('none')
+    c.setCursor(5)
+    const line = c.overlay.querySelector('line.jikz-cursor')!
+    expect(line.hasAttribute('display')).toBe(false)
+    expect([line.getAttribute('x1'), line.getAttribute('y1'), line.getAttribute('y2')]).toEqual(['100', '100', '200'])
+    expect(line.getAttribute('stroke')).toBe('#2a78d6')
+    const dots = [...c.overlay.querySelectorAll('circle.jikz-cursor-dot:not([display])')]
+    expect(dots.map((d) => d.getAttribute('data-series'))).toEqual(['up', 'down'])
+    expect(c.cursor).toBe(5)
+    // It is not the hover: leaving the chart does not clear it.
+    svg.dispatchEvent(new MouseEvent('pointerleave'))
+    expect(line.hasAttribute('display')).toBe(false)
+    // Between samples: the line, no dots. Off the plot: hidden, value kept.
+    c.setCursor(3.3)
+    expect(c.overlay.querySelectorAll('circle.jikz-cursor-dot:not([display])')).toHaveLength(0)
+    expect(line.getAttribute('x1')).toBe('83')
+    c.setCursor(99)
+    expect(line.getAttribute('display')).toBe('none')
+    expect(c.cursor).toBe(99)
+    // A hidden series loses its dot.
+    c.setCursor(5)
+    c.setVisible('down', false)
+    expect([...c.overlay.querySelectorAll('circle.jikz-cursor-dot:not([display])')].map((d) => d.getAttribute('data-series'))).toEqual(['up'])
+    c.setCursor(null)
+    expect(line.getAttribute('display')).toBe('none')
+    c.destroy()
+  })
+
+  it('cursorStyle sets the line paint', () => {
+    const { svg, frame } = mounted()
+    const c = attachChart(svg, frame, { cursor: 5, cursorStyle: { stroke: '#ff0000', width: 1, dash: '2 2' } })
+    const line = c.overlay.querySelector('line.jikz-cursor')!
+    expect([line.getAttribute('stroke'), line.getAttribute('stroke-width'), line.getAttribute('stroke-dasharray')]).toEqual(['#ff0000', '1', '2 2'])
+    c.destroy()
+    const plain = attachChart(svg, frame, { cursor: 5 })
+    const d = plain.overlay.querySelector('line.jikz-cursor')!
+    expect([d.getAttribute('stroke-width'), d.hasAttribute('stroke-dasharray')]).toEqual(['1.5', false])
+    plain.destroy()
+  })
+
+  it('starts where the option says, dots optional', () => {
+    const { svg, frame } = mounted()
+    const c = attachChart(svg, frame, { cursor: 10, cursorDots: false })
+    expect(c.cursor).toBe(10)
+    expect(c.overlay.querySelector('line.jikz-cursor')!.getAttribute('x1')).toBe('150')
+    expect(c.overlay.querySelectorAll('circle.jikz-cursor-dot')).toHaveLength(0)
+    c.destroy()
+  })
+})
+
 describe('chartView', () => {
   it('renders, zooms by domain, resets, and keeps hidden series across renders', () => {
     const container = document.createElement('div')
@@ -212,6 +267,126 @@ describe('chartView', () => {
     expect(cat.svg.querySelector('[data-brush]')).toBeNull()
     view.destroy()
     cat.destroy()
+  })
+
+  it('a zoomed view stays the size of the unzoomed one: it clips and drops off-plot labels', () => {
+    const data: [number, number][] = Array.from({ length: 41 }, (_, i) => [i, 10 + (i % 7) * 3])
+    const spec: ChartOptions = {
+      at: point(50, 200),
+      width: 200,
+      height: 100,
+      series: [
+        { data, id: 'line', label: 'line', valueLabels: true, labelInData: 'end' },
+        { data, id: 'bars', kind: 'bar' },
+      ],
+    }
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const view = chartView(container, spec, { zoom: 'x', brush: true })
+    const widthOf = () => Number(view.svg.getAttribute('viewBox')!.split(' ')[2])
+    const unzoomed = widthOf()
+    // Clipped from the first render, so nothing shifts on the first zoom.
+    expect(view.frame.clipped).toBe(true)
+    expect(view.svg.querySelector('g.jikz-plot-area[clip-path]')).not.toBeNull()
+    view.setDomain([10, 14])
+    // Within a label's width of the unzoomed picture (tick and end
+    // labels differ) — not the 4× blow-up of an unclipped zoom.
+    expect(Math.abs(widthOf() - unzoomed)).toBeLessThan(40)
+    expect(view.svg.querySelectorAll('.jikz-value-label').length).toBeLessThanOrEqual(6)
+    // The end label names the last visible sample, inside the picture.
+    const end = view.svg.querySelector('.jikz-series-label')!
+    expect(Number(end.getAttribute('x'))).toBeLessThan(view.frame.plotArea[2] + 40)
+    // A hit near the left edge is a sample on the plot.
+    const hit = view.controller.hover(point(view.frame.plotArea[0] + 1, 150))!
+    for (const s of hit.samples) expect(s.x).toBeGreaterThanOrEqual(10)
+    // clip: false in the spec still wins.
+    const open = chartView(container, { ...spec, clip: false }, { zoom: 'x' })
+    expect(open.frame.clipped).toBe(false)
+    view.destroy()
+    open.destroy()
+  })
+
+  it('zooming rescales an auto y axis to the window; zoomY full or a pinned domain keeps it', () => {
+    const data: [number, number][] = Array.from({ length: 21 }, (_, i) => [i, i < 10 ? 100 + i : 900 + i])
+    const spec: ChartOptions = { at: point(50, 200), width: 200, height: 100, series: [{ data, id: 's' }] }
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const view = chartView(container, spec, { zoom: 'x' })
+    const full = view.frame.yDomain
+    expect(full[1]).toBeGreaterThan(900)
+    view.setDomain([2, 6])
+    expect(view.frame.yDomain[1]).toBeLessThan(150)
+    expect(view.frame.yDomain[0]).toBeGreaterThanOrEqual(90)
+    // Every sample is still there (indices are the caller's), just clipped.
+    expect(view.frame.series[0]!.data).toHaveLength(21)
+    view.resetZoom()
+    expect(view.frame.yDomain).toEqual(full)
+
+    const fixed = chartView(container, spec, { zoom: 'x', zoomY: 'full' })
+    fixed.setDomain([2, 6])
+    expect(fixed.frame.yDomain).toEqual(full)
+    const pinned = chartView(container, { ...spec, y: { domain: [0, 1000] } }, { zoom: 'x' })
+    pinned.setDomain([2, 6])
+    expect(pinned.frame.yDomain).toEqual([0, 1000])
+    view.destroy()
+    fixed.destroy()
+    pinned.destroy()
+  })
+
+  it('windowSamples: the samples in the window and the points on its edges, gaps where it cut', () => {
+    const data: [number, number][] = [[0, 0], [1, 10], [2, 20], [3, 30], [4, 40], [5, 50]]
+    // The edges are interpolated, not the neighbours beyond them.
+    expect(windowSamples(data, [1.5, 3.5])).toEqual([[1.5, 15], [2, 20], [3, 30], [3.5, 35]])
+    // A window between two sparse samples still sees the line through it.
+    expect(windowSamples(data, [2.2, 2.8])).toEqual([[2.2, 22], [2.8, 28]])
+    // On a sample: no duplicate. Nothing touching: empty.
+    expect(windowSamples(data, [1, 2])).toEqual([[1, 10], [2, 20]])
+    expect(windowSamples(data, [9, 10])).toEqual([])
+    // A line that leaves and comes back is two runs, not one.
+    const zig: [number, number][] = [[0, 0], [1, 1], [8, 8], [9, 9], [1, 5], [0, 6]]
+    const cut = windowSamples(zig, [0, 2])
+    expect(cut.filter(([x]) => Number.isNaN(x))).toHaveLength(1)
+    expect(cut[0]).toEqual([0, 0])
+    expect(cut[cut.length - 1]).toEqual([0, 6])
+    // A gap in the data stays a gap.
+    expect(windowSamples([[0, 1], [1, NaN], [2, 3]], [0, 2])).toEqual([[0, 1], [NaN, NaN], [2, 3]])
+  })
+
+  it('zoomY measures what shows: a spike just outside the window does not set the range', () => {
+    const data: [number, number][] = [[0, 10], [1, 12], [2, 11], [3, 13], [4, 12], [5, 900], [6, 12]]
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const view = chartView(container, { at: point(50, 200), width: 200, height: 100, series: [{ data, id: 's' }] }, { zoom: 'x' })
+    view.setDomain([1, 4])
+    expect(view.frame.yDomain[1]).toBeLessThan(20)
+    // Reaching into the rising segment counts what is visible of it: its height at the edge.
+    view.setDomain([1, 4.5])
+    expect(view.frame.yDomain[1]).toBeGreaterThan(400)
+    expect(view.frame.yDomain[1]).toBeLessThan(900)
+    view.destroy()
+  })
+
+  it('a render is one chart build: the extents come from chartDomains', () => {
+    const data: [number, number][] = Array.from({ length: 12 }, (_, i) => [i, i * i])
+    const spec: ChartOptions = { at: point(50, 200), width: 200, height: 100, series: [{ data, id: 's', kind: 'bar' }] }
+    // chartDomains is what the frame ends up with, for the kinds that shape a domain.
+    for (const s of [
+      spec,
+      { ...spec, series: [{ data, id: 'a', kind: 'area' as const, stack: 't' }, { data, id: 'b', kind: 'area' as const, stack: 't' }] },
+      { ...spec, y: { logarithmic: true }, series: [{ data: data.slice(1), id: 'l' }] },
+      { ...spec, x: { categories: ['a', 'b'] }, series: [{ data: [['a', 3], ['b', 7]] as [string, number][], kind: 'bar' as const }] },
+      { ...spec, x: { time: true }, series: [{ data: data.map(([x, y]) => [new Date(Date.UTC(2026, 0, 1 + x)), y] as [Date, number]) }] },
+      { ...spec, y: { includeValue: -50, padding: 5 } },
+    ] as ChartOptions[]) {
+      const frame = chart(picture(), s)
+      expect(chartDomains(s)).toEqual({ x: frame.xDomain, y: frame.yDomain })
+    }
+    // And the view measures with it: its full domain without a probe chart.
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const view = chartView(container, spec, { brush: true })
+    expect(view.fullDomain).toEqual(chartDomains(spec).x)
+    view.destroy()
   })
 
   it('responsive follows the container width when it has one', () => {

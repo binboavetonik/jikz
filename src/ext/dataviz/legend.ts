@@ -28,6 +28,7 @@ import { line } from '../../geometry/Line'
 import { rect } from '../../geometry/Rectangle'
 import type { PlotMark } from '../../geometry/PlotMark'
 import { drawMarks } from './frame'
+import { resolveTheme, type ChartTheme, type ThemeSpec } from './theme'
 
 /** One legend row: a swatch plus a label. */
 export interface LegendEntry {
@@ -87,11 +88,16 @@ export interface LegendOptions {
    * or a StyleSpec merged over it (e.g. on a dark canvas).
    */
   frame?: boolean | StyleSpec
+  /**
+   * The inks of the label text, the frame and unstyled swatches:
+   * `'light'` (default), `'dark'`, or overrides. `chart()` passes its
+   * own.
+   */
+  theme?: ThemeSpec | ChartTheme
 }
 
 /** Box-sample extent, px. */
 const BOX_SAMPLE = 10
-const LEGEND_TEXT: TextStyle = { fill: '#334155' }
 
 interface ResolvedLegendOptions extends LegendOptions {
   columns: number
@@ -187,10 +193,11 @@ export function legend<S extends ShapeSet>(
     columnX.push(cx)
     cx += w + o.columnGap
   }
-  const text: TextStyle = { ...LEGEND_TEXT, ...o.textStyle, fontSize: o.fontSize }
+  const theme = resolveTheme(o.theme)
+  const text: TextStyle = { fill: theme.legendText, ...o.textStyle, fontSize: o.fontSize }
 
   if (o.frame) {
-    const base: Partial<RenderStyle> = { fill: '#ffffff', stroke: '#cbd5e1', strokeWidth: 1 }
+    const base: Partial<RenderStyle> = { ...theme.legendFrame, strokeWidth: 1 }
     const frameStyle: StyleSpec =
       typeof o.frame === 'object'
         ? Array.isArray(o.frame)
@@ -215,11 +222,11 @@ export function legend<S extends ShapeSet>(
     if (entry.sample === 'box') {
       pic.filldraw(
         rect(sx0 + (o.sampleLength - BOX_SAMPLE) / 2, cy - BOX_SAMPLE / 2, BOX_SAMPLE, BOX_SAMPLE),
-        { style: entry.style ?? { fill: '#64748b', stroke: 'none' }, ...tag }
+        { style: entry.style ?? { fill: theme.bar, stroke: 'none' }, ...tag }
       )
     } else {
       pic.draw(line(point(sx0, cy), point(sx1, cy)), {
-        style: entry.style ?? { stroke: '#0f172a', strokeWidth: 2 },
+        style: entry.style ?? { stroke: theme.ink, strokeWidth: 2 },
         ...tag,
       })
       if (entry.mark) {

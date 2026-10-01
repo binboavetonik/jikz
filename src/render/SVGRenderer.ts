@@ -152,6 +152,21 @@ export interface SVGRendererOptions {
  * builder to serialize (works in any JS environment), or `mount()` to
  * attach a live DOM tree (browser only). SVG.js is no longer required.
  */
+/**
+ * A short, stable name for a piece of path data — FNV-1a over the
+ * string, base 36. Used for the ids of defs whose only identity is
+ * their content, so the same content has the same id in every picture
+ * of a document and different content never shares one.
+ */
+function contentId(content: string): string {
+  let h = 0x811c9dc5
+  for (let i = 0; i < content.length; i++) {
+    h ^= content.charCodeAt(i)
+    h = Math.imul(h, 0x01000193)
+  }
+  return (h >>> 0).toString(36)
+}
+
 export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
   private draw: SVGBuilder
   private sceneRoot: SVGBuilder
@@ -159,8 +174,6 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
   /** Open scope groups, innermost last — see beginGroup/endGroup. */
   private readonly groupStack: (SVGBuilder | null)[] = []
   private defaultStyle: RenderStyle
-  private clipPathCounter: number = 0
-  private textPathCounter: number = 0
 
   // Collaborators: def bookkeeping, layers, math
   private readonly defsManager: DefsManager
@@ -444,8 +457,17 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
   }
 
   private ensureClipPath(spec: ClipSpec): string {
-    const id = `jikz-clip-${this.clipPathCounter++}`
-    this.draw.defs().el('clipPath', { id }).el('path', { d: spec.toSVGPath() })
+    // The id is the clip's own geometry, hashed — not a counter. Ids
+    // are document-wide, and `url(#…)` resolves to the FIRST element
+    // that has one: with `jikz-clip-0` in every picture, the second
+    // picture on a page was clipped by the first one's shape. Named by
+    // content, equal clips share a definition and different ones can
+    // never meet.
+    const d = spec.toSVGPath()
+    const id = `jikz-clip-${contentId(d)}`
+    this.defsManager.ensure(id, (defs) => {
+      defs.el('clipPath', { id }).el('path', { d })
+    })
     return `url(#${id})`
   }
 
@@ -745,9 +767,12 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
     const style = this.getStyle(options)
     const o = tp.options
 
-    const id = `jikz-textpath-${this.textPathCounter++}`
+    // Content-named, like clip paths: a counter collides across the
+    // pictures of one page, and the text would ride another's path.
+    const guide = tp.toSVGPath()
+    const id = `jikz-textpath-${contentId(guide)}`
     this.defsManager.ensure(id, (defs) => {
-      defs.el('path', { id, d: tp.toSVGPath() })
+      defs.el('path', { id, d: guide })
     })
 
     const anchor = o.anchor
@@ -856,7 +881,16 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
 
       // Check if text looks like LaTeX (contains $ or \)
       if (this.isLaTeX(node.text)) {
-        this.renderLaTeX(node.text, node.center, textTarget)
+        // Math answers to the same text style as plain text: the size
+        // the node was measured with, and the ink — the text fill,
+        // else the pen.
+        this.renderLaTeX(
+          node.text,
+          node.center,
+          textTarget,
+          { fontSize: textOpts.fontSize },
+          textOpts.fill ?? style.stroke ?? '#000'
+        )
       } else {
         const content = node.lines.join('\n')
         const el = textTarget.text(content).center(node.center.x, node.center.y).font(textStyleAttrs)
@@ -911,11 +945,17 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
     // both, the label follows the pen.
     for (const label of edge.labels) {
       const at = edge.labelPoint(label)
+      const textOpts = { ...options?.textStyle, ...label.style }
       if (this.isLaTeX(label.text)) {
-        this.renderLaTeX(label.text, at, g, { fontSize: label.style?.fontSize })
+        this.renderLaTeX(
+          label.text,
+          at,
+          g,
+          { fontSize: textOpts.fontSize },
+          textOpts.fill ?? style.stroke ?? '#000'
+        )
         continue
       }
-      const textOpts = { ...options?.textStyle, ...label.style }
       const font: Record<string, unknown> = {
         'font-family': textOpts.fontFamily ?? 'sans-serif',
         'font-size': textOpts.fontSize ?? 12,
@@ -946,7 +986,13 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
 
     // Check if it's LaTeX
     if (this.isLaTeX(text)) {
-      return this.renderLaTeX(text, position, this.getTarget(), options)
+      return this.renderLaTeX(
+        text,
+        position,
+        this.getTarget(),
+        options,
+        this.ownStyle(options).fill ?? style.stroke ?? '#000'
+      )
     }
 
     const el = this.getTarget()
@@ -1002,8 +1048,18 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
     text: string,
     position: Point,
     target?: SVGBuilder,
-    options?: TextOptions
+    options?: TextOptions,
+    /**
+     * The formula's ink (default black). Both embeddings would
+     * otherwise take it from the PAGE: KaTeX's HTML inherits CSS
+     * `color`, MathJax's glyphs are `fill="currentColor"` — so on a
+     * dark-themed page math went pale on a light node while the plain
+     * text beside it stayed dark. The picture says what colour its
+     * text is; math is text.
+     */
+    color?: string
   ): SVGElement {
+    const ink = color ?? '#000'
     const container = target ?? this.getTarget()
     const { tex, displayMode } = this.extractLaTeX(text)
     const mathRenderer = resolveMathRenderer(this.mathRenderer)
@@ -1050,6 +1106,8 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
             width: w,
             height: h,
             overflow: 'visible',
+            // `color` sets currentColor for the glyph paths inside.
+            color: ink,
           })
           nested.raw(html)
           return this.applyOptions(nested, options)
@@ -1072,7 +1130,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
         fo.raw(
           `<div xmlns="http://www.w3.org/1999/xhtml" style="display:flex;` +
           `justify-content:center;align-items:center;width:100%;height:100%;` +
-          `white-space:nowrap;font-size:${options?.fontSize ?? 14}px">${html}</div>`
+          `white-space:nowrap;font-size:${options?.fontSize ?? 14}px;color:${ink}">${html}</div>`
         )
         return this.applyOptions(fo, options)
       }
@@ -1086,7 +1144,7 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
         'font-family': options?.fontFamily ?? 'serif',
         'font-size': options?.fontSize ?? 14,
         'font-style': 'italic',
-        fill: '#000',
+        fill: ink,
       })
 
     return this.applyOptions(el, options)
@@ -1098,7 +1156,13 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
   renderMath(tex: string, position: Point, options?: MathRendererOptions & TextOptions): SVGElement {
     const displayMode = options?.displayMode ?? false
     const wrapped = displayMode ? `$$${tex}$$` : `$${tex}$`
-    return this.renderLaTeX(wrapped, position, undefined, options)
+    return this.renderLaTeX(
+      wrapped,
+      position,
+      undefined,
+      options,
+      this.ownStyle(options).fill ?? this.getStyle(options).stroke ?? '#000'
+    )
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1246,8 +1310,6 @@ export class SVGRenderer implements Renderer<SVGElement, SVGBuilder> {
   clear(): void {
     this.draw.clear()
     this.defsManager.clear()
-    this.clipPathCounter = 0
-    this.textPathCounter = 0
     this.layerStack.clear()
     this.currentGroup = null
   }

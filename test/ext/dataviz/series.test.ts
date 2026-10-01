@@ -172,6 +172,25 @@ describe('chart() with bands, groups and stacks', () => {
     expect(r[2]!.y).toBe(110) // top of the stack: 90 units up from 200
   })
 
+  it('pads a continuous x axis by half a slot for bars and candles, not for lines', () => {
+    const bars = chart(picture(), { at, width: 100, height: 100, x: { exact: true }, series: [{ data: [[1, 2], [2, 3], [4, 1]], kind: 'bar' }] })
+    expect(bars.xDomain).toEqual([0.5, 4.5]) // the smallest gap is 1
+    const candles = chart(picture(), { at, width: 100, height: 100, x: { exact: true }, series: [{ data: [[10, 1, 3, 0, 2], [20, 2, 4, 1, 3]], kind: 'candlestick' }] })
+    expect(candles.xDomain).toEqual([5, 25])
+    const lines = chart(picture(), { at, width: 100, height: 100, x: { exact: true }, series: [{ data: [[1, 2], [4, 1]] }] })
+    expect(lines.xDomain).toEqual([1, 4])
+    // One bar still gets room; a pinned domain and a band axis are left alone.
+    expect(chart(picture(), { at, width: 100, height: 100, x: { exact: true }, series: [{ data: [[3, 2]], kind: 'bar' }] }).xDomain).toEqual([2.5, 3.5])
+    expect(chart(picture(), { at, width: 100, height: 100, x: { domain: [0, 9], exact: true }, series: [{ data: [[3, 2]], kind: 'bar' }] }).xDomain).toEqual([0, 9])
+    // No bar straddles the plot area any more.
+    const pic = picture()
+    const f = chart(pic, { at, width: 120, height: 100, series: [{ data: [[1, 2], [2, 3], [3, 1]], kind: 'bar' }] })
+    for (const r of rects(pic.toSVG({ width: 300, height: 250 }))) {
+      expect(r.x).toBeGreaterThanOrEqual(f.plotArea[0])
+      expect(r.x + r.w).toBeLessThanOrEqual(f.plotArea[2])
+    }
+  })
+
   it('accepts candlestick and area kinds and sizes y from their extents', () => {
     const frame = chart(picture(), {
       at,
@@ -252,6 +271,96 @@ describe('area()', () => {
     const d = pic.toSVG({ width: 200, height: 220 }).match(/<path class="jikz-series[^"]*" d="([^"]+)"/)![1]!
     expect(d.match(/Z/g)).toHaveLength(2) // two closed runs in the fill
     expect(d).toMatch(/C /)
+  })
+})
+
+describe('mark rings', () => {
+  it('a ring is drawn outside a filled mark, in the canvas colour: size stays the dot', () => {
+    const pic = picture()
+    const frame = frame10(pic)
+    frame.scatter([[2, 2], [8, 8]], { id: 'p', marks: { name: 'circleFilled', size: 7, ring: true } })
+    frame.scatter([[5, 5]], { id: 'q', marks: { name: 'circleFilled', size: 7 } })
+    frame.line([[0, 9], [10, 9]], { id: 'o', marks: { name: 'circle', ring: true } })
+    const svg = pic.toSVG({ width: 200, height: 220 })
+    const ringed = svg.match(/<path class="jikz-series jikz-series-p"[^>]*>/g)!
+    expect(ringed).toHaveLength(2)
+    // The dot is still 7px across (radius 3.5); the stroke is twice the ring, painted under the fill.
+    expect(ringed[0]).toContain('A 3.5 3.5')
+    expect(ringed[0]).toContain('paint-order="stroke"')
+    expect(ringed[0]).toContain('stroke="#ffffff"')
+    expect(ringed[0]).toContain('stroke-width="4"')
+    expect(ringed[0]).toContain(`fill="${VARY_HUE[0]}"`)
+    // No ring asked: no stroke. An open mark has nothing to ring.
+    expect(svg).toMatch(/<path class="jikz-series jikz-series-q"[^>]*stroke="none"/)
+    expect(svg).not.toMatch(/jikz-series-o"[^>]*A 3 3[^>]*paint-order/)
+  })
+
+  it('takes a width, the theme surface, and works on reference dots', () => {
+    const pic = picture()
+    const frame = axes(pic, { at, width: 100, height: 100, theme: { base: 'dark', surface: '#101418' } })
+    frame.line([[0, 0], [1, 1]], { marks: { name: 'circleFilled', ring: 3 } })
+    frame.referenceDot(0.5, 0.5, { ring: true })
+    const svg = pic.toSVG({ width: 200, height: 220 })
+    expect(svg).toMatch(/paint-order="stroke"[^>]*stroke="#101418"[^>]*stroke-width="6"/)
+    expect(svg).toMatch(/<path class="jikz-reference"[^>]*paint-order="stroke"[^>]*stroke="#101418"[^>]*stroke-width="4"/)
+  })
+})
+
+describe('sign-split paints', () => {
+  const GREEN = '#16a34a'
+  const RED = '#dc2626'
+
+  it('an area with above/below draws once per side, each clipped at the baseline', () => {
+    const pic = picture()
+    const frame = axes(pic, { at, width: 100, height: 100, x: { domain: [0, 10], exact: true }, y: { domain: [-5, 5], exact: true } })
+    frame.area([[0, 4], [5, -4], [10, 2]], { id: 'e', above: { fill: GREEN }, below: { fill: RED }, smooth: true })
+    const svg = pic.toSVG({ width: 200, height: 220 })
+    const groups = svg.match(/<g class="jikz-(above|below)" clip-path="url\(#jikz-clip-[0-9a-z]+\)">.*?<\/g>/g)!
+    expect(groups).toHaveLength(2)
+    // Each side: the fill and the edge, both the WHOLE series.
+    for (const g of groups) expect(g.match(/<path class="jikz-series jikz-series-e"/g)).toHaveLength(2)
+    expect(groups[0]).toContain(`fill="${GREEN}"`)
+    // A half changes only what it names: the line keeps the series' stroke.
+    expect(groups[0]).toContain(`stroke="${VARY_HUE[0]}"`)
+    expect(groups[0]).not.toContain(`stroke="${GREEN}"`)
+    expect(groups[1]).toContain(`fill="${RED}"`)
+    expect(groups[0]).not.toContain(RED)
+    // The two clips meet at y(0) = 150: one ends there, the other starts.
+    const clips = [...svg.matchAll(/<clipPath id="[^"]+"><path d="M [\d.-]+ ([\d.-]+) L [\d.-]+ [\d.-]+ L [\d.-]+ ([\d.-]+)/g)].map((m) => [Number(m[1]), Number(m[2])])
+    expect(clips).toHaveLength(2)
+    expect(clips[0]![1]).toBe(150)
+    expect(clips[1]![0]).toBe(150)
+    // The fill opacity and the slot's line width carry over from the series' own paint.
+    expect(groups[0]).toContain('fill-opacity="0.25"')
+    expect(frame.seriesById('e')!.data).toHaveLength(3)
+  })
+
+  it('a split at another baseline, on a line, with marks taking their side', () => {
+    const pic = picture()
+    const frame = axes(pic, { at, width: 100, height: 100, x: { domain: [0, 10], exact: true }, y: { domain: [0, 10], exact: true } })
+    frame.line([[0, 8], [5, 2], [10, 6]], { baseline: 5, above: { stroke: GREEN }, below: { stroke: RED }, marks: 'o' })
+    const svg = pic.toSVG({ width: 200, height: 220 })
+    expect(svg.match(/<g class="jikz-above"/g)).toHaveLength(1)
+    const marks = [...svg.matchAll(/data-index="(\d)"[^>]*stroke="(#[0-9a-f]{6})"/g)].map((m) => [m[1], m[2]])
+    expect(marks).toEqual([['0', GREEN], ['1', RED], ['2', GREEN]])
+    // One paint given: the other side keeps the series' own.
+    const pic2 = picture()
+    axes(pic2, { at, width: 100, height: 100 }).line([[0, 0], [1, 1]], { above: { stroke: GREEN } })
+    const svg2 = pic2.toSVG({ width: 200, height: 220 })
+    expect(svg2).toMatch(/<g class="jikz-below"[^>]*><path[^>]*stroke="#2a78d6"/)
+  })
+
+  it('no above/below: no clip groups; a stacked area ignores them; chart() passes them through', () => {
+    const pic = picture()
+    const frame = axes(pic, { at, width: 100, height: 100 })
+    frame.area([[0, 0.2], [1, 0.4]])
+    frame.area([[0, 0.2], [1, 0.4]], { stack: 's', above: { fill: GREEN } })
+    expect(pic.toSVG({ width: 200, height: 220 })).not.toContain('jikz-above')
+    const pic2 = picture()
+    chart(pic2, { at, width: 100, height: 100, series: [{ data: [[0, -1], [1, 1]], kind: 'area', above: { fill: GREEN }, below: { fill: RED } }] })
+    const svg = pic2.toSVG({ width: 200, height: 220 })
+    expect(svg).toContain('jikz-above')
+    expect(svg).toContain(`fill="${RED}"`)
   })
 })
 

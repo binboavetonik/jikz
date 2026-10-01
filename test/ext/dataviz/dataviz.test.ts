@@ -42,12 +42,13 @@ describe('niceTicks', () => {
   })
 
   it('produces float-noise-free fractional steps', () => {
-    // Heckbert picks a 0.2 step here; the point is clean decimals,
-    // not 0.30000000000000004.
+    // The point is clean decimals, not 0.30000000000000004.
     const { ticks } = niceTicks(0, 0.3, 4)
-    expect(ticks).toEqual([0, 0.2, 0.4])
-    const fine = niceTicks(0, 0.6, 11)
+    expect(ticks).toEqual([0, 0.1, 0.2, 0.3])
+    const fine = niceTicks(0, 0.6, 7)
     expect(fine.ticks).toEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6])
+    // The pre-0.10 rounding is still there by name.
+    expect(niceTicks(0, 0.3, 4, 'heckbert').ticks).toEqual([0, 0.2, 0.4])
   })
 
   it('handles degenerate input', () => {

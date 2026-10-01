@@ -161,7 +161,7 @@ describe('series enter animations', () => {
     expect(stripped).toBe(plain.toSVG({ width: 200, height: 220 }))
   })
 
-  it('the view plays the entrance on the first render and on new data, not on zoom', () => {
+  it('the view plays the entrance once: not on zoom, not on update unless asked', () => {
     const container = document.createElement('div')
     document.body.appendChild(container)
     const spec: ChartOptions = {
@@ -177,7 +177,11 @@ describe('series enter animations', () => {
     expect(view.svg.querySelector('animate')).toBeNull()
     view.resetZoom()
     expect(view.svg.querySelector('animate')).toBeNull()
+    // Streaming: an update is not an entrance…
     view.update({ ...spec, series: [{ data: [[0, 1], [10, 9]], id: 'a' }] })
+    expect(view.svg.querySelector('animate')).toBeNull()
+    // …unless the caller says this one is.
+    view.update({ ...spec, series: [{ data: [[0, 2], [10, 8]], id: 'a' }] }, { enter: true })
     expect(view.svg.querySelector('animate')).not.toBeNull()
     view.destroy()
   })

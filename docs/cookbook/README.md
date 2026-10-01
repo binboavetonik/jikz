@@ -960,6 +960,14 @@ Rapid rating over 12 months as a line chart with a dashed 1500 goal line: ext/da
 
 **Source:** [`examples/chess-rating-chart.ts`](../../examples/chess-rating-chart.ts)
 
+### Chess prototype — evaluation ribbon
+
+![Chess prototype — evaluation ribbon](img/chess-eval-ribbon.svg)
+
+An engine-evaluation ribbon with nothing drawn by hand: the y axis is a winning-chance axis (pawns through a sigmoid, via the axis `scale` function, so ±1, ±2, ±5 pawn guides are its own ticks and gridlines), the area is one series with `above`/`below` paints split exactly at zero, the current move is the controller's cursor, and a click on the ribbon moves it through onClick's hit.
+
+**Source:** [`examples/chess-eval-ribbon.ts`](../../examples/chess-eval-ribbon.ts)
+
 ### Chess prototype — puzzle-miss heatmap
 
 ![Chess prototype — puzzle-miss heatmap](img/chess-heatmap.svg)

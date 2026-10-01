@@ -35,17 +35,31 @@ east' })`). `estimateLabelSize` backs label-collision avoidance.
 
 ## Math — `$...$` via KaTeX
 
-Any `$...$` in node text or labels renders through KaTeX (optional
-peer) inside an SVG `foreignObject`:
+A label that is wholly `$...$` renders through the math renderer you
+**inject** — jikz never reads a global `katex` or `MathJax`, so
+loading one on the page is not enough:
 
 ```ts
-import { SVGRenderer, katexAdapter } from '@ozan.e/jikz'
 import katex from 'katex'
+import { picture, katexAdapter, setDefaultMathRenderer } from '@ozan.e/jikz'
 
-new SVGRenderer(undefined, undefined, { textRenderer: katexAdapter(katex) })
+picture({ shapes, mathRenderer: katexAdapter(katex) })   // this picture
+pic.toSVG({ width, height, mathRenderer })                // this render
+setDefaultMathRenderer(katexAdapter(katex))               // every picture in the process
+new SVGRenderer(undefined, undefined, { mathRenderer: katexAdapter(katex) })  // renderer level
 ```
 
-Without KaTeX: plain italic fallback. Works in Node too (the markup is
+`katexAdapter` puts KaTeX's HTML in a `foreignObject` — right for a
+live page that loads `katex.min.css`; `mathjaxAdapter` inlines
+MathJax's SVG glyph paths — right for anything else an SVG goes. See
+[which renderer](../concepts/tikz-mapping.md#which-renderer-and-why-it-matters).
+
+Math is text: it takes the colour and size plain text would have in
+its place — `textStyle.fill` (or a bare text's `style.fill`), else the
+pen's stroke, else black — and never the page's CSS `color`, so a
+formula reads the same on a dark-themed page as on a light one.
+
+Without a renderer: plain italic fallback, dollar signs and all. Works in Node too (the markup is
 a string either way). See [Node, SSR &
 browser](../concepts/node-ssr-browser.md) and
 [`examples/katex-math.ts`](../../examples/katex-math.ts).

@@ -45,8 +45,8 @@ describe('TextPath rendering', () => {
       .toSVG({ width: 220, height: 40 })
 
     expect(svg).toContain('<defs>')
-    expect(svg).toMatch(/<path[^>]*id="jikz-textpath-0"/)
-    expect(svg).toContain('href="#jikz-textpath-0"')
+    expect(svg).toMatch(/<path[^>]*id="jikz-textpath-[0-9a-z]+"/)
+    expect(svg).toMatch(/href="#jikz-textpath-[0-9a-z]+"/)
     expect(svg).toContain('startOffset="0%"')
     expect(svg).toContain('>hello world</textPath>')
     // The guide path itself is never painted outside defs.

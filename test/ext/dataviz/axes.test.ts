@@ -9,6 +9,8 @@ import { point } from '../../../src/core/Point'
 import { picture } from '../../../src/picture/Picture'
 import {
   logScale,
+  functionScale,
+  spreadTicks,
   logTicks,
   formatLogTick,
   minorTicksBetween,
@@ -82,6 +84,80 @@ describe('log scale and ticks', () => {
   })
 })
 
+describe('custom axis function', () => {
+  // Winning chances: pawns through a sigmoid.
+  const k = 0.368
+  const winning = {
+    forward: (p: number) => 2 / (1 + Math.exp(-k * p)) - 1,
+    inverse: (u: number) => -Math.log(2 / (u + 1) - 1) / k,
+  }
+
+  it('functionScale is linear in forward(value), both ways', () => {
+    const s = functionScale([-10, 10], [200, 0], winning)
+    expect(s.kind).toBe('function')
+    expect(s.map(0)).toBeCloseTo(100, 6)
+    expect(s.map(-10)).toBe(200)
+    expect(s.map(10)).toBeCloseTo(0, 6)
+    // The first pawn takes far more room than the fifth, and the ninth almost none.
+    expect(s.map(0) - s.map(1)).toBeGreaterThan(1.5 * (s.map(4) - s.map(5)))
+    expect(s.map(0) - s.map(1)).toBeGreaterThan(5 * (s.map(8) - s.map(9)))
+    for (const v of [-7, -1, 0, 0.5, 3]) expect(s.invert(s.map(v))).toBeCloseTo(v, 6)
+    expect(s.ticks().every((t) => t.value >= -10 && t.value <= 10)).toBe(true)
+    expect(() => functionScale([1, 5], [0, 100], { forward: () => 3, inverse: (u) => u })).toThrow(/distinct/)
+  })
+
+  it('inverse is optional: a monotone forward is inverted numerically', () => {
+    const given = functionScale([-10, 10], [200, 0], winning)
+    const derived = functionScale([-10, 10], [200, 0], { forward: winning.forward })
+    for (const px of [0, 37, 100, 150, 200]) expect(derived.invert(px)).toBeCloseTo(given.invert(px), 6)
+    // A falling function inverts too.
+    const falling = functionScale([1, 100], [0, 100], { forward: (v) => -Math.sqrt(v) })
+    expect(falling.invert(falling.map(49))).toBeCloseTo(49, 6)
+  })
+
+  it('auto ticks spread evenly on the page, on round values', () => {
+    // Data-even ticks on the sigmoid sit at 200, 176, 100, 24, 0 px: bunched at the ends.
+    const s = functionScale([-10, 10], [200, 0], winning)
+    const ticks = s.ticks(5).map((t) => t.value)
+    expect(ticks).toEqual([-10, -3, 0, 3, 10])
+    const px = ticks.map((v) => s.map(v))
+    const gaps = px.slice(1).map((p, i) => px[i]! - p)
+    expect(Math.max(...gaps) / Math.min(...gaps)).toBeLessThan(1.3)
+    expect(spreadTicks(-10, 10, 5, (v) => v)).toEqual([-10, -5, 0, 5, 10]) // linear: the usual ticks
+    // The axis uses them when no tickValues are given, and alsoAt still adds.
+    const frame = axes(picture(), { at, width: 100, height: 200, y: { domain: [-10, 10], exact: true, scale: winning, alsoAt: [1] } })
+    expect(frame.yTicks).toEqual([-10, -3, 0, 1, 3, 10])
+    const sqrt = axes(picture(), { at, width: 100, height: 200, y: { domain: [0, 100], scale: { forward: Math.sqrt }, ticks: 5 } })
+    expect(sqrt.yTicks[0]).toBe(0)
+    expect(sqrt.yTicks[sqrt.yTicks.length - 1]).toBe(100)
+    expect(sqrt.yTicks[1]).toBeLessThan(15) // crowded low, where sqrt is steep
+  })
+
+  it('an axis with scale places ticks and gridlines through the function', () => {
+    const pic = picture()
+    const frame = axes(pic, {
+      at,
+      width: 100,
+      height: 200,
+      x: { domain: [0, 10], exact: true },
+      y: { domain: [-10, 10], exact: true, scale: winning, tickValues: [-5, -2, -1, 0, 1, 2, 5], grid: true },
+    })
+    expect(frame.yScale.kind).toBe('function')
+    expect(frame.y(0)).toBeCloseTo(100, 6)
+    const ys = frame.yTicks.map((t) => frame.y(t))
+    // Symmetric about zero, crowding towards the ends.
+    expect(ys[0]! - 100).toBeCloseTo(100 - ys[6]!, 6)
+    // …per pawn: −1→0 is one pawn, −5→−2 is three.
+    expect(ys[2]! - ys[3]!).toBeGreaterThan((ys[0]! - ys[1]!) / 3)
+    const svg = pic.toSVG({ width: 200, height: 260 })
+    expect(svg.match(/stroke="#e2e8f0"/g)).toHaveLength(7) // one gridline per pawn guide
+    expect(frame.invertY(frame.y(2))).toBeCloseTo(2, 6)
+    // Series, hits and reference marks go through it like any scale.
+    frame.line([[0, -3], [10, 4]], { id: 's' })
+    expect(frame.hitTest(point(50, 100))!.samples[0]!.y).toBe(-3)
+  })
+})
+
 describe('tick placement options', () => {
   it('minorTicksBetween and minorTicks/grid on a linear axis', () => {
     expect(minorTicksBetween([0, 1, 2], 4)).toEqual([0.2, 0.4, 0.6, 0.8, 1.2, 1.4, 1.6, 1.8])
@@ -101,6 +177,41 @@ describe('tick placement options', () => {
     expect(niceNumber(0.25, true, 'int')).toBe(1)
     expect(niceTicks(0, 3, 5, 'int').ticks).toEqual([0, 1, 2, 3])
     expect(niceTicks(0, 10, 5, 'quarter').step).toBe(2.5)
+  })
+
+  it('the tick count is honoured: the step is searched for, not rounded to', () => {
+    // The field report: about a hundred points, four ticks asked for.
+    expect(niceTicks(1460, 1560, 4, 'standard', { exact: true }).ticks).toEqual([1475, 1500, 1525, 1550])
+    expect(niceTicks(1460, 1560, 4, 'heckbert', { exact: true }).ticks).toEqual([1500, 1550])
+    expect(niceTicks(1452, 1548, 4, 'standard', { exact: true }).ticks.length).toBeGreaterThanOrEqual(3)
+    expect(niceTicks(1452, 1548, 4, 'heckbert', { exact: true }).ticks).toEqual([1500])
+    // Eight asked for on [0, 100]: six, not eleven.
+    expect(niceTicks(0, 100, 8).ticks).toHaveLength(6)
+    expect(niceTicks(0, 100, 8, 'heckbert').ticks).toHaveLength(11)
+    // The common defaults do not move: 1/2/5 steps stay first choice,
+    // 2.5 only when it is clearly nearer the count.
+    expect(niceTicks(0, 100, 5).ticks).toEqual([0, 20, 40, 60, 80, 100])
+    expect(niceTicks(0, 10, 5).step).toBe(2)
+    expect(niceTicks(3, 97, 5).ticks).toEqual([0, 20, 40, 60, 80, 100])
+    // A range that is not widened keeps its ends.
+    const exact = niceTicks(1460, 1560, 4, 'standard', { exact: true })
+    expect([exact.min, exact.max]).toEqual([1460, 1560])
+  })
+
+  it('minTicks rejects a step that leaves too few; an axis takes it and exact together', () => {
+    expect(niceTicks(0, 100, 2).ticks).toEqual([0, 100])
+    expect(niceTicks(0, 100, 2, 'standard', { minTicks: 4 }).ticks.length).toBeGreaterThanOrEqual(4)
+    const f = axes(picture(), {
+      at,
+      width: 100,
+      height: 100,
+      y: { domain: [1460, 1560], exact: true, ticks: 4 },
+    })
+    expect(f.yTicks).toEqual([1475, 1500, 1525, 1550])
+    const old = axes(picture(), { at, width: 100, height: 100, y: { domain: [1460, 1560], exact: true, ticks: 4, about: 'heckbert' } })
+    expect(old.yTicks).toEqual([1500, 1550])
+    const many = axes(picture(), { at, width: 100, height: 100, y: { domain: [0, 100], ticks: 2, minTicks: 5 } })
+    expect(many.yTicks.length).toBeGreaterThanOrEqual(5)
   })
 
   it('includeValue, alsoAt and padding widen and add', () => {
@@ -205,13 +316,54 @@ describe('axis systems', () => {
     expect(svg).not.toMatch(/y1="200" y2="204"/)
   })
 
+  it('a clipped frame drops labels, reference labels and hits whose anchor is off the plot', () => {
+    const build = (clip: boolean) => {
+      const pic = picture()
+      const frame = axes(pic, { at, width: 100, height: 100, clip, x: { domain: [8, 12], exact: true }, y: { domain: [0, 20], exact: true } })
+      const data: [number, number][] = Array.from({ length: 21 }, (_, i) => [i, i])
+      frame.line(data, { id: 's', label: 'series', valueLabels: true, labelInData: 'end' })
+      frame.referenceLine({ x: 18, label: 'far' }).referenceLine({ x: 10, label: 'near' })
+      frame.referenceArea({ x1: 15, x2: 19, label: 'gone' }).referenceArea({ x1: 2, x2: 10, label: 'half' })
+      frame.referenceDot(2, 5, { label: 'dot-out' }).referenceDot(10, 10, { label: 'dot-in' })
+      return { frame, svg: pic.toSVG({ fit: true, padding: 12 }) }
+    }
+    const width = (svg: string) => Number(svg.match(/viewBox="[\d.-]+ [\d.-]+ ([\d.]+)/)![1])
+    const open = build(false)
+    const clipped = build(true)
+    // Unclipped, everything is drawn — TikZ's rule — and the picture is as wide as the data.
+    expect(open.svg.match(/class="jikz-value-label/g)).toHaveLength(21)
+    expect(width(open.svg)).toBeGreaterThan(400)
+    // Clipped: five samples on the plot (x = 8…12), five value labels, a fitted picture.
+    expect(clipped.svg.match(/class="jikz-value-label/g)).toHaveLength(5)
+    expect(width(clipped.svg)).toBeLessThan(200) // the plot, its margins, and the end label
+    // 'end' is the last sample ON the plot.
+    expect(clipped.svg).toMatch(/<text class="jikz-series-label[^>]*>series</)
+    const endLabelX = Number(clipped.svg.match(/<text class="jikz-series-label[^>]* x="([\d.]+)"/)![1])
+    expect(endLabelX).toBeGreaterThan(150)
+    expect(endLabelX).toBeLessThan(190)
+    // Reference labels: kept on the plot, dropped off it, re-centred when half shows.
+    for (const kept of ['near', 'half', 'dot-in']) expect(clipped.svg).toContain(`>${kept}<`)
+    for (const dropped of ['far', 'gone', 'dot-out']) expect(clipped.svg).not.toContain(`>${dropped}<`)
+    for (const all of ['far', 'gone', 'dot-out', 'near']) expect(open.svg).toContain(`>${all}<`)
+    const halfX = Number(clipped.svg.match(/<text class="jikz-reference-label"[^>]* x="([\d.]+)"[^>]*>half</)![1])
+    expect(halfX).toBe(75) // the visible part runs x 8…10 → 50…100
+    // Hits stay on the plot.
+    const hit = clipped.frame.hitTest(point(51, 150))!
+    expect(hit.samples[0]!.x).toBe(8)
+    expect(open.frame.hitTest(point(51, 150))!.samples[0]!.x).toBe(8)
+    const near = clipped.frame.hitTest(point(60, 150), { mode: 'nearest' })!
+    expect(near.x).toBeGreaterThanOrEqual(8)
+    expect(build(true).frame.clipped).toBe(true)
+    expect(open.frame.clipped).toBe(false)
+  })
+
   it('clip puts everything drawn through the frame in a clipped scope', () => {
     const pic = picture()
     const frame = axes(pic, { at, width: 100, height: 100, clip: true, x: { domain: [0, 10], exact: true }, y: { domain: [0, 10], exact: true } })
     frame.line([[0, 0], [20, 20]])
     const svg = pic.toSVG({ width: 300, height: 300 })
-    expect(svg).toMatch(/<clipPath id="jikz-clip-0"><path d="M 50 100 L 150 100 L 150 200 L 50 200 Z"/)
-    expect(svg).toMatch(/<g class="jikz-plot-area" clip-path="url\(#jikz-clip-0\)"><path class="jikz-series/)
+    expect(svg).toMatch(/<clipPath id="jikz-clip-[0-9a-z]+"><path d="M 50 100 L 150 100 L 150 200 L 50 200 Z"/)
+    expect(svg).toMatch(/<g class="jikz-plot-area" clip-path="url\(#jikz-clip-[0-9a-z]+\)"><path class="jikz-series/)
     // Direct and reference labels escape the clip: they are drawn after the scope, on the picture.
     frame.line([[0, 5], [10, 5]], { label: 'flat', labelInData: 'end' }).referenceLine({ y: 2, label: 'ref' })
     const svg2 = pic.toSVG({ width: 300, height: 300 })

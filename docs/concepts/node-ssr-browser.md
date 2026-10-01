@@ -77,18 +77,22 @@ npm install katex   # optional
 ```
 
 ```ts
-import { SVGRenderer, katexAdapter } from '@ozan.e/jikz'
+import { picture, katexAdapter, setDefaultMathRenderer } from '@ozan.e/jikz'
 import katex from 'katex'
+import 'katex/dist/katex.min.css'   // the foreignObject needs it
 
-const renderer = new SVGRenderer(undefined, undefined, {
-  textRenderer: katexAdapter(katex),
-})
+const pic = picture({ shapes, mathRenderer: katexAdapter(katex) })
+// or once, for every picture on the page:
+setDefaultMathRenderer(katexAdapter(katex))
 ```
 
-- **Without KaTeX**: `$...$` falls back to plain italic text. The
-  diagram renders either way — KaTeX only upgrades fidelity.
-- **In the browser**, loading KaTeX from a CDN `<script>` tag also
-  works: jikz picks up the global.
+- **Without a renderer**: `$...$` falls back to plain italic text,
+  dollar signs included. The diagram renders either way.
+- **A `<script>` tag is not enough.** jikz never reads a global
+  `katex` (it did, deprecated, before 0.9): with KaTeX loaded from a
+  CDN, hand it over — `setDefaultMathRenderer(katexAdapter(window.katex))`.
+- **Headless, or for a standalone `.svg`**: use `mathjaxAdapter` with
+  MathJax's SVG output; KaTeX's HTML needs a live document.
 
 ## Workers & edge runtimes
 

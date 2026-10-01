@@ -46,7 +46,7 @@ describe('path picture', () => {
     const stroke = svg.indexOf('stroke="#0f172a"')
     expect(fill).toBeLessThan(inner)
     expect(inner).toBeLessThan(stroke)
-    expect(svg).toMatch(/<g clip-path="url\(#jikz-clip-\d+\)">/)
+    expect(svg).toMatch(/<g clip-path="url\(#jikz-clip-[0-9a-z]+\)">/)
   })
 })
 

@@ -78,9 +78,11 @@ pic.draw(line(frame.point(0, 50), frame.point(4.5, 50)), { style: { stroke: '#dc
 | `domain: [min, max]` | data range; widened to nice steps unless `exact` |
 | `categories: [...]` | a band axis — one band per name (see below) |
 | `logarithmic: true` | TikZ `logarithmic`: positions linear in log₁₀, decades as major ticks, 2…9 as minor, domain widened to whole decades; must be positive |
+| `scale: { forward, inverse? }` | TikZ's axis `function`: positions linear in `forward(value)`. Ticks are round data values chosen to sit **evenly on the page** (±10 through a winning-chance sigmoid gives −10, −3, 0, 3, 10, not the data-even −10, −5, 0, 5, 10 bunched at the ends); a steep function with meaningful levels still wants `tickValues`. `inverse` is optional — a monotone `forward` is inverted numerically |
 | `time: true` or `{ timeZone, locale }` | a time axis (see below) |
-| `ticks: n` | desired tick count (default 5; actual may differ by one or two) |
-| `about` | how the step snaps: `'standard'` (1/2/5), `'decimal'`, `'half'`, `'quarter'`, `'int'` (never fractional) — TikZ's `about strategy` |
+| `ticks: n` | desired tick count (default 5) — the step is the round one whose count on this axis is nearest `n` |
+| `about` | which round steps are allowed: `'standard'` (1/2/5, and 2.5 when clearly nearer the count), `'decimal'`, `'half'`, `'quarter'`, `'int'` (never fractional) — TikZ's `about strategy`; `'heckbert'` for the pre-0.10 rounding |
+| `minTicks: n` | the fewest ticks a step may leave (default 2) |
 | `tickValues: [...]` | explicit ticks |
 | `alsoAt: [...]` | extra labelled ticks — TikZ `also at` |
 | `minorTicks: n` | n minor ticks between majors — TikZ `minor steps between steps` |
@@ -114,6 +116,16 @@ const frame = axes(pic, {
 })
 frame.fn((x) => Math.sin(x) * x, { label: 'x·sin x', labelInData: 'end' })
 ```
+
+**Too few ticks?** `ticks` is honoured by searching the round steps
+for the count nearest it, so a padded hundred-point range asked for
+four gets four at 25 rather than two at 50. `about: 'quarter'` allows
+the 2.5 rung freely, `minTicks` sets a floor, and `tickValues` or
+`alsoAt` place ticks by hand.
+
+`clip: true` also means labels follow the clip: a direct label, value
+label or reference label anchored off the plot area is not drawn, and
+`hitTest` only returns samples on it. `frame.clipped` says which.
 
 `frame.xMinorTicks`/`yMinorTicks` list the minor ticks drawn;
 `logScale()`, `logTicks()`, `minorTicksBetween()` and
@@ -185,6 +197,82 @@ hit?.at        // where a crosshair snaps (the nearest sample overall)
 Outside the plot area, or with nothing drawn, `hitTest` returns `null`.
 Everything here is pure — the model is node-tested without a DOM.
 
+## Themes
+
+Every ink that is not a series colour comes from the **theme**: axes,
+grid, tick and label text, legend, reference marks, the canvas colour
+that gaps and rings are cut in — and the interactive layer's tooltip,
+crosshair, brush and zoom box, because the frame carries its theme to
+`attachChart` and `chartView`.
+
+```ts
+chart(pic, { ..., theme: 'dark' })
+chart(pic, { ..., theme: { base: 'dark', surface: '#101418', accent: '#f59e0b' } })
+pie(pic, { ..., theme: 'dark' }); legend(pic, { ..., theme: 'dark' }); sparkline(pic, data, { ..., theme: 'dark' })
+```
+
+`'light'` is the default and what dataviz always drew. `'dark'` is the
+same roles stepped for a dark slate canvas, with `varyHueDark` as its
+style sheet. An object overrides roles on a `base`; set `surface` to
+the colour the chart actually sits on. The explicit options — `style`,
+`gridStyle`, `textStyle`, `styleSheet`, a series' `style` — still win.
+
+| role | paints |
+|---|---|
+| `axis`, `grid`, `minorGrid` | axis lines and ticks (and the crosshair), gridlines |
+| `tickText`, `labelText`, `legendText` | tick and value labels; axis and direct labels; legend labels |
+| `legendFrame { fill, stroke }` | the legend box |
+| `reference`, `referenceArea` | reference lines, dots, error bars; reference areas and sparkline bands |
+| `ink`, `bar` | unstyled series when there is no style sheet |
+| `surface`, `onSeries` | the canvas colour (gaps, dot rings, hollow candles, brush handles); text on a series colour |
+| `accent`, `brushStrip { stroke, fill }` | the brush window and zoom box; the brush strip |
+| `candle { up, down }` | candlesticks |
+| `tooltip { background, text, muted, border, shadow }` | the tooltip |
+| `styleSheet` | the series palette when none is named |
+
+`lightTheme`, `darkTheme` and `resolveTheme()` are exported;
+`frame.theme` is the one a frame was built with.
+
+**A theme of CSS variables.** A role is an opaque string, so it can
+be `var(--…)`: the app defines the variables per theme and the chart
+follows a theme switch live, with no re-render — the tooltip, the
+overlay and the brush included, and series colours too through
+`styleSheet: { colors: ['var(--series-1)', …] }`.
+
+```ts
+const theme = {
+  axis: 'var(--chart-axis)', grid: 'var(--chart-grid)',
+  tickText: 'var(--text-muted)', labelText: 'var(--text)',
+  surface: 'var(--bg)', accent: 'var(--accent)',
+  tooltip: { background: 'var(--panel)', text: 'var(--text)', muted: 'var(--text-muted)', border: 'var(--border)' },
+  styleSheet: { colors: ['var(--series-1)', 'var(--series-2)'] },
+}
+```
+
+This is the right tool for an app with more than light and dark;
+the presets are fixed hex. It is for live pages: a standalone
+`toSVG()` file carries no variables, so its inks fall back to the
+browser's defaults.
+
+**Restyling from CSS.** The tooltip's colours are custom properties
+with the theme as fallback, so a host sets them on any ancestor and
+needs no `!important`:
+
+```css
+.my-chart {
+  --jikz-tooltip-bg: #111827;  --jikz-tooltip-text: #f9fafb;
+  --jikz-tooltip-muted: #9ca3af;  --jikz-tooltip-border: #374151;
+  --jikz-tooltip-shadow: 0 4px 12px rgb(0 0 0 / .5);
+}
+```
+
+`tooltip: { unstyled: true }` emits no colours at all, for a host with
+its own `.jikz-tooltip` rules (`-title`, `-row`, `-swatch`, `-label`,
+`-value` inside). The SVG parts are painted with attributes, which
+ordinary rules outrank: `.jikz-crosshair`, `.jikz-active-dot`,
+`.jikz-brush-window`, `.jikz-brush-handle`, `.jikz-zoom-selection`,
+and every series under `.jikz-series-<id>`.
+
 ## Time axes
 
 `time: true` makes an axis a time axis. Samples are epoch milliseconds
@@ -254,11 +342,20 @@ such samples the band's index as x, and keep the names as labels.
 |---|---|
 | `line()` | a path through the samples; `interpolation: 'linear' \| 'smooth' \| 'step' \| 'stepBefore' \| 'stepAfter'` (`smooth: true` is the alias), `closed: true` for a cycle, `marks` at the samples |
 | `area()` | a fill from the samples down to `baseline` (default 0) or, with `stack`, onto the previous series in the stack; same interpolation choices; the stroke is the top edge alone |
+| `above` / `below` on `line()` and `area()` | paints for the parts above and below `baseline`, layered over the series' own — Chart.js's fill target. Each side is the whole series clipped to its half-plane, so the split is exact for any interpolation. A half changes only what it names — `fill` the area, `stroke` the line and its marks |
 | `scatter()` | marks only; `style` may be a function of the sample for per-point colour (recharts' `Cell`) |
 | `bars()` | vertical bars; `group`, `stack`, `width`, `baseline`, per-bar `style` function |
 | `candlestick()` | TikZ's `candle stick plot`: `[x, open, high, low, close]` candles, hollow rising and solid falling (`up`/`down` paint); the series' samples are the closes |
 | `fn(f, { samples, domain })` | TikZ's `function` data format: `f` sampled across the x domain and drawn as a line; NaN is a gap |
 | `errorBars()` | `[x, y, ±err]` or `[x, y, low, high]` ranges with caps — a decoration, not a series; `seriesId` tags it to one |
+
+**Marks** are `marks: 'o'` or `{ name, size, every, ring }`. `size`
+is the diameter of the visible dot. `ring: true` (2px, or a width)
+puts a band of the canvas colour — the theme's `surface` — round a
+filled mark, *outside* it, so marks on a line and overlapping marks
+read as separate dots. (A ring drawn by hand as a stroke straddles
+the outline and eats into the dot; this one does not.)
+`referenceDot` takes `ring` too.
 
 Every series takes `labelInData` — `'start' \| 'end' \| 'max' \| 'min'`
 or sample indices — to put its name beside the data (TikZ `label in
@@ -431,16 +528,23 @@ const ui = attachChart(svg, frame, { tooltip: true, crosshair: 'x' })
 | `highlight` | `true` | hovering a legend row dims the other series (`.jikz-dim`, opacity .25) |
 | `legendToggle` | `true` | clicking a legend row hides its series (`display: none`, `.jikz-hidden` on the row) and drops it from hits |
 | `hitTest` | nearest within 24px for scatter charts, else by x | passed to `frame.hitTest` |
-| `onHover(hit)`, `onClick(hit, event)` | | callbacks |
+| `cursor`, `cursorDots`, `cursorStyle` | none, `true`, accent 1.5px | a line at an x value that stays put (the current move, a playhead), with a dot on each series' sample there; `cursorStyle: { stroke, width, dash }` |
+| `onHover(hit)`, `onClick(hit, event)` | | callbacks: `onClick` gets the samples under a click — `hit.samples[0].index` is the sample to navigate to, no hit rectangles needed |
 
 The controller it returns has `hover(at)` — run the pipeline at a
-picture point, or clear it with null — so two charts can be linked by
-passing one's hit along; `highlight(id)`, `setVisible(id, on)`,
+picture point, or clear it with null — and `setCursor(x)` — move the
+persistent cursor, in data units, without a re-render — so two charts
+can be linked by passing one's hit along; `highlight(id)`, `setVisible(id, on)`,
 `toggle(id)`, `clientToUser(x, y)`, the `overlay` group it paints into
 (free for callers too), and `destroy()`. Everything it does is DOM
 over the model: `frame.hitTest` says what is under the pointer, the
 `data-series` tags say which elements belong to it. It works inside a
 pan/zoomed viewport too.
+
+`chartDomains(spec)` returns the x and y domains a chart will have
+without drawing it — the data's extent for a host that needs the
+range and not the chart; the view uses it, so a render is one chart
+build.
 
 `chartView(container, spec, options)` is the loop: it renders a
 `chart()` spec, attaches the adapter, and re-renders — a fresh
@@ -449,19 +553,36 @@ the x domain changes, the container resizes, or new data arrives:
 
 ```ts
 const view = chartView(el, spec, { zoom: 'x', brush: true, responsive: true })
-view.update({ ...spec, series: newSeries })   // zoom and hidden series persist
-view.setDomain([a, b]); view.resetZoom()
+view.update({ ...spec, series: newSeries })   // zoom, hidden series, cursor and hover persist
+view.setCursor(ply); view.setDomain([a, b]); view.resetZoom()
 view.destroy()
 ```
 
 | option | what |
 |---|---|
 | `zoom: 'x'` | drag across the plot area to zoom the x domain; double-click resets |
+| `zoomY: 'visible' \| 'full'` | while zoomed, an auto y axis rescales to what shows in the window (default) — the samples in it, and a line's height where it crosses the window's edges, so a spike just outside does not count — or keeps the whole data's range; a pinned y domain stays pinned |
 | `brush: true` or `{ height, gap, live }` | a strip under the axes showing the whole range with a window and two handles; drag to pan or resize (re-rendering on release, or live) |
 | `responsive: true` | a `ResizeObserver` re-lays the chart out at the container's width |
 | `fit`, `padding`, `pictureOptions` | how each render mounts |
+| `batchUpdates: true` | `update()` waits for the next animation frame, so data arriving faster than it draws costs one render per frame; `flush()` renders now |
 | `onDomainChange(domain \| null)` | after a zoom or brush |
 | …and every `attachChart` option | |
+
+A view with `zoom` or `brush` **clips** to the plot area (`clip:
+false` in the spec opts out): it shows a window of the data, and
+without the clip a zoomed series would run past the axes and drag the
+fitted viewBox with it. On a clipped frame, direct labels, value
+labels, reference labels and hits whose anchor is off the plot are
+dropped, and `labelInData: 'end'` names the last sample still in
+view.
+
+**Streaming.** `update(spec)` re-renders with what the view already
+holds: the zoom, the hidden series, the cursor, and the hover under
+the pointer, so a tooltip does not blink out while results arrive.
+The enter animation does not replay — an update is not an entrance —
+unless `update(spec, { enter: true })` asks. The click that ends a
+zoom drag or a brush drag never reaches `onClick`.
 
 Zoom and brush apply to numeric, time and logarithmic x axes, not to
 categorical ones. With a brush, put the legend inside or beside the

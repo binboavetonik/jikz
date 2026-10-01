@@ -1,20 +1,21 @@
 /**
  * Pluggable math (LaTeX) rendering for labels and node text.
  *
- * Inject an implementation into `SVGRenderer` via
- * `new SVGRenderer(draw, style, { mathRenderer })` — typically
- * {@link katexAdapter} wrapping a KaTeX instance:
+ * A math renderer is always **injected** — jikz never reads a global
+ * `katex` or `MathJax`, so a page that merely loads one of them from a
+ * `<script>` tag gets the plain-text fallback until it says so:
  *
  * ```ts
  * import katex from 'katex'
- * import { SVGRenderer, katexAdapter } from 'jikz'
+ * import { picture, katexAdapter, setDefaultMathRenderer } from 'jikz'
  *
- * new SVGRenderer(undefined, undefined, { mathRenderer: katexAdapter(katex) })
+ * picture({ mathRenderer: katexAdapter(katex) })     // this picture
+ * setDefaultMathRenderer(katexAdapter(katex))        // every picture on the page
  * ```
  *
- * Previously the renderer read an ambient global `katex` binding, which
- * was uninjectable and untestable. The global is still honored as a
- * deprecated fallback (with a one-time warning) for one release.
+ * {@link katexAdapter} (HTML in a `foreignObject`, for live pages) and
+ * {@link mathjaxAdapter} (SVG glyph paths, for anything an SVG goes)
+ * are the two shipped adapters.
  */
 export interface MathRendererOptions {
   /** Display mode (centered, larger) */
@@ -118,10 +119,34 @@ export function katexAdapter(katex: KaTeXLike): MathRenderer {
 /**
  * Structural type for a MathJax instance with SVG output — the browser
  * bundle's `MathJax.tex2svg`, or `mathjax-full`'s document API wrapped
- * to match.
+ * to match. Either may hand back MathJax's own `<mjx-container>`
+ * wrapper, as an element or as markup; the adapter unwraps it.
  */
 export interface MathJaxLike {
   tex2svg(tex: string, options?: { display?: boolean }): { outerHTML?: string } | string
+}
+
+/**
+ * MathJax sizes its SVG in `ex`; jikz places it in px. MathJax's own
+ * default is 1ex = 0.5em, and a label's em is its font size.
+ */
+const MATHJAX_EX_TO_EM = 0.5
+
+/** Formulas repeat (every tick, every node); convert each once. */
+const MATHJAX_CACHE_LIMIT = 500
+
+/**
+ * The formula's own `<svg>…</svg>` out of whatever `tex2svg` returned.
+ * MathJax wraps its output in an `<mjx-container>` (with an assistive
+ * MathML copy beside it in the browser): an HTML element, which is
+ * nothing at all inside an SVG tree — inlined as it comes, the
+ * formula renders 0×0.
+ */
+function mathjaxSvg(out: { outerHTML?: string } | string): string {
+  const markup = typeof out === 'string' ? out : (out.outerHTML ?? '')
+  const start = markup.indexOf('<svg')
+  const end = markup.lastIndexOf('</svg>')
+  return start === -1 || end === -1 ? markup : markup.slice(start, end + '</svg>'.length)
 }
 
 /**
@@ -140,15 +165,49 @@ export interface MathJaxLike {
  *
  * For the live DOM, KaTeX is still the lighter, faster choice. Pick
  * per picture; the two coexist in one process.
+ *
+ * The adapter takes `tex2svg`'s output as it comes — the
+ * `<mjx-container>` element of the browser bundle, or serialized
+ * markup from `mathjax-full` — keeps the formula's own `<svg>`, lets
+ * it fill the box jikz places it in, and measures that box from the
+ * `ex` size MathJax gave it. Configure MathJax with
+ * `svg: { fontCache: 'none' }` (or `'local'`): the default global
+ * cache draws glyphs through `<use>` references into a page-level
+ * sprite, which a standalone SVG does not carry.
  */
 export function mathjaxAdapter(mathjax: MathJaxLike): MathRenderer {
+  const cache = new Map<string, string>()
+  const convert = (tex: string, display: boolean): string => {
+    const key = `${display ? 'D' : 'I'}:${tex}`
+    let svg = cache.get(key)
+    if (svg === undefined) {
+      svg = mathjaxSvg(mathjax.tex2svg(tex, { display }))
+      if (cache.size >= MATHJAX_CACHE_LIMIT) cache.clear()
+      cache.set(key, svg)
+    }
+    return svg
+  }
+  /** The root tag's size in ex, or undefined when MathJax gave none. */
+  const sizeOf = (svg: string): { width: number; height: number } | undefined => {
+    const tag = /^<svg\b[^>]*>/.exec(svg)?.[0] ?? ''
+    const w = /\swidth="([\d.]+)ex"/.exec(tag)
+    const h = /\sheight="([\d.]+)ex"/.exec(tag)
+    return w && h ? { width: Number(w[1]), height: Number(h[1]) } : undefined
+  }
   return {
     output: 'svg',
-    renderToString: (tex, options) => {
-      const out = mathjax.tex2svg(tex, { display: options?.displayMode ?? false })
-      // The browser bundle hands back an element; a wrapped
-      // mathjax-full hands back serialized markup already.
-      return typeof out === 'string' ? out : (out.outerHTML ?? '')
+    renderToString: (tex, options) =>
+      // Let the formula fill the box jikz sized from `measure`; its
+      // own viewBox keeps the aspect, so nothing distorts.
+      convert(tex, options?.displayMode ?? false).replace(/^<svg\b[^>]*>/, (tag) =>
+        tag.replace(/\swidth="[^"]*"/, ' width="100%"').replace(/\sheight="[^"]*"/, ' height="100%"')
+      ),
+    measure: (tex, options) => {
+      const ex = sizeOf(convert(tex, options?.displayMode ?? false))
+      if (!ex) return undefined
+      // One factor for both axes, so the aspect ratio survives.
+      const px = (options?.fontSize ?? 14) * MATHJAX_EX_TO_EM
+      return { width: ex.width * px, height: ex.height * px }
     },
   }
 }

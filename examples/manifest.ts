@@ -734,6 +734,12 @@ const meta: DemoMeta[] = [
     description: "Rapid rating over 12 months as a line chart with a dashed 1500 goal line: ext/dataviz owns the axes (nice y ticks every 50, a band axis of month initials), the series is frame.line with open-circle marks and labels itself at its last sample, and the goal is frame.referenceLine, so it can't drift from the grid.",
   },
   {
+    id: "chess-eval-ribbon",
+    category: "app-prototypes",
+    title: "Chess prototype — evaluation ribbon",
+    description: "An engine-evaluation ribbon with nothing drawn by hand: the y axis is a winning-chance axis (pawns through a sigmoid, via the axis `scale` function, so ±1, ±2, ±5 pawn guides are its own ticks and gridlines), the area is one series with `above`/`below` paints split exactly at zero, the current move is the controller's cursor, and a click on the ribbon moves it through onClick's hit.",
+  },
+  {
     id: "chess-heatmap",
     category: "app-prototypes",
     title: "Chess prototype — puzzle-miss heatmap",

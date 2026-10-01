@@ -21,7 +21,7 @@ export default function render(container: HTMLElement) {
     at: point(50, 220),
     width: 340,
     height: 180,
-    x: { label: 'day', ticks: 6 },
+    x: { label: 'day', ticks: 6, about: 'int' },
     y: { grid: true, ticks: 5 },
     series: [
       { data: CANDLES, kind: 'candlestick', label: 'OHLC' },

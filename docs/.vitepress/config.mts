@@ -2,10 +2,6 @@ import { defineConfig } from 'vitepress'
 import { resolve } from 'node:path'
 import { jikzAliases } from '../../scripts/aliases'
 
-// KaTeX for the math-label example on the gallery (optional peer of the
-// library; the example reads the global the script installs).
-const KATEX = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist'
-
 export default defineConfig({
   // GitHub Pages serves a project site under /jikz/; the docs workflow sets
   // DOCS_BASE. Local dev/build stay at the root.
@@ -17,10 +13,9 @@ export default defineConfig({
     'README.md': 'overview.md',
     'cookbook/README.md': 'cookbook/index.md',
   },
-  head: [
-    ['link', { rel: 'stylesheet', href: `${KATEX}/katex.min.css` }],
-    ['script', { defer: '', src: `${KATEX}/katex.min.js` }],
-  ],
+  // KaTeX for the gallery's math labels is bundled and injected by the
+  // theme (theme/math.ts) — jikz takes a renderer, never a global, so
+  // a CDN <script> tag here would load KaTeX and render nothing.
   // The gallery renders examples/ against the live library source, exactly
   // as the examples import it (`from 'jikz'`).
   vite: {

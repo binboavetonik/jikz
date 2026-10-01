@@ -26,6 +26,7 @@ import {
   type ViewBoxRect,
 } from '../../render/PanZoom'
 import { seriesColor, type ChartFrame, type HitResult, type HitTestOptions } from './frame'
+import { toNumber, type DataValue } from './scale'
 
 /** Tooltip options for {@link attachChart}. */
 export interface ChartTooltipOptions {
@@ -37,6 +38,14 @@ export interface ChartTooltipOptions {
   format?: (hit: HitResult, frame: ChartFrame) => string | Node
   /** Extra class on the tooltip element (it always has `jikz-tooltip`). */
   className?: string
+  /**
+   * Emit no colours at all — only layout — for a host that styles
+   * `.jikz-tooltip` itself. By default the colours are CSS custom
+   * properties with the theme as fallback (`--jikz-tooltip-bg`,
+   * `-text`, `-muted`, `-border`, `-shadow`), so setting those on any
+   * ancestor restyles the tooltip without `!important`.
+   */
+  unstyled?: boolean
   /** Gap between the pointer and the tooltip, px (default 12). */
   offset?: number
 }
@@ -61,6 +70,23 @@ export interface ChartInteractionOptions {
    * every visible series is a scatter, else `mode: 'x'`.
    */
   hitTest?: HitTestOptions
+  /**
+   * A cursor: a line at an x value that stays put — the current move
+   * of a game, the playhead of a recording — with a dot on each
+   * series' sample there. Unlike the crosshair it does not follow the
+   * pointer; move it with `controller.setCursor(x)`. `null` or absent
+   * for none.
+   */
+  cursor?: DataValue | null
+  /** Mark the samples at the cursor with dots (default true). */
+  cursorDots?: boolean
+  /**
+   * The cursor line's paint: `stroke` (default the theme's accent),
+   * `width` (default 1.5), `dash` (an SVG dash array; default solid).
+   * It is an SVG attribute, so `.jikz-cursor` in a stylesheet works
+   * too.
+   */
+  cursorStyle?: { stroke?: string; width?: number; dash?: string }
   onHover?: (hit: HitResult | null) => void
   onClick?: (hit: HitResult | null, event: MouseEvent) => void
 }
@@ -75,6 +101,16 @@ export interface ChartController {
   readonly hidden: ReadonlySet<string>
   /** The tooltip element, once one has shown. */
   readonly tooltipElement: HTMLElement | null
+  /** The picture point the hover pipeline last ran at, or null. */
+  readonly hoverPoint: PointLike | null
+  /** The cursor's x in data units, or null when there is none. */
+  readonly cursor: number | null
+  /**
+   * Put the cursor at an x value (a number, a `Date`, a category
+   * name), or remove it with null. It paints into the overlay — no
+   * re-render — and hides while its x is off the plot area.
+   */
+  setCursor(x: DataValue | null): void
   /** Client coordinates → picture coordinates (null when the svg has no size). */
   clientToUser(clientX: number, clientY: number): Point | null
   /**
@@ -121,18 +157,24 @@ export function viewportTransformOf(svg: SVGElement): ViewTransform {
 }
 
 /** The default tooltip body: title from the x axis, one row per sample. */
-export function defaultTooltip(hit: HitResult, frame: ChartFrame, mode: 'x' | 'y' | 'nearest'): string {
+export function defaultTooltip(
+  hit: HitResult,
+  frame: ChartFrame,
+  mode: 'x' | 'y' | 'nearest',
+  unstyled = false
+): string {
+  const muted = unstyled ? '' : `color:var(--jikz-tooltip-muted,${frame.theme.tooltip.muted})`
   const title = mode === 'y' ? frame.yScale.format(hit.y) : frame.xScale.format(hit.x)
   const rows = hit.samples
     .map((s) => {
       const record = frame.seriesById(s.seriesId)
       const label = record?.label ?? s.seriesId
       const value = mode === 'y' ? frame.xScale.format(s.x) : frame.yScale.format(s.y)
-      const color = record ? seriesColor(record) : '#0f172a'
+      const color = record ? seriesColor(record) : frame.theme.ink
       return (
         `<div class="jikz-tooltip-row" style="display:flex;align-items:center;gap:6px">` +
         `<span class="jikz-tooltip-swatch" style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${color}"></span>` +
-        `<span class="jikz-tooltip-label" style="color:#475569">${escapeHtml(label)}</span>` +
+        `<span class="jikz-tooltip-label" style="${muted}">${escapeHtml(label)}</span>` +
         `<span class="jikz-tooltip-value" style="margin-left:auto;font-variant-numeric:tabular-nums">${escapeHtml(value)}</span>` +
         `</div>`
       )
@@ -141,10 +183,24 @@ export function defaultTooltip(hit: HitResult, frame: ChartFrame, mode: 'x' | 'y
   return `<div class="jikz-tooltip-title" style="font-weight:600;margin-bottom:4px">${escapeHtml(title)}</div>${rows}`
 }
 
-const TOOLTIP_STYLE =
+/** The tooltip's layout: everything a host is unlikely to fight. */
+const TOOLTIP_LAYOUT =
   'position:absolute;pointer-events:none;z-index:10;min-width:96px;padding:6px 8px;' +
-  'font:12px/1.4 system-ui,sans-serif;color:#0f172a;background:#fff;' +
-  'border:1px solid #cbd5e1;border-radius:6px;box-shadow:0 2px 8px rgba(15,23,42,.12);white-space:nowrap'
+  'font:12px/1.4 system-ui,sans-serif;border-radius:6px;white-space:nowrap'
+
+/**
+ * The tooltip's colours: custom properties first, the theme as their
+ * fallback — so a host restyles with five variables on any ancestor
+ * and never needs `!important` against an inline style.
+ */
+function tooltipColors(t: ChartFrame['theme']['tooltip']): string {
+  return (
+    `color:var(--jikz-tooltip-text,${t.text});` +
+    `background:var(--jikz-tooltip-bg,${t.background});` +
+    `border:1px solid var(--jikz-tooltip-border,${t.border});` +
+    `box-shadow:var(--jikz-tooltip-shadow,0 2px 8px ${t.shadow})`
+  )
+}
 
 /**
  * Attach tooltip, crosshair, active dots, hover highlight and legend
@@ -236,17 +292,72 @@ export function attachChart(
   // Hidden parts still have a position: inside the plot area, so a
   // bounds check of the DOM never sees them at the origin.
   const [ax0, ay0] = frame.plotArea
-  const crossX = el('line', { class: 'jikz-crosshair', stroke: '#94a3b8', 'stroke-width': 1, 'stroke-dasharray': '3 3', x1: ax0, x2: ax0, y1: ay0, y2: ay0, display: 'none' })
-  const crossY = el('line', { class: 'jikz-crosshair', stroke: '#94a3b8', 'stroke-width': 1, 'stroke-dasharray': '3 3', x1: ax0, x2: ax0, y1: ay0, y2: ay0, display: 'none' })
+  const theme = frame.theme
+  const crossX = el('line', { class: 'jikz-crosshair', stroke: theme.axis, 'stroke-width': 1, 'stroke-dasharray': '3 3', x1: ax0, x2: ax0, y1: ay0, y2: ay0, display: 'none' })
+  const crossY = el('line', { class: 'jikz-crosshair', stroke: theme.axis, 'stroke-width': 1, 'stroke-dasharray': '3 3', x1: ax0, x2: ax0, y1: ay0, y2: ay0, display: 'none' })
   overlay.append(crossX, crossY)
   const dots: SVGElement[] = []
   const dotAt = (i: number): SVGElement => {
     while (dots.length <= i) {
-      const dot = el('circle', { class: 'jikz-active-dot', r: 4.5, stroke: '#ffffff', 'stroke-width': 2, cx: ax0, cy: ay0, display: 'none' })
+      const dot = el('circle', { class: 'jikz-active-dot', r: 4.5, stroke: theme.surface, 'stroke-width': 2, cx: ax0, cy: ay0, display: 'none' })
       overlay.append(dot)
       dots.push(dot)
     }
     return dots[i]!
+  }
+
+  // ── The cursor: a line that stays where it is put, and its dots.
+  const cursorLine = el('line', {
+    class: 'jikz-cursor',
+    stroke: options.cursorStyle?.stroke ?? theme.accent,
+    'stroke-width': options.cursorStyle?.width ?? 1.5,
+    ...(options.cursorStyle?.dash && { 'stroke-dasharray': options.cursorStyle.dash }),
+    x1: ax0,
+    x2: ax0,
+    y1: ay0,
+    y2: ay0,
+    display: 'none',
+  })
+  overlay.append(cursorLine)
+  const cursorDots: SVGElement[] = []
+  let cursorValue: number | null = null
+  const paintCursor = (): void => {
+    const [x0, y0, x1, y1] = frame.plotArea
+    const px = cursorValue === null ? NaN : frame.xScale.map(cursorValue)
+    const shown = Number.isFinite(px) && px >= x0 - 0.5 && px <= x1 + 0.5
+    if (shown) {
+      cursorLine.setAttribute('x1', String(px))
+      cursorLine.setAttribute('x2', String(px))
+      cursorLine.setAttribute('y1', String(y0))
+      cursorLine.setAttribute('y2', String(y1))
+      cursorLine.removeAttribute('display')
+    } else cursorLine.setAttribute('display', 'none')
+    // A dot on every visible series that has a sample at the cursor.
+    const ids = frame.series.map((s) => s.id).filter((id) => !hidden.has(id))
+    const hit =
+      shown && (options.cursorDots ?? true) && ids.length
+        ? frame.hitTest(point(px, (y0 + y1) / 2), { mode: 'x', ids })
+        : null
+    const at = hit ? hit.samples.filter((s) => Math.abs(s.at.x - px) < 1) : []
+    at.forEach((s, i) => {
+      if (!cursorDots[i]) {
+        cursorDots[i] = el('circle', { class: 'jikz-cursor-dot', r: 4, stroke: theme.surface, 'stroke-width': 2 })
+        overlay.append(cursorDots[i]!)
+      }
+      const dot = cursorDots[i]!
+      const record = frame.seriesById(s.seriesId)
+      dot.setAttribute('cx', String(s.at.x))
+      dot.setAttribute('cy', String(s.at.y))
+      dot.setAttribute('fill', record ? seriesColor(record) : theme.ink)
+      dot.setAttribute('data-series', s.seriesId)
+      dot.removeAttribute('display')
+    })
+    for (let i = at.length; i < cursorDots.length; i++) cursorDots[i]!.setAttribute('display', 'none')
+  }
+  const setCursor = (x: DataValue | null): void => {
+    const value = x === null ? null : toNumber(x, frame.xScale.categories)
+    cursorValue = value !== null && Number.isFinite(value) ? value : null
+    paintCursor()
   }
 
   // ── Tooltip.
@@ -260,7 +371,8 @@ export function attachChart(
     if (view && view.getComputedStyle(container).position === 'static') container.style.position = 'relative'
     tip = doc.createElement('div')
     tip.className = `jikz-tooltip${tooltipOpts.className ? ` ${tooltipOpts.className}` : ''}`
-    tip.setAttribute('style', `${TOOLTIP_STYLE};display:none`)
+    const colors = tooltipOpts.unstyled ? '' : `;${tooltipColors(theme.tooltip)}`
+    tip.setAttribute('style', `${TOOLTIP_LAYOUT}${colors};display:none`)
     container.appendChild(tip)
     return tip
   }
@@ -268,7 +380,9 @@ export function attachChart(
     const node = ensureTip()
     const container = host()
     if (!node || !container || !tooltipOpts) return
-    const content = tooltipOpts.format ? tooltipOpts.format(hit, frame) : defaultTooltip(hit, frame, mode ?? 'x')
+    const content = tooltipOpts.format
+      ? tooltipOpts.format(hit, frame)
+      : defaultTooltip(hit, frame, mode ?? 'x', tooltipOpts.unstyled)
     if (typeof content === 'string') node.innerHTML = content
     else node.replaceChildren(content)
     node.style.display = 'block'
@@ -316,7 +430,7 @@ export function attachChart(
       const record = frame.seriesById(s.seriesId)
       dot.setAttribute('cx', String(s.at.x))
       dot.setAttribute('cy', String(s.at.y))
-      dot.setAttribute('fill', record ? seriesColor(record) : '#0f172a')
+      dot.setAttribute('fill', record ? seriesColor(record) : theme.ink)
       dot.setAttribute('data-series', s.seriesId)
       dot.removeAttribute('display')
     })
@@ -357,6 +471,7 @@ export function attachChart(
       else row.setAttribute('style', `opacity:${HIDDEN_LEGEND_OPACITY}`)
     }
     hover(pointerAt)
+    paintCursor()
   }
 
   // ── Listeners.
@@ -402,6 +517,8 @@ export function attachChart(
     }
   }
 
+  if (options.cursor !== undefined && options.cursor !== null) setCursor(options.cursor)
+
   return {
     svg,
     frame,
@@ -410,6 +527,13 @@ export function attachChart(
     get tooltipElement() {
       return tip
     },
+    get hoverPoint() {
+      return pointerAt
+    },
+    get cursor() {
+      return cursorValue
+    },
+    setCursor,
     clientToUser,
     hover,
     highlight,

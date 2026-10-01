@@ -42,7 +42,7 @@
  * ```
  */
 
-export { chart } from './chart'
+export { chart, chartDomains } from './chart'
 export type {
   ChartOptions,
   ChartSeriesSpec,
@@ -51,12 +51,13 @@ export type {
   LegendPlacement,
 } from './chart'
 
-export { axes, ChartFrame, seriesColor } from './frame'
+export { axes, axisDomain, ChartFrame, seriesColor } from './frame'
 export type {
   AxesOptions,
   AxisOptions,
   AxisSystem,
   ChartFrameInit,
+  ChartMarkSpec,
   FrameSeriesOptions,
   SeriesDrawOptions,
   FrameLabelOptions,
@@ -116,7 +117,10 @@ export type { Interpolation } from './interpolate'
 export { attachChart, defaultTooltip, viewBoxOf, viewportTransformOf } from './interact'
 export type { ChartInteractionOptions, ChartTooltipOptions, ChartController } from './interact'
 
-export { chartView } from './view'
+export { lightTheme, darkTheme, resolveTheme } from './theme'
+export type { ChartTheme, ChartThemeOverrides, ThemeSpec } from './theme'
+
+export { chartView, windowSamples } from './view'
 export type { ChartViewOptions, ChartView, ChartBrushOptions } from './view'
 
 export { sparkline } from './sparkline'
@@ -146,6 +150,8 @@ export {
   linearScale,
   bandScale,
   logScale,
+  functionScale,
+  spreadTicks,
   logTicks,
   minorTicksBetween,
   formatLogTick,
@@ -165,9 +171,12 @@ export type {
   Tick,
   LinearScaleOptions,
   LogScaleOptions,
+  FunctionScaleOptions,
+  AxisFunction,
   BandScaleOptions,
   AboutStrategy,
   NiceTicks,
+  NiceTicksOptions,
   DataSeries,
   DataPair,
   DataValue,
