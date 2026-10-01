@@ -1,5 +1,171 @@
 # Changelog
 
+## 0.10.0 — 2026-10-01
+
+What the first app built on `@ozan.e/jikz/dataviz` asked for, and a
+review of math rendering. The app's evaluation ribbon — 165 lines of
+hand drawing — is forty lines of spec on this release: a function
+axis, a sign-split area, a cursor, a click handler and a streaming
+update. A minor: themes, function axes, `above`/`below`, the cursor,
+`chartDomains` and the tooltip variables are new surface, and four
+defaults change what is drawn — tick steps, the zoom clip, the zoomed
+y range, and the colour of math.
+
+### Upgrading to 0.10
+
+| 0.9 | 0.10 |
+|---|---|
+| `ticks: n` rounded the step once; four ticks asked for on a padded range could yield one | the step is searched for the count nearest `n`; `about: 'heckbert'` keeps the old rounding |
+| `chartView` with `zoom`/`brush` drew the whole series past the axes | it clips to the plot area; `clip: false` in the spec opts out |
+| a zoomed `chartView` kept the full data's y range | an auto y axis rescales to the window; `zoomY: 'full'` keeps it |
+| labels and hits on a `clip: true` frame ignored the clip | off-plot labels, reference labels and hits are dropped |
+| the tooltip was painted with inline hex | its colours are CSS variables with the theme as fallback |
+| `chartView.update()` replayed the enter animation | it does not; `update(spec, { enter: true })` replays it |
+| math was black, or whatever the page's CSS `color` was | it takes the colour plain text has in its place: `textStyle.fill`, else the pen, else black |
+| clip paths were `jikz-clip-0`, `-1`, … | `jikz-clip-<hash of the path>`; the same for text paths |
+| `frame.xScale` kinds: linear, log, time, band | plus `'function'` |
+
+### Added
+
+- **Themes.** `theme: 'light' | 'dark' | { base, …roles }` on
+  `axes()`, `chart()`, `legend()`, `pie()` and `sparkline()` — every
+  ink that is not a series colour: axes, grids, tick/label/legend
+  text, legend frame, reference marks, the canvas `surface` gaps and
+  rings are cut in, candles, the brush strip and `accent`, the
+  tooltip, and the default style sheet (`varyHueDark` for dark). The
+  frame carries it (`frame.theme`), so `attachChart` and `chartView`
+  theme the overlay from the same option. `lightTheme` is
+  byte-identical to 0.9's output; `darkTheme`, `resolveTheme()`,
+  `ChartTheme`, `ThemeSpec` are exported.
+- **A tooltip a host can restyle.** Its colours are CSS custom
+  properties (`--jikz-tooltip-bg`, `-text`, `-muted`, `-border`,
+  `-shadow`) falling back to the theme, so no `!important` is needed
+  against the inline style; `tooltip: { unstyled: true }` emits layout
+  only. The SVG overlay parts were always attributes, which plain
+  rules outrank — their class names are now documented.
+- **`zoomY`** on `chartView`: `'visible'` (default) rescales an auto y
+  axis to what shows in the zoomed window — the samples in it and a
+  line's height where it crosses the window's edges, so a spike just
+  outside does not set the range — with stacks, baselines and nice
+  ticks as `chart()` would work them out; `'full'` keeps the whole
+  range. `windowSamples()` is exported.
+- **`minTicks`** on an axis, and `NiceTicksOptions` (`exact`,
+  `minTicks`) as `niceTicks`' fifth argument; `about: 'heckbert'`.
+- **A custom axis function.** `scale: { forward, inverse? }` on an
+  axis — TikZ's axis `function`, of which `logarithmic` is a preset:
+  positions are linear in `forward(value)`. Its auto ticks are round
+  data values spread evenly **on the page** (`spreadTicks()`), not in
+  data units, so a sigmoid's do not bunch at the ends; `inverse` is
+  optional, a monotone `forward` being inverted numerically.
+  `functionScale()`, `AxisFunction`, scale kind `'function'`.
+- **`chartDomains(spec)`** — a chart's x and y domains without
+  drawing it (`axisDomain(options)` for one axis). `chartView` uses
+  it for the data extent and the zoomed y range, so a render is one
+  chart build where it was up to three.
+- **Mark rings.** `marks: { name, size, ring }` and `referenceDot`'s
+  `ring`: a band of the theme's `surface` round a filled mark, drawn
+  outside it (`paint-order`), so `size` stays the visible dot.
+  `ChartMarkSpec`.
+- **`cursorStyle`** — `{ stroke, width, dash }` for the cursor line.
+- **Themes of CSS variables** are a documented, tested pattern: a
+  role may be `var(--…)`, and the chart follows the host's theme
+  switch live.
+- **Sign-split paints.** `above` / `below` on `line()`, `area()` and
+  `chart()` series, split at `baseline`: each side is the whole
+  series clipped to its half-plane, exact for any interpolation. A
+  half changes only what it names: `fill` the area, `stroke` the line
+  and its marks.
+- **A cursor.** `cursor` / `cursorDots` on `attachChart`, and
+  `controller.setCursor(x)`: a line that stays at an x value, with a
+  dot on each series' sample there, painted into the overlay with no
+  re-render. `chartView` has `setCursor` and keeps it across renders.
+- **Streaming updates.** `chartView`'s `update()` keeps the hover
+  under the pointer as well as the zoom, hidden series and cursor;
+  `batchUpdates: true` coalesces updates to one render per animation
+  frame, with `flush()`; the data's extent is measured without a
+  second visible render.
+- `frame.clipped`.
+
+### Changed
+
+- **`ticks` is honoured.** `niceTicks` searches the strategy's round
+  steps for the one whose tick count on the axis is nearest the
+  request — counted inside an `exact` domain, on the widened one
+  otherwise — instead of rounding the rough step once through fixed
+  thresholds. A tie goes to the plainer rung, then to the step that
+  widens the range least. `'standard'` gains TikZ's 2.5 rung, taken
+  only when it is clearly nearer the count, so the common defaults do
+  not move: [0, 100] at five ticks is still 0, 20, …, 100. What
+  moves: a padded [1460, 1560] at `ticks: 4` gets 1475…1550 instead of
+  two ticks at 50; `ticks: 8` on [0, 100] gets six ticks instead of
+  eleven; an axis no longer widens further than its step needs (data
+  1…7 at `ticks: 7` runs 1…7, not 0…8).
+
+- **Bars and candles get room on a continuous axis.** `chart()` pads
+  an auto x domain by half the smallest gap for bar and candlestick
+  series, so the first and last no longer straddle the plot's edges.
+  The old tick rounding over-widened the axis and hid this.
+
+### Fixed
+
+- **`chartView` zoom and brush drew past the axes.** A zoom re-renders
+  with a narrower x domain, but nothing clipped and every sample was
+  drawn: a series zoomed to a fifth of its range ran four plot-widths
+  past the axes, the fitted viewBox grew 4.3× to hold it, and the
+  chart shrank to match. A view with `zoom` or `brush` now clips from
+  its first render.
+- **Labels ignored the clip.** Direct labels, value labels and
+  reference labels are drawn outside the clip on purpose (an end label
+  sits past the plot edge) — but that also drew them for samples far
+  off the plot, which inflated the fit just the same. On a clipped
+  frame they are now skipped when their anchor is off the plot area;
+  `labelInData: 'start' | 'end' | 'max' | 'min'` choose among the
+  samples in view; a reference area's label centres in the part that
+  shows.
+- **`hitTest` returned off-plot samples** on a clipped frame, putting
+  the active dot and crosshair outside the axes near an edge.
+- **A drag's trailing click reached `onClick`.** The click event that
+  ends a zoom selection or a brush drag is swallowed by the view.
+- **(core) Two pictures on one page shared clip ids.** Clip paths and
+  text paths were named by a per-picture counter — `jikz-clip-0` in
+  every picture — and ids are document-wide: `url(#jikz-clip-0)`
+  resolves to the first one, so the second picture on a page was
+  clipped by the first one's shape (and its text rode the first one's
+  path). Both are named by a hash of their path data now, like
+  gradients and patterns already were: equal content shares a
+  definition, different content never meets. Output ids change
+  (`jikz-clip-<hash>`).
+- **`mathjaxAdapter` rendered nothing with real MathJax.**
+  `MathJax.tex2svg` returns its SVG inside an `<mjx-container>`, and
+  the adapter inlined that wrapper as it came — an HTML element inside
+  an SVG tree, so the formula measured 0×0 in every browser; with no
+  `measure`, every box was the 200×50 default besides. Its tests faked
+  `tex2svg` with a bare `<svg>`, which is how it shipped. The adapter
+  now keeps the formula's own `<svg>` (from the element or from
+  serialized markup), lets it fill the box, measures that box from
+  MathJax's `ex` size, and converts each formula once. The cookbook
+  build uses this public adapter now instead of a private one, and a
+  test runs `mathjax-full` itself against it.
+- **The gallery showed raw `$...$` on every math label.** The docs
+  site loaded KaTeX from a CDN `<script>` and relied on jikz reading
+  the global — the fallback 0.9 removed. The theme now bundles KaTeX
+  and calls `setDefaultMathRenderer(katexAdapter(katex))`; a test
+  renders the gallery through that same call and fails if any example
+  is left showing its dollar signs.
+- **Math took its colour from the page, not the picture.** KaTeX's
+  HTML inherits CSS `color` and MathJax's glyphs are
+  `fill="currentColor"`, so on a dark-themed page a formula went pale
+  on a light node while the plain text beside it stayed dark. A math
+  label now carries the colour plain text has in its place — the text
+  fill, else the pen, else black — as `color` on the embedding; the
+  no-renderer fallback follows the same rule instead of always being
+  black. A node's math also takes the node's `textStyle.fontSize`,
+  which it was already measured with, and an edge label's math the
+  edge's `textStyle`. Markup of every math label changes by one
+  attribute.
+- Docs: two pages passed a `textRenderer` option that never existed
+  (it is `mathRenderer`), and one said a CDN global "also works".
+
 ## 0.9.0 — 2026-10-01
 
 0.9 settles the vocabulary before 1.0 freezes it. It is one breaking
