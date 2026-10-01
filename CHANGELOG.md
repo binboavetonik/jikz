@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **A tooltip in a small chart landed on the pointer.** Placement
+  tried below the pointer, then above, and when neither fitted in the
+  chart's container it clamped the tooltip to the container's edge —
+  back across the pointer's row, and in a box narrow as well as short,
+  over the pointer itself. An 88px sparkline with a 64px tooltip did
+  this at every position. The tooltip now sits beside the pointer
+  always: when neither side fits it takes the roomier one and
+  overflows.
+
+### Added
+
+- **`tooltip: { overflow: 'auto' | 'clamp' | 'escape' }`.** `'escape'`
+  moves the tooltip to `document.body`, fixed to the viewport and kept
+  on screen; `'clamp'` keeps it in the container; `'auto'` (default)
+  escapes exactly when the container cannot always seat the tooltip
+  beside the pointer (less than twice the tooltip plus its offset,
+  either way). An escaped tooltip keeps its theme — the
+  `--jikz-tooltip-*` variables and swatch colours are resolved in the
+  container and carried along. `placeTooltip()`, `tooltipFits()`,
+  `TooltipBounds`.
+
 ## 0.10.0 — 2026-10-01
 
 What the first app built on `@ozan.e/jikz/dataviz` asked for, and a

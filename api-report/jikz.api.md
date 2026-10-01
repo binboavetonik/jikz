@@ -2882,7 +2882,7 @@ function xorGate(options: LogicGateOptions = {}): BinaryGate;
 
 ## @ozan.e/jikz/dataviz
 
-139 exports
+142 exports
 
 ```ts
 type AboutStrategy = 'standard' | 'decimal' | 'half' | 'quarter' | 'int' | 'heckbert'
@@ -3088,6 +3088,7 @@ interface ChartTooltipOptions
   className?: string
   unstyled?: boolean
   offset?: number
+  overflow?: 'auto' | 'clamp' | 'escape'
 function chartView(container: HTMLElement, spec: ChartOptions, options: ChartViewOptions = {}): ChartView;
 interface ChartView
   readonly container: HTMLElement
@@ -3287,6 +3288,7 @@ interface PieSliceResult
   startAngle: number
   endAngle: number
   style: StyleSpec
+function placeTooltip(pointer: { x: number; y: number; }, size: { width: number; height: number; }, bounds: TooltipBounds, offset = 12, keepInside = false): { left: number; top: number; };
 type PointStyle = StyleSpec | ((sample: readonly [ number, number ], index: number) => StyleSpec)
 interface ReferenceAreaOptions
   x1?: DataValue
@@ -3396,6 +3398,12 @@ interface TimeTicks
   max: number
 type TimeZone = 'utc' | 'local'
 function toNumber(v: DataValue, categories?: readonly string[]): number;
+interface TooltipBounds
+  left: number
+  top: number
+  right: number
+  bottom: number
+function tooltipFits(container: { width: number; height: number; }, size: { width: number; height: number; }, offset = 12): boolean;
 function toSeries<T>(data: DataInput<T>, categories: Categories = {}): DataSeries;
 type ValueLabels = boolean | ((sample: readonly [ number, number ], index: number) => string)
 const VARY_HUE: readonly string[]

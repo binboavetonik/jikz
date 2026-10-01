@@ -48,6 +48,25 @@ export interface ChartTooltipOptions {
   unstyled?: boolean
   /** Gap between the pointer and the tooltip, px (default 12). */
   offset?: number
+  /**
+   * What bounds the tooltip.
+   *
+   * - `'clamp'` keeps it in the chart's container: right for a
+   *   dashboard card.
+   * - `'escape'` lets it leave: it is moved to `document.body`,
+   *   fixed to the viewport and kept on screen — right for a
+   *   sparkline or a ribbon too small to hold its own tooltip, and
+   *   the only way out of an `overflow: hidden` ancestor.
+   * - `'auto'` (default) escapes exactly when the container cannot
+   *   guarantee room beside the pointer: when it is less than twice
+   *   the tooltip plus its offset, in either direction.
+   *
+   * Wherever it goes it sits beside the pointer, never on it: when
+   * neither side has room it takes the roomier one and overflows.
+   * An escaped tooltip keeps its theme — the `--jikz-tooltip-*`
+   * variables are resolved where the chart is and carried along.
+   */
+  overflow?: 'auto' | 'clamp' | 'escape'
 }
 
 /** Options for {@link attachChart}. */
@@ -187,6 +206,64 @@ export function defaultTooltip(
 const TOOLTIP_LAYOUT =
   'position:absolute;pointer-events:none;z-index:10;min-width:96px;padding:6px 8px;' +
   'font:12px/1.4 system-ui,sans-serif;border-radius:6px;white-space:nowrap'
+
+/** The z-index of an escaped tooltip: the top of the page. */
+const ESCAPED_Z_INDEX = 2147483000
+
+/** A box in some coordinate space: the container's, or the viewport's. */
+export interface TooltipBounds {
+  left: number
+  top: number
+  right: number
+  bottom: number
+}
+
+/**
+ * Where a tooltip of `size` goes beside `pointer`, inside `bounds`
+ * (all in one coordinate space). Per axis: after the pointer if it
+ * fits, else before it, else — neither fits — on the side with more
+ * room, overflowing the bounds. It is never slid back across the
+ * pointer: a tooltip over the thing it describes is the worst
+ * outcome. With `keepInside`, an overflowing tooltip is then pulled
+ * back in on that axis (the viewport: off-screen is worse still).
+ */
+export function placeTooltip(
+  pointer: { x: number; y: number },
+  size: { width: number; height: number },
+  bounds: TooltipBounds,
+  offset = 12,
+  keepInside = false
+): { left: number; top: number } {
+  const margin = 4
+  const axis = (p: number, extent: number, lo: number, hi: number): number => {
+    const after = p + offset
+    const before = p - offset - extent
+    let start: number
+    if (after + extent <= hi - margin) start = after
+    else if (before >= lo + margin) start = before
+    else start = hi - p >= p - lo ? after : before
+    if (keepInside) start = Math.max(lo + margin, Math.min(start, hi - margin - extent))
+    return start
+  }
+  return {
+    left: axis(pointer.x, size.width, bounds.left, bounds.right),
+    top: axis(pointer.y, size.height, bounds.top, bounds.bottom),
+  }
+}
+
+/**
+ * Whether a container can always seat a tooltip beside the pointer:
+ * for every pointer position one side must hold the tooltip and its
+ * offset, which takes twice that in each direction. When it cannot,
+ * `overflow: 'auto'` lets the tooltip escape.
+ */
+export function tooltipFits(
+  container: { width: number; height: number },
+  size: { width: number; height: number },
+  offset = 12
+): boolean {
+  return container.width >= 2 * (size.width + offset) && container.height >= 2 * (size.height + offset)
+}
 
 /**
  * The tooltip's colours: custom properties first, the theme as their
@@ -386,20 +463,98 @@ export function attachChart(
     if (typeof content === 'string') node.innerHTML = content
     else node.replaceChildren(content)
     node.style.display = 'block'
-    // Position beside the pointer, in the container's box, flipping
-    // away from the edges it would cross.
     const client = userToClient(at)
-    const box = container.getBoundingClientRect()
     if (!client) return
     const offset = tooltipOpts.offset ?? 12
-    let left = client.x - box.left + offset
-    let top = client.y - box.top + offset
-    const w = node.offsetWidth
-    const h = node.offsetHeight
-    if (left + w > box.width - 4) left = client.x - box.left - offset - w
-    if (top + h > box.height - 4) top = client.y - box.top - offset - h
-    node.style.left = `${Math.max(0, left)}px`
-    node.style.top = `${Math.max(0, top)}px`
+    const box = container.getBoundingClientRect()
+    const size = { width: node.offsetWidth, height: node.offsetHeight }
+    const overflow = tooltipOpts.overflow ?? 'auto'
+    // A container with no measurable box (detached, not laid out)
+    // cannot be judged: stay in it.
+    const measurable = box.width > 0 && box.height > 0
+    const escape =
+      overflow === 'escape' || (overflow === 'auto' && measurable && !tooltipFits(box, size, offset))
+
+    if (escape) {
+      // Out of the container: on <body>, fixed to the viewport, kept
+      // on screen. Its theme is resolved where the chart is and
+      // carried along, since the variables do not reach <body>.
+      const view = doc.defaultView
+      if (node.parentElement !== doc.body) doc.body.appendChild(node)
+      node.style.position = 'fixed'
+      // Above whatever the chart sits in — a modal, a floating panel:
+      // on <body> it no longer shares their stacking context.
+      node.style.zIndex = String(ESCAPED_Z_INDEX)
+      if (!tooltipOpts.unstyled) carryTheme(node, container)
+      const viewport = {
+        left: 0,
+        top: 0,
+        right: view?.innerWidth ?? doc.documentElement.clientWidth,
+        bottom: view?.innerHeight ?? doc.documentElement.clientHeight,
+      }
+      const placed = placeTooltip(client, size, viewport, offset, true)
+      node.style.left = `${placed.left}px`
+      node.style.top = `${placed.top}px`
+      return
+    }
+
+    // In the container's box, in its own coordinates.
+    if (node.parentElement !== container) container.appendChild(node)
+    node.style.position = 'absolute'
+    node.style.zIndex = '10'
+    const placed = placeTooltip(
+      { x: client.x - box.left, y: client.y - box.top },
+      size,
+      { left: 0, top: 0, right: box.width, bottom: box.height },
+      offset
+    )
+    node.style.left = `${placed.left}px`
+    node.style.top = `${placed.top}px`
+  }
+
+  /**
+   * Give an escaped tooltip the colours it would have had inside the
+   * chart's container: the five `--jikz-tooltip-*` properties and the
+   * swatches are resolved by a probe placed there, and set on the
+   * tooltip as concrete values. Runs on every show, so a live theme
+   * switch is followed.
+   */
+  const carryTheme = (node: HTMLElement, container: HTMLElement): void => {
+    const view = doc.defaultView
+    if (!view) return
+    const probe = doc.createElement('div')
+    probe.setAttribute(
+      'style',
+      `position:absolute;visibility:hidden;pointer-events:none;${tooltipColors(theme.tooltip)}`
+    )
+    const inner = doc.createElement('span')
+    inner.setAttribute('style', `color:var(--jikz-tooltip-muted,${theme.tooltip.muted})`)
+    probe.appendChild(inner)
+    container.appendChild(probe)
+    try {
+      const cs = view.getComputedStyle(probe)
+      const resolved: [string, string][] = [
+        ['--jikz-tooltip-text', cs.color],
+        ['--jikz-tooltip-bg', cs.backgroundColor],
+        ['--jikz-tooltip-border', cs.borderTopColor],
+        ['--jikz-tooltip-shadow', cs.boxShadow],
+        ['--jikz-tooltip-muted', view.getComputedStyle(inner).color],
+      ]
+      for (const [name, value] of resolved) {
+        // An engine that cannot resolve var() says so with nothing, or
+        // with the var() itself: leave the fallback in place then.
+        if (value && !value.includes('var(')) node.style.setProperty(name, value)
+      }
+      for (const swatch of node.querySelectorAll<HTMLElement>('.jikz-tooltip-swatch')) {
+        const raw = swatch.style.background || swatch.style.backgroundColor
+        if (!raw.includes('var(')) continue
+        inner.style.color = raw
+        const color = view.getComputedStyle(inner).color
+        if (color && !color.includes('var(')) swatch.style.background = color
+      }
+    } finally {
+      probe.remove()
+    }
   }
   const hideTip = (): void => {
     if (tip) tip.style.display = 'none'

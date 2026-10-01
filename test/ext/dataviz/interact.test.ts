@@ -9,7 +9,14 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { point } from '../../../src/core/Point'
 import { picture } from '../../../src/picture/Picture'
 import { chart, chartDomains, type ChartOptions } from '../../../src/ext/dataviz/chart'
-import { attachChart, viewBoxOf, viewportTransformOf, defaultTooltip } from '../../../src/ext/dataviz/interact'
+import {
+  attachChart,
+  viewBoxOf,
+  viewportTransformOf,
+  defaultTooltip,
+  placeTooltip,
+  tooltipFits,
+} from '../../../src/ext/dataviz/interact'
 import { chartView, windowSamples } from '../../../src/ext/dataviz/view'
 
 const SPEC: ChartOptions = {
@@ -130,6 +137,144 @@ describe('hover pipeline', () => {
     expect(html).toContain('a&lt;b')
     expect(html).toContain('>2<')
     expect(html).toContain('background:#2a78d6')
+  })
+})
+
+describe('tooltip placement', () => {
+  const size = { width: 96, height: 31 }
+
+  it('placeTooltip: after the pointer, else before it, else the roomier side — never across it', () => {
+    const card = { left: 0, top: 0, right: 460, bottom: 170 }
+    // Room below and to the right.
+    expect(placeTooltip({ x: 50, y: 50 }, size, card)).toEqual({ left: 62, top: 62 })
+    // Low in the box: above the pointer. Near the right edge: left of it.
+    expect(placeTooltip({ x: 50, y: 150 }, size, card).top).toBe(150 - 12 - 31)
+    expect(placeTooltip({ x: 440, y: 50 }, size, card).left).toBe(440 - 12 - 96)
+    // The measured sparkline: an 88px box, a 68px tooltip, the pointer at
+    // mid-height. Neither side fits; it used to be clamped to the top,
+    // across the pointer's row. Now it takes the roomier side and overflows.
+    const spark = { left: 0, top: 0, right: 300, bottom: 88 }
+    const tall = { width: 105, height: 68 }
+    const placed = placeTooltip({ x: 150, y: 37 }, tall, spark)
+    expect(placed.top).toBe(49) // below the pointer, past the box's bottom edge
+    expect(placed.top).toBeGreaterThan(37)
+    // More room above: it goes above, and still not over the pointer.
+    const above = placeTooltip({ x: 150, y: 60 }, tall, spark)
+    expect(above.top + tall.height).toBeLessThan(60)
+    // A box too narrow as well: beside the pointer on both axes.
+    const narrow = placeTooltip({ x: 100, y: 37 }, { width: 142, height: 64 }, { left: 0, top: 0, right: 200, bottom: 88 })
+    const coversX = narrow.left <= 100 && narrow.left + 142 >= 100
+    const coversY = narrow.top <= 37 && narrow.top + 64 >= 37
+    expect(coversX || coversY).toBe(false)
+  })
+
+  it('placeTooltip keeps an escaped tooltip on screen', () => {
+    const viewport = { left: 0, top: 0, right: 1024, bottom: 768 }
+    expect(placeTooltip({ x: 500, y: 400 }, size, viewport, 12, true)).toEqual({ left: 512, top: 412 })
+    // At the screen's corner it flips; in a window too small for either side it is pulled back in.
+    expect(placeTooltip({ x: 1010, y: 760 }, size, viewport, 12, true)).toEqual({ left: 1010 - 12 - 96, top: 760 - 12 - 31 })
+    const tiny = placeTooltip({ x: 60, y: 20 }, { width: 100, height: 60 }, { left: 0, top: 0, right: 120, bottom: 50 }, 12, true)
+    expect(tiny.left).toBeGreaterThanOrEqual(4)
+    expect(tiny.left + 100).toBeLessThanOrEqual(116)
+  })
+
+  it('tooltipFits: a container must hold twice the tooltip and its offset each way', () => {
+    expect(tooltipFits({ width: 460, height: 170 }, size)).toBe(true)
+    expect(tooltipFits({ width: 300, height: 88 }, { width: 105, height: 68 })).toBe(false) // the sparkline
+    expect(tooltipFits({ width: 200, height: 400 }, { width: 142, height: 64 })).toBe(false) // too narrow
+    expect(tooltipFits({ width: 216, height: 86 }, size)).toBe(true)
+    expect(tooltipFits({ width: 215, height: 86 }, size)).toBe(false)
+  })
+
+  describe('in the DOM', () => {
+    // jsdom lays nothing out: give tooltips a size, and the boxes their rects.
+    const sized = (w: number, h: number) => {
+      const proto = HTMLElement.prototype
+      const ow = Object.getOwnPropertyDescriptor(proto, 'offsetWidth')
+      const oh = Object.getOwnPropertyDescriptor(proto, 'offsetHeight')
+      Object.defineProperty(proto, 'offsetWidth', { configurable: true, get(this: HTMLElement) { return this.classList.contains('jikz-tooltip') ? w : 0 } })
+      Object.defineProperty(proto, 'offsetHeight', { configurable: true, get(this: HTMLElement) { return this.classList.contains('jikz-tooltip') ? h : 0 } })
+      return () => {
+        if (ow) Object.defineProperty(proto, 'offsetWidth', ow)
+        if (oh) Object.defineProperty(proto, 'offsetHeight', oh)
+      }
+    }
+    const boxed = (width: number, height: number) => {
+      const container = document.createElement('div')
+      document.body.appendChild(container)
+      const pic = picture()
+      const frame = chart(pic, { ...SPEC, legend: false })
+      const svg = pic.mount(container, { width: 200, height: 220 })
+      const rect = { left: 100, top: 50, width, height, right: 100 + width, bottom: 50 + height, x: 100, y: 50, toJSON: () => ({}) }
+      svg.getBoundingClientRect = () => ({ ...rect, width: 400, height: 440, right: 500, bottom: 490 })
+      container.getBoundingClientRect = () => rect
+      return { container, frame, svg }
+    }
+    // Picture point (100, 150) is at client (300, 350) in that svg box.
+    const P = point(100, 150)
+
+    it('a roomy container keeps its tooltip, positioned in its own box', () => {
+      const restore = sized(96, 31)
+      try {
+        const { container, frame, svg } = boxed(400, 440)
+        const c = attachChart(svg, frame)
+        c.hover(P)
+        const tip = c.tooltipElement!
+        expect(tip.parentElement).toBe(container)
+        expect(tip.style.position).toBe('absolute')
+        expect([tip.style.left, tip.style.top]).toEqual(['212px', '312px']) // (300−100)+12, (350−50)+12
+        c.destroy()
+      } finally {
+        restore()
+      }
+    })
+
+    it('a container too small for its tooltip lets it escape to the viewport', () => {
+      const restore = sized(142, 64)
+      try {
+        const { container, frame, svg } = boxed(300, 88)
+        const c = attachChart(svg, frame)
+        c.hover(P)
+        const tip = c.tooltipElement!
+        expect(tip.parentElement).toBe(document.body)
+        expect(tip.style.position).toBe('fixed')
+        // Client coordinates, beside the pointer at (300, 350).
+        expect([tip.style.left, tip.style.top]).toEqual(['312px', '362px'])
+        expect(container.querySelector('.jikz-tooltip')).toBeNull()
+        // No var() is ever copied onto it unresolved.
+        for (const name of ['--jikz-tooltip-bg', '--jikz-tooltip-text']) expect(tip.style.getPropertyValue(name)).not.toContain('var(')
+        // Leaving hides it; destroy takes it off the body.
+        c.hover(null)
+        expect(tip.style.display).toBe('none')
+        c.destroy()
+        expect(document.body.querySelector('.jikz-tooltip')).toBeNull()
+      } finally {
+        restore()
+      }
+    })
+
+    it("overflow: 'clamp' and 'escape' override the automatic choice", () => {
+      const restore = sized(142, 64)
+      try {
+        const small = boxed(300, 88)
+        const clamped = attachChart(small.svg, small.frame, { tooltip: { overflow: 'clamp' } })
+        clamped.hover(P)
+        expect(clamped.tooltipElement!.parentElement).toBe(small.container)
+        // Beside the pointer even though it overflows: not slid back over it.
+        const top = parseFloat(clamped.tooltipElement!.style.top)
+        const pointerY = 350 - 50
+        expect(top > pointerY || top + 64 < pointerY).toBe(true)
+        clamped.destroy()
+
+        const big = boxed(400, 440)
+        const escaped = attachChart(big.svg, big.frame, { tooltip: { overflow: 'escape' } })
+        escaped.hover(P)
+        expect(escaped.tooltipElement!.parentElement).toBe(document.body)
+        escaped.destroy()
+      } finally {
+        restore()
+      }
+    })
   })
 })
 

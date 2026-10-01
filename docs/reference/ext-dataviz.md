@@ -522,7 +522,7 @@ const ui = attachChart(svg, frame, { tooltip: true, crosshair: 'x' })
 
 | option | default | what |
 |---|---|---|
-| `tooltip` | `true` | an HTML tooltip beside the pointer: the x value as title, one row per series with swatch, label and y value through the axes' formatters; `{ format(hit, frame) }` for your own, `className`, `offset` |
+| `tooltip` | `true` | an HTML tooltip beside the pointer: the x value as title, one row per series with swatch, label and y value through the axes' formatters; `{ format(hit, frame) }` for your own, `className`, `offset`, `overflow` (below) |
 | `crosshair` | `'x'` (none in nearest mode) | dashed lines through the hit along x, y or both |
 | `activeDots` | `true` | dots on the samples under the pointer, in their series' colour |
 | `highlight` | `true` | hovering a legend row dims the other series (`.jikz-dim`, opacity .25) |
@@ -530,6 +530,25 @@ const ui = attachChart(svg, frame, { tooltip: true, crosshair: 'x' })
 | `hitTest` | nearest within 24px for scatter charts, else by x | passed to `frame.hitTest` |
 | `cursor`, `cursorDots`, `cursorStyle` | none, `true`, accent 1.5px | a line at an x value that stays put (the current move, a playhead), with a dot on each series' sample there; `cursorStyle: { stroke, width, dash }` |
 | `onHover(hit)`, `onClick(hit, event)` | | callbacks: `onClick` gets the samples under a click — `hit.samples[0].index` is the sample to navigate to, no hit rectangles needed |
+
+**Where the tooltip goes.** Beside the pointer — below and to the
+right when there is room, flipped to the other side when there is
+not, and when neither side has room, on the roomier one, overflowing.
+It is never slid back over the pointer. What "room" means is
+`tooltip: { overflow }`:
+
+| `overflow` | the tooltip is bounded by |
+|---|---|
+| `'clamp'` | the chart's container — right for a dashboard card |
+| `'escape'` | the viewport: it moves to `document.body`, `position: fixed`, and is kept on screen — for a sparkline or a ribbon too small to hold its own tooltip, and the only way out of an `overflow: hidden` ancestor |
+| `'auto'` (default) | the container when it can always seat the tooltip beside the pointer — at least twice the tooltip plus its offset, each way — and the viewport when it cannot |
+
+An escaped tooltip keeps its theme: the `--jikz-tooltip-*` variables
+and the swatch colours are resolved inside the chart's container and
+carried along, on every show, so a live theme switch is followed.
+With `unstyled: true` it carries nothing — style `.jikz-tooltip` with
+a rule that reaches `<body>`. `placeTooltip()` and `tooltipFits()` are
+exported for a host placing its own.
 
 The controller it returns has `hover(at)` — run the pipeline at a
 picture point, or clear it with null — and `setCursor(x)` — move the

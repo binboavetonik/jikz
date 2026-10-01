@@ -114,8 +114,20 @@ export type {
 } from './time'
 export type { Interpolation } from './interpolate'
 
-export { attachChart, defaultTooltip, viewBoxOf, viewportTransformOf } from './interact'
-export type { ChartInteractionOptions, ChartTooltipOptions, ChartController } from './interact'
+export {
+  attachChart,
+  defaultTooltip,
+  placeTooltip,
+  tooltipFits,
+  viewBoxOf,
+  viewportTransformOf,
+} from './interact'
+export type {
+  ChartInteractionOptions,
+  ChartTooltipOptions,
+  ChartController,
+  TooltipBounds,
+} from './interact'
 
 export { lightTheme, darkTheme, resolveTheme } from './theme'
 export type { ChartTheme, ChartThemeOverrides, ThemeSpec } from './theme'
